@@ -1,26 +1,104 @@
 {
-    "id": "1",
-    "version": "1.0.0",
-    "creator": "abc@dataloop.ai",
-    "name": "app-name",
-    "displayName": "App display name",
-    "description": "Description",
-    "icon": "",
-    "categories": [],
-    "source": {
-      "type": "git",
-      "repo": "https://github.com/dataloop-ai-apps/opencv-face-detection.git",
-      "tag": ""
-    },
-    "scope": "organization",
-    "components": {
-      "panels": [],
-      "hooks": [],
-      "modules": [],
-      "services": [],
-      "triggers": [],
-      "pipelines": [],
-      "models": [],
-      "snapshots": []
-    }
+  "id": "1",
+  "version": "1.0.0",
+  "creator": "yaya.t@dataloop.ai",
+  "name": "scoring-and-metrics",
+  "displayName": "Scoring and metrics app",
+  "description": "This app is used to calculate scores for items and annotations, such as in tasks with consensus.",
+  "icon": "icon-dl-compare",
+  "categories": [],
+  "source": {
+    "type": "git",
+    "repo": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
+    "tag": ""
+  },
+  "scope": "organization",
+  "components": {
+    "panels": [
+      {
+        "name": "pipelineNodePanel",
+        "icon": "icon-dl-compare",
+        "supportedSlots": [
+          {
+            "type": "pipelineNodeConfig",
+            "configuration": {}
+          }
+        ],
+        "conditions": {
+          "resources": []
+        }
+      }
+    ],
+    "hooks": [],
+    "modules": [
+      {
+        "name": "custom_nodes",
+        "entryPoint": "modules/main.py",
+        "className": "ScoringAndMetrics",
+        "initInputs": [],
+        "functions": [
+          {
+            "name": "calculate_consensus_score",
+            "description": "Calculate the consensus score for items in a task with consensus",
+            "input": [
+              {
+                "type": "Task",
+                "name": "task"
+              }
+            ],
+            "output": [
+              {
+                "type": "Feature set",
+                "name": "item_consensus_set"
+              }
+            ],
+            "displayIcon": "compare",
+            "displayName": "Scoring and Metrics"
+          }
+        ]
+      }
+    ],
+    "triggers": [],
+    "pipelineNodes": [
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "custom_nodes.score"
+        },
+        "categories": [
+          "data"
+        ],
+        "icon": "compare"
+      }
+    ],
+    "services": [
+      {
+        "name": "runner81",
+        "panelNames": [
+          "pipelineNodePanel"
+        ],
+        "moduleName": "custom_nodes",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "docker.io/dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 1,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false,
+          "executionTimeout": 3600,
+          "drainTime": 600,
+          "onReset": "failed",
+          "runExecutionAsProcess": false
+        },
+        "maxAttempts": 3
+      }
+    ]
   }
+}

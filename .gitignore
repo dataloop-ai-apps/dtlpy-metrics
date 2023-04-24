@@ -320,3 +320,4 @@ artifacts
 .vscode
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,pycharm,visualstudiocode
+output/
