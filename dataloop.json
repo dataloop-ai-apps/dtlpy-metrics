@@ -30,6 +30,18 @@
       }
     ],
     "hooks": [],
+    "triggers": [],
+    "pipelineNodes": [
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "custom_nodes.create_item_consensus_score"
+        },
+        "categories": [
+          "data"
+        ]
+      }
+    ],
     "modules": [
       {
         "name": "custom_nodes",
@@ -55,18 +67,6 @@
             "displayIcon": "compare",
             "displayName": "Scoring and Metrics"
           }
-        ]
-      }
-    ],
-    "triggers": [],
-    "pipelineNodes": [
-      {
-        "invoke": {
-          "type": "function",
-          "namespace": "custom_nodes.create_item_consensus_score"
-        },
-        "categories": [
-          "data"
         ]
       }
     ],

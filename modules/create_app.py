@@ -13,7 +13,10 @@ if TO_INSTALL:
     dpk = dl.dpks.init(name=dpk_name)
     project.dpks.publish(dpk)
 
-    dpk = dl.dpks.get(dpk_id=dpk.id)
+    dpk = dl.dpks.get(dpk_name=dpk_name)
+
+    app = project.apps.get(app_name=dpk.name)
+    app.uninstall()
     project.apps.install(dpk)
 
 else:
@@ -26,7 +29,6 @@ else:
 
 dpk = dl.dpks.get(None, '64413bc73b6ed86ac9d664fe')
 # dl.dpks.delete(dpk_id=dpk.id)
-
 
 # dlp app publish --project-name "feature vectors"
 # dlp app install --dpk-id 64413d3e3b6ed851f2d66501 --project-name "feature vectors"
