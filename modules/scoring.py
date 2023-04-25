@@ -23,8 +23,8 @@ def measure_annotations(
         ignore_attributes=False,
         compare_types=None):
     """
-    Compares list (or collections) of annotations
-    This will also return the precision and recall of the two sets, given that the first that is a GT and the second set
+    Compares lists (or collections) of annotations
+    This will also return the precision and recall of the two sets, given that the first set is a GT and the second set
     is the detection (this affects the denominator of the calculation).
 
 

@@ -2,9 +2,10 @@ import dtlpy as dl
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scoring import measure_annotations
 from dtlpy.ml import metrics, predictions_utils
 from pathlib import Path
-from scoring import measure_annotations
+
 from dtlpy import entities, utilities
 
 
@@ -13,147 +14,96 @@ from dtlpy import entities, utilities
                         init_inputs={'task': entities.Task,
                                      'save_plot': bool}, )
 class ScoringAndMetrics(dl.BaseServiceRunner):
-
     @staticmethod
-    def calculate_consensus_score(consensus_task, save_plot=False):
-        dataset = consensus_task.dataset
-        project = dataset.project
-
+    def get_and_calculate_consensus_items(consensus_task):
         annotators = []
-        n_annotators = consensus_task.metadata['system']['consensusAssignees']
+        assignments = consensus_task.assignments.list()
+        for assignment in assignments:
+            annotators.append(assignment.annotator)
 
         # workaround for the task query returning all items, including hidden consensus clones
         filters = dl.Filters()
         filters.add(field='hidden', values=False)
         items = consensus_task.get_items(filters=filters).all()  # why is this "get_items" and not "list"?
 
-        consensus_items_scores = {}
-        consensus_annotators_scores = []
-
         for item in items:
-            annotator_agreement = np.zeros((n_annotators, n_annotators))
-            annotations = item.annotations.list()
+            # TODO is there a cleaner way to do this?
+            if item.metadata['system']['refs'][0]['metadata']['status'] == 'consensus_done':
+                item = ScoringAndMetrics.create_item_consensus_score(item, annotators)
 
-            try:
-                annots_by_annotator = {annotator: [] for annotator in annotators}
-            except NameError:
-                annots_by_annotator = {}
-
-            if item.metadata['system']['refs'][0]['metadata'][
-                'status'] == 'consensus_done':  # TODO is this a clean way to do this?
-
-                # group by some field (e.g. 'creator' or 'assignment id'), here we use annotator/creator
-                for annotation in annotations:
-                    annotator = annotation.creator
-
-                    if annotator not in annotators:
-                        annotators.append(annotator)
-                        annots_by_annotator.update({annotator: []})
-
-                    annots_by_annotator[annotator].append(annotation)
-
-                # do pairwise comparisons of each annotator for all of their annotations on the item
-                for i_annotator in range(n_annotators):
-                    for j_annotator in range(n_annotators):
-
-                        if i_annotator > j_annotator:
-                            annot_collection_1 = annots_by_annotator[annotators[i_annotator]]
-                            annot_collection_2 = annots_by_annotator[annotators[j_annotator]]
-
-                            # compare annotations via
-                            results = measure_annotations(
-                                annotations_set_one=annot_collection_1,
-                                annotations_set_two=annot_collection_2,
-                                compare_types=[dl.AnnotationType.BOX],
-                                ignore_labels=False)
-                            annotator_agreement[i_annotator, j_annotator] = results['total_mean_score']
-
-                if save_plot:
-                    item_title = f'consensus scores for {item.name}'
-                    filename = f'consensus_{Path(item.name).stem}_{item.id}.png'
-                    ScoringAndMetrics.plot_matrix(item_title, filename, annotator_agreement, annotators, item)
-
-                # calculate mean agreement across all annotators for lower half of the matrix, without the diagonal
-                mean_item_consensus = np.mean(annotator_agreement[np.tril_indices(n=n_annotators, k=-1)])
-                print(f'item consensus mean annotator score: {mean_item_consensus}')
-
-                consensus_items_scores.update({item.id: mean_item_consensus})
-                consensus_annotators_scores.append(annotator_agreement)
-
-        stacked_scores = np.stack(consensus_annotators_scores, axis=0)
-
-        mean_task_consensus = np.mean(stacked_scores, axis=0)
-
-        ##############################
-        # Save annotators IOU matrix #
-        ##############################
-
-        consensus_title = f'{dataset.name} task: average consensus score by annotator'
-        filename = f'task_consensus_scores_{dataset.name}.png'
-        ScoringAndMetrics.plot_matrix(consensus_title, filename, mean_task_consensus, annotators)
-
-        ###################
-        # Upload features #
-        ###################
-
-        try:
-            items_consensus_set = project.feature_sets.get('consensus_items_scores')
-
-        except dl.exceptions.NotFound:
-            items_consensus_set = project.feature_sets.create(name='consensus_items_scores',
-                                                              set_type='score',
-                                                              data_type=dl.FeatureDataType.ITEM_SCORE,
-                                                              entity_type=dl.FeatureEntityType.ITEM,
-                                                              size=1)
-
-        # return one score for the item as a result of the consensus comparison
-        for i_item, item_id in enumerate(consensus_items_scores.keys()):
-            items_consensus_set.features.create(value=[consensus_items_scores[item_id]],
-                                                project_id=project.id,
-                                                entity_id=item_id,
-                                                version='1.0.0')
-
-        return items_consensus_set
+        return
 
     @staticmethod
-    def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, local_path=None):
-        import os
-        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    def create_item_consensus_score(item: dl.Item, annotators: list):
+        annotations = item.annotations.list()
+        n_annotators = len(annotators)
+        annots_by_annotator = {annotator: [] for annotator in annotators}
 
-        # annotators matrix plot, per item
-        mask = np.zeros_like(matrix_to_plot, dtype=bool)
-        mask[np.triu_indices_from(mask)] = True
+        # group by some field (e.g. 'creator' or 'assignment id'), here we use annotator/creator
+        for annotation in annotations:
+            annots_by_annotator[annotation.creator].append(annotation)
 
-        sns.set(rc={'figure.figsize': (20, 10),
-                    'axes.facecolor': 'white'},
-                font_scale=2)
-        sns_plot = sns.heatmap(matrix_to_plot,
-                               annot=True,
-                               mask=mask,
-                               cmap='Blues',
-                               xticklabels=axis_labels,
-                               yticklabels=axis_labels,
-                               vmin=0,
-                               vmax=1)
-        sns_plot.set(title=item_title)
-        sns_plot.set_yticklabels(sns_plot.get_yticklabels(), rotation=270)
+        # do pairwise comparisons of each annotator for all of their annotations on the item
+        for i_annotator in range(n_annotators):
+            for j_annotator in range(0, i_annotator + 1):
+                annot_collection_1 = annots_by_annotator[annotators[i_annotator]]
+                annot_collection_2 = annots_by_annotator[annotators[j_annotator]]
 
-        fig = sns_plot.get_figure()
+                ScoringAndMetrics.create_annotation_scores(annot_collection_1=annot_collection_1,
+                                                           annot_collection_2=annot_collection_2,
+                                                           gt_is_first=False)
 
-        if item is not None:
-            newax = fig.add_axes((0.8, 0.8, 0.2, 0.2), anchor='NE', zorder=-1)
+        return item
 
-            im = plt.imread(item.download())
-            newax.imshow(im)
-            newax.axis('off')
+    @staticmethod
+    def create_annotation_scores(annot_collection_1, annot_collection_2, gt_is_first=True):
+        project = annot_collection_1[0].item.project
+        dataset = annot_collection_1[0].item.dataset
+        score_names = ['IOU', 'label', 'attribute']
+        results_columns = {'iou': 'geometry_score', 'label': 'label_score', 'attribute': 'attribute_score'}
+        compare_type = dl.AnnotationType.BOX
+        score_sets = {}
 
-        if local_path is None:
-            save_path = os.path.join(root_dir, 'output', filename)
-            if not os.path.exists(os.path.dirname(save_path)):
-                os.makedirs(os.path.dirname(save_path))
-            plt.savefig(save_path)
-        else:
-            plt.savefig(filename)
-        plt.close()
+        for score_name in score_names:
+            try:
+                feature_set = project.feature_sets.get(feature_set_name=f'Consensus {score_name}')
+            except dl.exceptions.NotFound:
+                # create the feature set for each score type
+                feature_set = project.feature_sets.create(name=f'Consensus {score_name}',
+                                                          set_type='scores',
+                                                          data_type=dl.FeatureDataType.ANNOTATION_SCORE,
+                                                          # refs require data type
+                                                          entity_type=dl.FeatureEntityType.ANNOTATION,
+                                                          size=1)
+            score_sets.update({score_name: feature_set})
 
+        # compare bounding box annotations
+        results = measure_annotations(
+            annotations_set_one=annot_collection_1,
+            annotations_set_two=annot_collection_2,
+            compare_types=[compare_type],
+            ignore_labels=False)
+
+        results_df = results[compare_type].to_df()
+        for i, row in results_df.iterrows():
+            for score, feature_set in score_sets.items():
+                if not gt_is_first:
+                    if row['first_id'] is not None:
+                        feature1 = feature_set.features.create(value=[row[results_columns[score.lower()]]],
+                                                               project_id=project.id,
+                                                               entity_id=row['first_id'],
+                                                               refs={'item': row['item_id'],
+                                                                     'annotator': row['first_creator'],
+                                                                     'dataset': dataset.id,
+                                                                     'relative': row['second_id'],
+                                                                     })
+                if row['second_id'] is not None:
+                    feature2 = feature_set.features.create(value=[row[results_columns[score.lower()]]],
+                                                           project_id=project.id,
+                                                           entity_id=row['second_id'],
+                                                           refs={'item': row['item_id'],
+                                                                 'annotator': row['second_creator'],
+                                                                 'dataset': dataset.id,
+                                                                 'relative': row['first_id'],
+                                                                 })
         return True

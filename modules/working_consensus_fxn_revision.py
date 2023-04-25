@@ -6,6 +6,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import scoring  # former functions from dtlpy.ml
+from lib.utils import MethodAveragePrecision
+from lib.Evaluator import Evaluator
 
 
 def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, local_path=None):
@@ -55,13 +57,10 @@ def create_item_consensus_score(item: dl.Item, annotators: list):
     annotations = item.annotations.list()
     n_annotators = len(annotators)
     annots_by_annotator = {annotator: [] for annotator in annotators}
-    # annotator_agreement = np.zeros((n_annotators, n_annotators))
 
     # group by some field (e.g. 'creator' or 'assignment id'), here we use annotator/creator
     for annotation in annotations:
-        annotator = annotation.creator
-
-        annots_by_annotator[annotator].append(annotation)
+        annots_by_annotator[annotation.creator].append(annotation)
 
     # do pairwise comparisons of each annotator for all of their annotations on the item
     for i_annotator in range(n_annotators):
@@ -129,6 +128,7 @@ def create_annotation_scores(annot_collection_1, annot_collection_2, gt_is_first
     return True
 
 
+# shouldn't need this function, since an output of tasks with consensus is items with "consensus_done" status
 def calculate_consensus_score(consensus_task):
     annotators = []
     assignments = consensus_task.assignments.list()
@@ -146,6 +146,25 @@ def calculate_consensus_score(consensus_task):
             item = create_item_consensus_score(item, annotators)
 
     return
+
+
+def plot_class_mAP(feature_vectors, labels, method='every', iou_threshold=0.5):
+    ## calculate mAP by image and class
+    # gather the list of scores and propreties for each annotation
+    # turn into a df (for easy calculation/transformation later)
+
+    # for feature_vector in feature_vectors:
+    # get the model confidence from the refs
+
+    # iterate through each label
+    # get the model confidence (feature vector confidence)
+    # determine whether this annoation is above or below the iou threshold, then tally the true/false positives
+    # calculate the total true positives + total false positives
+    # calculate precision/recall (requires total number of ground truth annotations, "positives")
+
+    # calculate the average precision for each class
+    pass
+
 
 
 if __name__ == '__main__':

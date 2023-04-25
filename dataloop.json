@@ -4,7 +4,7 @@
   "creator": "yaya.t@dataloop.ai",
   "name": "scoring-and-metrics",
   "displayName": "Scoring and metrics app",
-  "description": "This app is used to calculate scores for items and annotations, such as in tasks with consensus.",
+  "description": "Calculate scores for items and annotations, such as in tasks with consensus.",
   "icon": "icon-dl-compare",
   "categories": [],
   "source": {
@@ -16,7 +16,7 @@
   "components": {
     "panels": [
       {
-        "name": "pipelineNodePanel",
+        "name": "calculateConsensus",
         "icon": "icon-dl-compare",
         "supportedSlots": [
           {
@@ -38,18 +38,18 @@
         "initInputs": [],
         "functions": [
           {
-            "name": "calculate_consensus_score",
+            "name": "create_item_consensus_score",
             "description": "Calculate the consensus score for items in a task with consensus",
             "input": [
               {
-                "type": "Task",
-                "name": "task"
+                "type": "Item",
+                "name": "item"
               }
             ],
             "output": [
               {
-                "type": "Feature set",
-                "name": "item_consensus_set"
+                "type": "Item",
+                "name": "item"
               }
             ],
             "displayIcon": "compare",
@@ -63,24 +63,23 @@
       {
         "invoke": {
           "type": "function",
-          "namespace": "custom_nodes.score"
+          "namespace": "custom_nodes.create_item_consensus_score"
         },
         "categories": [
           "data"
-        ],
-        "icon": "compare"
+        ]
       }
     ],
     "services": [
       {
-        "name": "runner81",
+        "name": "scores-and-metrics",
         "panelNames": [
-          "pipelineNodePanel"
+          "calculateConsensus"
         ],
         "moduleName": "custom_nodes",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "docker.io/dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/cpu/node14:latest",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
