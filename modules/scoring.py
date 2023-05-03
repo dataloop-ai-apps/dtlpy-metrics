@@ -102,8 +102,8 @@ def measure_annotations(
         false_negatives += final_results[compare_type].summary()['n_annotations_unmatched_set_one']
 
     final_results['total_mean_score'] = mean_or_nan(all_scores)
-    final_results['precision'] = true_positives / (true_positives + false_positives) if (true_positives+false_positives) > 0 else None
-    final_results['recall'] = true_positives / (true_positives + false_negatives) if (true_positives+ false_negatives) > 0 else None
+    final_results['precision'] = true_positives / (true_positives + false_positives) if (true_positives + false_positives) > 0 else None
+    final_results['recall'] = true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) > 0 else None
     return final_results
 
 
@@ -209,7 +209,7 @@ class Matchers:
     @staticmethod
     def calculate_iou_box(pts1, pts2, config):
         """
-        Measure the two list of points IoU
+        Measures IOU for two lists of bounding box points
         :param pts1: ann.geo coordinates
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
@@ -217,7 +217,7 @@ class Matchers:
         try:
             from shapely.geometry import Polygon
         except (ImportError, ModuleNotFoundError) as err:
-            raise RuntimeError('dtlpy depends on external package. Please install ') from err
+            raise RuntimeError(f'App depends on external package. Please install {err.name}.') from err
         if len(pts1) == 2:
             # regular box annotation (2 pts)
             pt1_left_top = [pts1[0][0], pts1[0][1]]
@@ -257,22 +257,28 @@ class Matchers:
         return iou
 
     @staticmethod
-    def calculate_iou_classification(pts1, pts2, config):
+    def calculate_iou_classification(class1, class2, config):
         """
-        Measure the two list of points IoU
+        Measure the accuracy of classification labels
+        :param class1: `str` classification label
+        :param class2: `str` classification label
+        :return: `float` how Intersection over Union of tho shapes
+        """
+        return 1 if class1 == class2 else 0
+
+    @staticmethod
+    def calculate_iou_polygon(pts1, pts2, config):
+        """
+        Measures IOU for two lists of polygon points
         :param pts1: ann.geo coordinates
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
         """
-        return 1
-
-    @staticmethod
-    def calculate_iou_polygon(pts1, pts2, config):
         try:
             # from shapely.geometry import Polygon
             import cv2
         except (ImportError, ModuleNotFoundError) as err:
-            raise RuntimeError('dtlpy depends on external package. Please install ') from err
+            raise RuntimeError(f'App depends on external package. Please install {err.name}.') from err
         # # using shapley
         # poly_1 = Polygon(pts1)
         # poly_2 = Polygon(pts2)
@@ -311,7 +317,7 @@ class Matchers:
     def calculate_iou_point(pt1, pt2, config):
         """
         pt is [x,y]
-        normalizing  to score  between [0, 1] -> 1 is the exact match
+        normalizing to score between [0, 1] -> 1 is the exact match
         if same point score is 1
         at about 20 pix distance score is about 0.5, 100 goes to 0
         :param pt1:
@@ -333,7 +339,7 @@ class Matchers:
     @staticmethod
     def match_attributes(attributes1, attributes2):
         """
-        Returns IoU of the attributes. if both are empty - its a prefect match (returns 1)
+        Returns IoU of the attributes. If both are empty, it's a perfect match (returns 1).
         0: no matching
         1: perfect attributes match
         """
@@ -372,14 +378,14 @@ class Matchers:
                       ignore_attributes=False,
                       ignore_labels=False):
         """
-
-        :param matches:
-        :param first_set:
-        :param second_set:
-        :param match_type:
-        :param match_threshold:
-        :param ignore_attributes:
-        :param ignore_labels:
+        Finds all matches between two sets of annotations
+        :param matches: Matches object to populate
+        :param first_set: `AnnotationCollection` or list
+        :param second_set: `AnnotationCollection` or list
+        :param match_type: type of annotation to match (e.g. box, semantic, etc.)
+        :param match_threshold: threshold for including a match
+        :param ignore_attributes: ignore attribute score for final annotation score
+        :param ignore_labels: ignore label when comparing - measure only geometry
         :return:
         """
         annotation_type_to_func = {
@@ -515,6 +521,8 @@ class Results:
             'n_annotations_unmatched_set_two': unmatched_set_two,
             'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
             'n_annotations_matched_total': matched_set_one,
-            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (matched_set_one +unmatched_set_two) > 0 else None,
-            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (matched_set_one + unmatched_set_one) > 0 else None
+            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (
+                                                                                            matched_set_one + unmatched_set_two) > 0 else None,
+            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (
+                                                                                         matched_set_one + unmatched_set_one) > 0 else None
         }

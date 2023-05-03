@@ -3,13 +3,12 @@
 ![Annotators confusion matrix](assets/annotators_matrix.png)
 
 ## Description
-The purpose of this app is to increase the quality of annotations while reducing the time required to produce them, ultimately improving efficiency of annotating data.
+This app improves the efficiency of annotating data by improving annotation quality while reducing the time required to produce them.
 
 The components of this app are:
 
 1. A Python function to calculate the consensus score for each item in a consensus task
-2. A panel on the side in the annotation studio to show the consensus scores for the selected item
-3. A popup window for showing the annotation confusion matrix for all annotators in the consensus task
+2. A node that can be added to pipelines to calculate the consensus score when a task's consensus items are completed.
 
 
 ## Publish to App Store

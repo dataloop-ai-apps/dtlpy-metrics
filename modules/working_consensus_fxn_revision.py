@@ -5,10 +5,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import scoring  # former functions from dtlpy.ml
-from lib.utils import MethodAveragePrecision
-from lib.Evaluator import Evaluator
+from modules.scoring import measure_annotations
 
+
+# from modules.lib.utils import MethodAveragePrecision
+# from modules.lib.Evaluator import Evaluator
 
 def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, local_path=None):
     import os
@@ -53,7 +54,19 @@ def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, lo
     return True
 
 
-def create_item_consensus_score(item: dl.Item, annotators: list):
+def create_item_consensus_score(item: dl.Item) -> dl.Item:
+    metadata_list = item.metadata['system']['refs']
+    for metadata_dict in metadata_list:
+        if metadata_dict['type'] == 'task':
+            task_id = metadata_dict['id']
+            break
+
+    consensus_task = dl.tasks.get(task_id=task_id)
+    annotators = []
+    assignments = consensus_task.assignments.list()
+    for assignment in assignments:
+        annotators.append(assignment.annotator)
+
     annotations = item.annotations.list()
     n_annotators = len(annotators)
     annots_by_annotator = {annotator: [] for annotator in annotators}
@@ -97,7 +110,7 @@ def create_annotation_scores(annot_collection_1, annot_collection_2, gt_is_first
         score_sets.update({score_name: feature_set})
 
     # compare bounding box annotations
-    results = scoring.measure_annotations(
+    results = measure_annotations(
         annotations_set_one=annot_collection_1,
         annotations_set_two=annot_collection_2,
         compare_types=[compare_type],
@@ -130,11 +143,6 @@ def create_annotation_scores(annot_collection_1, annot_collection_2, gt_is_first
 
 # shouldn't need this function, since an output of tasks with consensus is items with "consensus_done" status
 def calculate_consensus_score(consensus_task):
-    annotators = []
-    assignments = consensus_task.assignments.list()
-    for assignment in assignments:
-        annotators.append(assignment.annotator)
-
     # workaround for the task query returning all items, including hidden consensus clones
     filters = dl.Filters()
     filters.add(field='hidden', values=False)
@@ -143,7 +151,7 @@ def calculate_consensus_score(consensus_task):
     for item in items:
         # TODO is there a cleaner way to do this?
         if item.metadata['system']['refs'][0]['metadata']['status'] == 'consensus_done':
-            item = create_item_consensus_score(item, annotators)
+            item = create_item_consensus_score(item)
 
     return
 
@@ -166,11 +174,10 @@ def plot_class_mAP(feature_vectors, labels, method='every', iou_threshold=0.5):
     pass
 
 
-
 if __name__ == '__main__':
-    dl.setenv('prod')
+    dl.setenv('rc')
     project = dl.projects.get('feature vectors')
-    dataset = project.datasets.get('suim creatures')
+    dataset = project.datasets.get('waterfowl')
 
     # clean up previous feature sets by the same name
     fsets = project.feature_sets.list()
@@ -178,6 +185,8 @@ if __name__ == '__main__':
         if 'Consensus' in fset.name:
             fset.delete()
             print(f'{fset.name} deleted')
+    project.feature_sets.list().print()
+    fset = project.feature_sets.get('Consensus IOU')
 
-    consensus_task = dataset.tasks.get('check_consensus')  # 643be0e4bc2e4cb8b7c1a78d
+    consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')  # 643be0e4bc2e4cb8b7c1a78d
     calculate_consensus_score(consensus_task)
