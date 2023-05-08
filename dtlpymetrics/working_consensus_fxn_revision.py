@@ -2,14 +2,13 @@
 
 import dtlpy as dl
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from modules.scoring import measure_annotations
 
 
-# from modules.lib.utils import MethodAveragePrecision
-# from modules.lib.Evaluator import Evaluator
+# from dtlpymetrics.lib.utils import MethodAveragePrecision
+# from dtlpymetrics.lib.Evaluator import Evaluator
 
 def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, local_path=None):
     import os

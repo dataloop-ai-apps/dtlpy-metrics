@@ -1,11 +1,11 @@
 {
   "id": "1",
-  "version": "1.0.23",
+  "version": "1.0.26",
   "creator": "yaya.t@dataloop.ai",
   "name": "scoring-and-metrics1",
   "displayName": "Scoring and metrics app",
   "description": "Calculate scores for items and annotations, such as in tasks with consensus.",
-  "icon": "icon-dl-compare",
+  "icon": "icon-dl-analytics",
   "categories": [],
   "source": {
     "type": "git",
@@ -47,7 +47,7 @@
                 "name": "item"
               }
             ],
-            "displayIcon": "compare",
+            "displayIcon": "analytics",
             "displayName": "Scoring and Metrics"
           }
         ]
