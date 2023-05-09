@@ -1,5 +1,5 @@
 import dtlpy as dl
-from main import ScoringAndMetrics
+from scoring import ScoringAndMetrics
 
 dl.setenv('rc')
 project = dl.projects.get('feature vectors')
