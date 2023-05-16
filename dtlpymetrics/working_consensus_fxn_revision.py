@@ -42,7 +42,7 @@ def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, lo
         newax.axis('off')
 
     if local_path is None:
-        save_path = os.path.join(root_dir, 'output', filename)
+        save_path = os.path.join(root_dir, '.output', filename)
         if not os.path.exists(os.path.dirname(save_path)):
             os.makedirs(os.path.dirname(save_path))
         plt.savefig(save_path)

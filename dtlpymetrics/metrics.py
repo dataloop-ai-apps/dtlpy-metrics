@@ -1,118 +1,55 @@
-import logging
-import uuid
 import numpy as np
 import pandas as pd
-from . import metrics
+import logging
+import datetime
 
 from dtlpy import entities
 
 logger = logging.getLogger(name='dtlpy')
 
 
-def mean_or_nan(arr):
-    if isinstance(arr, list) and len(arr) == 0:
-        return np.nan
-    else:
-        return np.mean(arr)
+class Results:
+    def __init__(self, matches, annotation_type):
+        self.matches = matches
+        self.annotation_type = annotation_type
 
+    def to_df(self):
+        return self.matches.to_df()
 
-def measure_annotations(
-        annotations_set_one: entities.AnnotationCollection,
-        annotations_set_two: entities.AnnotationCollection,
-        match_threshold=0.5,
-        ignore_labels=False,
-        ignore_attributes=False,
-        compare_types=None):
-    """
-    Compares list (or collections) of annotations
-    This will also return the precision and recall of the two sets, given that the first that is a GT and the second set
-    is the detection (this affects the denominator of the calculation).
-
-
-    :param annotations_set_one: dl.AnnotationCollection entity with a list of annotations to compare
-    :param annotations_set_two: dl.AnnotationCollection entity with a list of annotations to compare
-    :param match_threshold: IoU threshold to count as a match
-    :param ignore_labels: ignore label when comparing - measure only geometry
-    :param ignore_attributes: ignore attribute score for final annotation score
-    :param compare_types: list of type to compare. enum dl.AnnotationType
-
-    Returns a dictionary of all the compare data
-    """
-
-    if compare_types is None:
-        compare_types = [entities.AnnotationType.BOX,
-                         entities.AnnotationType.CLASSIFICATION,
-                         entities.AnnotationType.POLYGON,
-                         entities.AnnotationType.POINT,
-                         entities.AnnotationType.SEGMENTATION]
-    final_results = dict()
-    all_scores = list()
-    true_positives = 0
-    false_positives = 0
-    false_negatives = 0
-
-    # for local annotations - set random id if None
-    for annotation in annotations_set_one:
-        if annotation.id is None:
-            annotation.id = str(uuid.uuid1())
-    for annotation in annotations_set_two:
-        if annotation.id is None:
-            annotation.id = str(uuid.uuid1())
-
-    # start comparing
-    for compare_type in compare_types:
-        matches = metrics.Matches()
-        annotation_subset_one = entities.AnnotationCollection()
-        annotation_subset_two = entities.AnnotationCollection()
-        annotation_subset_one.annotations = [a for a in annotations_set_one if
-                                             a.type == compare_type and not a.metadata.get('system', dict()).get(
-                                                 'system', False)]
-        annotation_subset_two.annotations = [a for a in annotations_set_two if
-                                             a.type == compare_type and not a.metadata.get('system', dict()).get(
-                                                 'system', False)]
-        # create 2d dataframe with annotation id as names and set all to -1 -> not calculated
-        if ignore_labels:
-            matches = metrics.Matchers.general_match(matches=matches,
-                                                     first_set=annotation_subset_one,
-                                                     second_set=annotation_subset_two,
-                                                     match_type=compare_type,
-                                                     match_threshold=match_threshold,
-                                                     ignore_labels=ignore_labels,
-                                                     ignore_attributes=ignore_attributes)
-        else:
-            unique_labels = np.unique([a.label for a in annotation_subset_one] +
-                                      [a.label for a in annotation_subset_two])
-            for label in unique_labels:
-                first_set = [a for a in annotation_subset_one if a.label == label]
-                second_set = [a for a in annotation_subset_two if a.label == label]
-                matches = metrics.Matchers.general_match(matches=matches,
-                                                         first_set=first_set,
-                                                         second_set=second_set,
-                                                         match_type=compare_type,
-                                                         match_threshold=match_threshold,
-                                                         ignore_labels=ignore_labels,
-                                                         ignore_attributes=ignore_attributes
-                                                         )
-        if len(matches) == 0:
-            continue
-        all_scores.extend(matches.to_df()['annotation_score'])
-        final_results[compare_type] = metrics.Results(matches=matches,
-                                                      annotation_type=compare_type)
-        true_positives += final_results[compare_type].summary()['n_annotations_matched_total']
-        false_positives += final_results[compare_type].summary()['n_annotations_unmatched_set_two']
-        false_negatives += final_results[compare_type].summary()['n_annotations_unmatched_set_one']
-
-    final_results['total_mean_score'] = mean_or_nan(all_scores)
-    final_results['precision'] = true_positives / (true_positives + false_positives)
-    final_results['recall'] = true_positives / (true_positives + false_negatives)
-    return final_results
+    def summary(self):
+        df = self.matches.to_df()
+        total_set_one = len(df['first_id'].dropna())
+        total_set_two = len(df['second_id'].dropna())
+        # each set unmatched is the number of Nones from the other set
+        unmatched_set_one = df.shape[0] - total_set_two
+        unmatched_set_two = df.shape[0] - total_set_one
+        matched_set_one = total_set_one - unmatched_set_one
+        matched_set_two = total_set_two - unmatched_set_two
+        # sanity
+        assert matched_set_one == matched_set_two, 'matched numbers are not the same'
+        assert df['annotation_score'].shape[0] == (unmatched_set_one + unmatched_set_two + matched_set_one), \
+            'mis-match number if scores and annotations'
+        return {
+            'annotation_type': self.annotation_type,
+            'mean_annotations_scores': df['annotation_score'].mean(),
+            'mean_attributes_scores': df['attribute_score'].mean(),
+            'mean_labels_scores': df['label_score'].mean(),
+            'n_annotations_set_one': total_set_one,
+            'n_annotations_set_two': total_set_two,
+            'n_annotations_total': total_set_one + total_set_two,
+            'n_annotations_unmatched_set_one': unmatched_set_one,
+            'n_annotations_unmatched_set_two': unmatched_set_two,
+            'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
+            'n_annotations_matched_total': matched_set_one,
+            'precision': matched_set_one / (matched_set_one + unmatched_set_two),
+            'recall': matched_set_one / (matched_set_one + unmatched_set_one)
+        }
 
 
 class Match:
     def __init__(self,
-                 first_annotation_id, first_annotation_creator, first_annotation_label, first_annotation_confidence,
-                 second_annotation_id, second_annotation_creator, second_annotation_label, second_annotation_confidence,
-                 item_id,
+                 first_annotation_id, first_annotation_label, first_annotation_confidence,
+                 second_annotation_id, second_annotation_label, second_annotation_confidence,
                  # defaults
                  annotation_score=0, attributes_score=0, geometry_score=0, label_score=0):
         """
@@ -126,14 +63,11 @@ class Match:
         :param label_score:
         """
         self.first_annotation_id = first_annotation_id
-        self.first_annotation_creator = first_annotation_creator
         self.first_annotation_label = first_annotation_label
         self.first_annotation_confidence = first_annotation_confidence
         self.second_annotation_id = second_annotation_id
-        self.second_annotation_creator = second_annotation_creator
         self.second_annotation_label = second_annotation_label
         self.second_annotation_confidence = second_annotation_confidence
-        self.item_id = item_id
         self.annotation_score = annotation_score
         self.attributes_score = attributes_score
         # Replace the old annotation score
@@ -161,14 +95,11 @@ class Matches:
         for match in self.matches:
             results.append({
                 'first_id': match.first_annotation_id,
-                'first_creator': match.first_annotation_creator,
                 'first_label': match.first_annotation_label,
                 'first_confidence': match.first_annotation_confidence,
                 'second_id': match.second_annotation_id,
-                'second_creator': match.second_annotation_creator,
                 'second_label': match.second_annotation_label,
                 'second_confidence': match.second_annotation_confidence,
-                'item_id': match.item_id,
                 'annotation_score': match.annotation_score,
                 'attribute_score': match.attributes_score,
                 'geometry_score': match.geometry_score,
@@ -205,12 +136,15 @@ class Matches:
         raise ValueError('could not find annotation id {!r} in {}'.format(annotation_id, loc))
 
 
+######################
+# Matching functions #
+######################
 class Matchers:
 
     @staticmethod
     def calculate_iou_box(pts1, pts2, config):
         """
-        Measures IOU for two lists of bounding box points
+        Measure the two list of points IoU
         :param pts1: ann.geo coordinates
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
@@ -218,7 +152,7 @@ class Matchers:
         try:
             from shapely.geometry import Polygon
         except (ImportError, ModuleNotFoundError) as err:
-            raise RuntimeError(f'App depends on external package. Please install {err.name}.') from err
+            raise RuntimeError('dtlpy depends on external package. Please install ') from err
         if len(pts1) == 2:
             # regular box annotation (2 pts)
             pt1_left_top = [pts1[0][0], pts1[0][1]]
@@ -258,28 +192,22 @@ class Matchers:
         return iou
 
     @staticmethod
-    def calculate_iou_classification(class1, class2, config):
+    def calculate_iou_classification(pts1, pts2, config):
         """
-        Measure the accuracy of classification labels
-        :param class1: `str` classification label
-        :param class2: `str` classification label
-        :return: `float` how Intersection over Union of tho shapes
-        """
-        return 1 if class1 == class2 else 0
-
-    @staticmethod
-    def calculate_iou_polygon(pts1, pts2, config):
-        """
-        Measures IOU for two lists of polygon points
+        Measure the two list of points IoU
         :param pts1: ann.geo coordinates
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
         """
+        return 1
+
+    @staticmethod
+    def calculate_iou_polygon(pts1, pts2, config):
         try:
             # from shapely.geometry import Polygon
             import cv2
         except (ImportError, ModuleNotFoundError) as err:
-            raise RuntimeError(f'App depends on external package. Please install {err.name}.') from err
+            raise RuntimeError('dtlpy depends on external package. Please install ') from err
         # # using shapley
         # poly_1 = Polygon(pts1)
         # poly_2 = Polygon(pts2)
@@ -318,7 +246,7 @@ class Matchers:
     def calculate_iou_point(pt1, pt2, config):
         """
         pt is [x,y]
-        normalizing to score between [0, 1] -> 1 is the exact match
+        normalizing  to score  between [0, 1] -> 1 is the exact match
         if same point score is 1
         at about 20 pix distance score is about 0.5, 100 goes to 0
         :param pt1:
@@ -340,7 +268,7 @@ class Matchers:
     @staticmethod
     def match_attributes(attributes1, attributes2):
         """
-        Returns IoU of the attributes. If both are empty, it's a perfect match (returns 1).
+        Returns IoU of the attributes. if both are empty - its a prefect match (returns 1)
         0: no matching
         1: perfect attributes match
         """
@@ -379,14 +307,14 @@ class Matchers:
                       ignore_attributes=False,
                       ignore_labels=False):
         """
-        Finds all matches between two sets of annotations
-        :param matches: Matches object to populate
-        :param first_set: `AnnotationCollection` or list
-        :param second_set: `AnnotationCollection` or list
-        :param match_type: type of annotation to match (e.g. box, semantic, etc.)
-        :param match_threshold: threshold for including a match
-        :param ignore_attributes: ignore attribute score for final annotation score
-        :param ignore_labels: ignore label when comparing - measure only geometry
+
+        :param matches:
+        :param first_set:
+        :param second_set:
+        :param match_type:
+        :param match_threshold:
+        :param ignore_attributes:
+        :param ignore_labels:
         :return:
         """
         annotation_type_to_func = {
@@ -441,89 +369,93 @@ class Matchers:
 
             # TODO use ignores for final score
             annotation_score = (geometry_score + attribute_score + labels_score) / 3
-            matches.add(match=Match(first_annotation_id=None,
-                                    first_annotation_creator=None,
-                                    first_annotation_label=None,
-                                    first_annotation_confidence=None,
-                                    second_annotation_id=second_annotation_id,
-                                    second_annotation_creator=second_annotation.creator,
-                                    second_annotation_label=second_annotation.label,
-                                    second_annotation_confidence=
-                                    second_annotation.metadata.get('user', dict()).get('model', dict()).get(
-                                        'confidence', 1),
-                                    item_id=second_annotation.item.id
-                                    ))
+            matches.add(Match(first_annotation_id=first_annotation_id,
+                              first_annotation_label=first_annotation.label,
+                              first_annotation_confidence=
+                              first_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence', 1),
+                              second_annotation_id=second_annotation_id,
+                              second_annotation_label=second_annotation.label,
+                              second_annotation_confidence=
+                              second_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence', 1),
+                              geometry_score=geometry_score,
+                              annotation_score=annotation_score,
+                              label_score=labels_score,
+                              attributes_score=attribute_score))
             df.drop(index=second_annotation_id, inplace=True)
             df.drop(columns=first_annotation_id, inplace=True)
         # add un-matched
         for second_id in df.index:
             second_annotation = [a for a in second_set if a.id == second_id][0]
             matches.add(match=Match(first_annotation_id=None,
-                                    first_annotation_creator=None,
                                     first_annotation_label=None,
                                     first_annotation_confidence=None,
                                     second_annotation_id=second_id,
-                                    second_annotation_creator=second_annotation.creator,
                                     second_annotation_label=second_annotation.label,
                                     second_annotation_confidence=
                                     second_annotation.metadata.get('user', dict()).get('model', dict()).get(
                                         'confidence', 1),
-                                    item_id=second_annotation.item.id
                                     ))
         for first_id in df.columns:
             first_annotation = [a for a in first_set if a.id == first_id][0]
             matches.add(match=Match(first_annotation_id=first_id,
-                                    first_annotation_creator=first_annotation.creator,
                                     first_annotation_label=first_annotation.label,
                                     first_annotation_confidence=
                                     first_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence',
                                                                                                            1),
                                     second_annotation_id=None,
-                                    second_annotation_creator=None,
                                     second_annotation_label=None,
-                                    second_annotation_confidence=None,
-                                    item_id=first_annotation.item.id
-                                    ))
-
+                                    second_annotation_confidence=None))
         return matches
 
 
-class Results:
-    def __init__(self, matches, annotation_type):
-        self.matches = matches
-        self.annotation_type = annotation_type
-
-    def to_df(self):
-        return self.matches.to_df()
-
-    def summary(self):
-        df = self.matches.to_df()
-        total_set_one = len(df['first_id'].dropna())
-        total_set_two = len(df['second_id'].dropna())
-        # each set unmatched is the number of Nones from the other set
-        unmatched_set_one = df.shape[0] - total_set_two
-        unmatched_set_two = df.shape[0] - total_set_one
-        matched_set_one = total_set_one - unmatched_set_one
-        matched_set_two = total_set_two - unmatched_set_two
-        # sanity
-        assert matched_set_one == matched_set_two, 'matched numbers are not the same'
-        assert df['annotation_score'].shape[0] == (unmatched_set_one + unmatched_set_two + matched_set_one), \
-            'mis-match number if scores and annotations'
-        return {
-            'annotation_type': self.annotation_type,
-            'mean_annotations_scores': df['annotation_score'].mean(),
-            'mean_geometries_scores': df['geometry_score'].mean(),
-            'mean_attributes_scores': df['attribute_score'].mean(),
-            'mean_labels_scores': df['label_score'].mean(),
-            'n_annotations_set_one': total_set_one,
-            'n_annotations_set_two': total_set_two,
-            'n_annotations_total': total_set_one + total_set_two,
-            'n_annotations_unmatched_set_one': unmatched_set_one,
-            'n_annotations_unmatched_set_two': unmatched_set_two,
-            'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
-            'n_annotations_matched_total': matched_set_one,
-            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (
-                                                                                            matched_set_one + unmatched_set_two) > 0 else None,
-            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (
-                                                                                         matched_set_one + unmatched_set_one) > 0 else None
-        }
+def item_annotation_duration(item: entities.Item = None,
+                             dataset: entities.Dataset = None,
+                             project: entities.Project = None,
+                             task: entities.Task = None,
+                             assignment: entities.Assignment = None):
+    if all(ent is None for ent in [item, dataset, project, assignment, task]):
+        raise ValueError('At least one input to annotation duration must not be None')
+    query = {
+        "startTime": 0,
+        "context": {
+            "accountId": [],
+            "orgId": [],
+            "projectId": [],
+            "datasetId": [],
+            "taskId": [],
+            "assignmentId": [],
+            "itemId": [],
+            "userId": [],
+            "serviceId": [],
+            "podId": [],
+        },
+        "measures": [
+            {
+                "measureType": "itemAnnotationDuration",
+                "pageSize": 1000,
+                "page": 0,
+            },
+        ]
+    }
+    # add context for analytics
+    created_at = list()
+    if item is not None:
+        query['context']['itemId'].append(item.id)
+        created_at.append(int(1000 * datetime.datetime.fromisoformat(item.created_at[:-1]).timestamp()))
+    if task is not None:
+        query['context']['taskId'].append(task.id)
+        created_at.append(int(1000 * datetime.datetime.fromisoformat(task.created_at[:-1]).timestamp()))
+    if dataset is not None:
+        query['context']['datasetId'].append(dataset.id)
+        created_at.append(int(1000 * datetime.datetime.fromisoformat(dataset.created_at[:-1]).timestamp()))
+    if assignment is not None:
+        query['context']['assignmentId'].append(assignment.id)
+        # assignment doesnt have "created_at" attribute
+    query['startTime'] = int(np.min(created_at))
+    raw = project.analytics.get_samples(query=query, return_field=None, return_raw=True)
+    res = {row['itemId']: row['duration'] for row in raw[0]['response']}
+    if item.id not in res:
+        total_time_s = 0
+    else:
+        total_time_s = res[item.id] / 1000
+    return total_time_s

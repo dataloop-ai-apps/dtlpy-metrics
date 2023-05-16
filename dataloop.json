@@ -1,8 +1,8 @@
 {
   "id": "1",
-  "version": "1.0.26",
+  "version": "1.0.29",
   "creator": "yaya.t@dataloop.ai",
-  "name": "scoring-and-metrics1",
+  "name": "scoring-and-metrics",
   "displayName": "Scoring and metrics app",
   "description": "Calculate scores for items and annotations, such as in tasks with consensus.",
   "icon": "icon-dl-analytics",
