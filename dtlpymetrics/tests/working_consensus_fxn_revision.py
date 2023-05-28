@@ -4,7 +4,7 @@ import dtlpy as dl
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from modules.scoring import measure_annotations
+from dtlpymetrics.metrics_utils import measure_annotations
 
 
 # from dtlpymetrics.lib.utils import MethodAveragePrecision

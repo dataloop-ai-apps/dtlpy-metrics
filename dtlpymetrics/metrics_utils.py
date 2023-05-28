@@ -2,7 +2,7 @@ import logging
 import uuid
 import numpy as np
 import pandas as pd
-from . import metrics
+from .archive import metrics
 
 from dtlpy import entities
 
@@ -103,8 +103,10 @@ def measure_annotations(
         false_negatives += final_results[compare_type].summary()['n_annotations_unmatched_set_one']
 
     final_results['total_mean_score'] = mean_or_nan(all_scores)
-    final_results['precision'] = true_positives / (true_positives + false_positives)
-    final_results['recall'] = true_positives / (true_positives + false_negatives)
+    final_results['precision'] = true_positives / (true_positives + false_positives) if (
+                                                                                                true_positives + false_positives) != 0 else 0
+    final_results['recall'] = true_positives / (true_positives + false_negatives) if (
+                                                                                             true_positives + false_negatives) != 0 else 0
     return final_results
 
 
