@@ -10,6 +10,7 @@ dataset_id = '646e2c13a8386f8b38d5efb5'  # big cats split 3
 model_id = '646f001424c4bc867ef5971d'  # resnet
 metric = 'accuracy'
 
+
 def calc_precision_recall(dataset_id: str,
                           model_id: str,
                           metric: str,
@@ -87,6 +88,42 @@ def calc_precision_recall(dataset_id: str,
             'recall': mrec}})
 
     return plot_points
+
+
+def calc_confusion_matrix():
+    model_filename = f'{model_id}.csv'
+    filters = dl.Filters(field='hidden', values=True)
+    filters.add(field='name', values=model_filename)
+    dataset = dl.datasets.get(dataset_id=dataset_id)
+    items = list(dataset.items.list(filters=filters).all())
+    if len(items) == 0:
+        raise ValueError(f'No scores found for model ID {model_id}.')
+    elif len(items) > 1:
+        raise ValueError(f'Found {len(items)} items with name {model_id}.')
+    else:
+        scores_file = items[0].download()
+
+    scores = pd.read_csv(scores_file)
+    labels = dataset.labels
+    label_names = [label.tag for label in labels]
+
+    if metric not in scores.columns:
+        raise ValueError(f'{metric} metric not included in scores.')
+
+    #########################
+    # plot precision/recall #
+    #########################
+    # calc
+    if labels is None:
+        labels = pd.concat([scores.first_label, scores.second_label]).dropna()
+
+    matrix_categories = {'labels': {}}
+
+    guessed_labels = scores.filter(like='', axis=0)  # TODO need everything that has a second annotation
+    grouped_labels = scores.groupby(['first_label', 'second_label']).count()
+    wrong_labels = scores[scores.first_label != scores.second_label]
+
+    return grouped_labels  # not sure how to return the values
 
 
 def plot_precision_recall(plot_points, local_path=None):
