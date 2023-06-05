@@ -6,10 +6,6 @@ import matplotlib.pyplot as plt
 from dtlpymetrics.lib.Evaluator import Evaluator
 from dtlpymetrics.lib.utils import MethodAveragePrecision
 
-dataset_id = '646e2c13a8386f8b38d5efb5'  # big cats split 3
-model_id = '646f001424c4bc867ef5971d'  # resnet
-metric = 'accuracy'
-
 
 def calc_precision_recall(dataset_id: str,
                           model_id: str,
@@ -90,7 +86,23 @@ def calc_precision_recall(dataset_id: str,
     return plot_points
 
 
-def calc_confusion_matrix():
+def calc_confusion_matrix(dataset_id,
+                          model_id,
+                          metric,
+                          show_unmatched=False):
+    """
+    Calculate confusion matrix for a given model and metric
+    :param dataset_id:
+    :param model_id:
+    :param metric:
+    :param show_unmatched: display extra column showing which GT annotations were not matched
+    :return:
+    """
+    if metric.lower() == 'iou':
+        metric = 'geometry_score'
+    elif metric.lower() == 'accuracy':
+        metric = 'label_score'
+
     model_filename = f'{model_id}.csv'
     filters = dl.Filters(field='hidden', values=True)
     filters.add(field='name', values=model_filename)
@@ -117,13 +129,16 @@ def calc_confusion_matrix():
     if labels is None:
         labels = pd.concat([scores.first_label, scores.second_label]).dropna()
 
-    matrix_categories = {'labels': {}}
+    scores_cleaned = scores.dropna().reset_index(drop=True)
+    scores_labels = scores_cleaned[['first_label', 'second_label']]
+    grouped_labels = scores_labels.groupby(['first_label', 'second_label']).size()
 
-    guessed_labels = scores.filter(like='', axis=0)  # TODO need everything that has a second annotation
-    grouped_labels = scores.groupby(['first_label', 'second_label']).count()
-    wrong_labels = scores[scores.first_label != scores.second_label]
+    conf_matrix = pd.DataFrame(index=label_names, columns=label_names, data=0)
+    for label1, label2 in grouped_labels.index:
+        # index/rows are the ground truth, cols are the predictions
+        conf_matrix.loc[label1, label2] = grouped_labels.get((label1, label2), 0)
 
-    return grouped_labels  # not sure how to return the values
+    return conf_matrix
 
 
 def plot_precision_recall(plot_points, local_path=None):
@@ -156,9 +171,21 @@ def plot_precision_recall(plot_points, local_path=None):
 
 
 if __name__ == '__main__':
-    plot_points = calc_precision_recall(dataset_id=dataset_id,
-                                        model_id=model_id,
-                                        metric='iou',
-                                        metric_threshold=0.5,
-                                        method_type='every_point')
-    plot_precision_recall(plot_points)
+    dl.setenv('rc')
+
+    dataset_id = '64731b043e2dd675c25cce88'  # big cats TEST evaluate
+    model_id = '646f001424c4bc867ef5971d'  # resnet
+    metric = 'accuracy'
+
+    # plot_points = calc_precision_recall(dataset_id=dataset_id,
+    #                                     model_id=model_id,
+    #                                     metric=metric,
+    #                                     metric_threshold=0.5,
+    #                                     method_type='every_point')
+    # plot_precision_recall(plot_points)
+    conf_table = calc_confusion_matrix(dataset_id=dataset_id,
+                                       model_id=model_id,
+                                       metric=metric)
+    print("columns are model predictions, rows are ground truth labels")
+    print(conf_table)
+    print()

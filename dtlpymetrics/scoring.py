@@ -217,227 +217,227 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         return True, f'Successfully created model scores and saved as item {item.id}.'
 
 
-@staticmethod
-@dl.Package.decorators.function(display_name='Compare annotations to score',
-                                inputs={"annot_collection_1": "List",
-                                        "annot_collection_2": "List"},
-                                outputs={})
-def create_annotation_scores(annot_collection_1,
-                             annot_collection_2,
-                             gt_is_first=True,
-                             task_type=None,
-                             compare_types=None) -> dict:
-    """
+    @staticmethod
+    @dl.Package.decorators.function(display_name='Compare annotations to score',
+                                    inputs={"annot_collection_1": "List",
+                                            "annot_collection_2": "List"},
+                                    outputs={})
+    def create_annotation_scores(annot_collection_1,
+                                 annot_collection_2,
+                                 gt_is_first=True,
+                                 task_type=None,
+                                 compare_types=None) -> dict:
+        """
 
-    :param annot_collection_1:
-    :param annot_collection_2:
-    :param gt_is_first:
-    :param task_type:
-    :param compare_types:
-    :return: dict of feature sets, indexed by the type of score (e.g. IOU)
-    """
-    if compare_types is None:
-        compare_types = all_compare_types
+        :param annot_collection_1:
+        :param annot_collection_2:
+        :param gt_is_first:
+        :param task_type:
+        :param compare_types:
+        :return: dict of feature sets, indexed by the type of score (e.g. IOU)
+        """
+        if compare_types is None:
+            compare_types = all_compare_types
 
-    if task_type != 'compare projects':
-        project = annot_collection_1[0].item.project
-        dataset = annot_collection_1[0].item.dataset
-    if task_type == 'consensus':
-        feature_set_prefix = 'Consensus '
+        if task_type != 'compare projects':
+            project = annot_collection_1[0].item.project
+            dataset = annot_collection_1[0].item.dataset
+        if task_type == 'consensus':
+            feature_set_prefix = 'Consensus '
 
-    score_sets = {}
+        score_sets = {}
 
-    for score_name in score_names:
-        try:
-            feature_set = project.feature_sets.get(feature_set_name=f'{feature_set_prefix}{score_name}')
-        except dl.exceptions.NotFound:
-            # create the feature set for each score type
-            feature_set = project.feature_sets.create(name=f'{feature_set_prefix}{score_name}',
-                                                      set_type='scores',
-                                                      # refs require data type
-                                                      data_type=dl.FeatureDataType.ANNOTATION_SCORE,
-                                                      entity_type=dl.FeatureEntityType.ANNOTATION,
-                                                      size=1)
-        score_sets.update({score_name: feature_set})
+        for score_name in score_names:
+            try:
+                feature_set = project.feature_sets.get(feature_set_name=f'{feature_set_prefix}{score_name}')
+            except dl.exceptions.NotFound:
+                # create the feature set for each score type
+                feature_set = project.feature_sets.create(name=f'{feature_set_prefix}{score_name}',
+                                                          set_type='scores',
+                                                          # refs require data type
+                                                          data_type=dl.FeatureDataType.ANNOTATION_SCORE,
+                                                          entity_type=dl.FeatureEntityType.ANNOTATION,
+                                                          size=1)
+            score_sets.update({score_name: feature_set})
 
-    # compare bounding box annotations
-    results = measure_annotations(
-        annotations_set_one=annot_collection_1,
-        annotations_set_two=annot_collection_2,
-        compare_types=[compare_types],
-        ignore_labels=False)
+        # compare bounding box annotations
+        results = measure_annotations(
+            annotations_set_one=annot_collection_1,
+            annotations_set_two=annot_collection_2,
+            compare_types=[compare_types],
+            ignore_labels=False)
 
-    for compare_type in compare_types:
-        results_df = results[compare_type].to_df()
+        for compare_type in compare_types:
+            results_df = results[compare_type].to_df()
 
-    # TODO: update when feature vectors are working
-    #######################
-    # Create feature sets #
-    #######################
-    # for i, row in results_df.iterrows():
-    #     for score, feature_set in score_sets.items():
-    #         if row['first_id'] is not None:
-    #             feature1 = feature_set.features.create(value=[row[results_columns[score.lower()]]],
-    #                                                    project_id=project.id,
-    #                                                    entity_id=row['first_id'],
-    #                                                    refs={'item': row['item_id'],
-    #                                                          'annotator': row['first_creator'],
-    #                                                          'dataset': dataset.id,
-    #                                                          'relative': row['second_id'],
-    #                                                          })
-    #         if row['second_id'] is not None:
-    #             feature2 = feature_set.features.create(value=[row[results_columns[score.lower()]]],
-    #                                                    project_id=project.id,
-    #                                                    entity_id=row['second_id'],
-    #                                                    refs={'item': row['item_id'],
-    #                                                          'annotator': row['second_creator'],
-    #                                                          'dataset': dataset.id,
-    #                                                          'relative': row['first_id'],
-    #                                                          })
-    return score_sets  # TODO: return some sort of summary? bc each pair of matched annotations will have 2 feature vectors
-
-
-@staticmethod
-def consensus_items_summary(feature_set):
-    # TODO should receive items, and query by that, not by feature set
-
-    # go through each feature, average the score
-    features = feature_set.features.list().all()
-    return np.mean([feature.value for feature in features])
+        # TODO: update when feature vectors are working
+        #######################
+        # Create feature sets #
+        #######################
+        # for i, row in results_df.iterrows():
+        #     for score, feature_set in score_sets.items():
+        #         if row['first_id'] is not None:
+        #             feature1 = feature_set.features.create(value=[row[results_columns[score.lower()]]],
+        #                                                    project_id=project.id,
+        #                                                    entity_id=row['first_id'],
+        #                                                    refs={'item': row['item_id'],
+        #                                                          'annotator': row['first_creator'],
+        #                                                          'dataset': dataset.id,
+        #                                                          'relative': row['second_id'],
+        #                                                          })
+        #         if row['second_id'] is not None:
+        #             feature2 = feature_set.features.create(value=[row[results_columns[score.lower()]]],
+        #                                                    project_id=project.id,
+        #                                                    entity_id=row['second_id'],
+        #                                                    refs={'item': row['item_id'],
+        #                                                          'annotator': row['second_creator'],
+        #                                                          'dataset': dataset.id,
+        #                                                          'relative': row['first_id'],
+        #                                                          })
+        return score_sets  # TODO: return some sort of summary? bc each pair of matched annotations will have 2 feature vectors
 
 
-@staticmethod
-def plot_precision_recall(scores: pd.DataFrame,
-                          metric: str,
-                          metric_threshold=0.5,
-                          labels=None,
-                          local_path=None):
-    """
-    Plot precision recall curve for a given metric threshold
+    @staticmethod
+    def consensus_items_summary(feature_set):
+        # TODO should receive items, and query by that, not by feature set
 
-    :param scores: dataframe of all the annotation scores
-    :param metric: name of the column in the scores dataframe to use as the metric
-    :param metric_threshold: threshold for which to calculate TP/FP
-    :return:
-    """
-    import matplotlib.pyplot as plt
-    from dtlpymetrics.lib.Evaluator import Evaluator
-    from dtlpymetrics.lib.utils import MethodAveragePrecision
+        # go through each feature, average the score
+        features = feature_set.features.list().all()
+        return np.mean([feature.value for feature in features])
 
-    if metric.lower() == 'iou':
-        metric = 'geometry_score'
-    elif metric.lower() == 'accuracy':
-        metric = 'label_score'
 
-    if metric not in scores.columns:
-        raise ValueError(f'{metric} metric not included in scores.')
+    @staticmethod
+    def plot_precision_recall(scores: pd.DataFrame,
+                              metric: str,
+                              metric_threshold=0.5,
+                              labels=None,
+                              local_path=None):
+        """
+        Plot precision recall curve for a given metric threshold
 
-    #########################
-    # plot precision/recall #
-    #########################
-    # calc
-    method = MethodAveragePrecision.EveryPointInterpolation
-    # method = MethodAveragePrecision.ElevenPointInterpolation
-    plt.figure()
-    plt.xlim(0, 1.1)
-    plt.ylim(0, 1.1)
+        :param scores: dataframe of all the annotation scores
+        :param metric: name of the column in the scores dataframe to use as the metric
+        :param metric_threshold: threshold for which to calculate TP/FP
+        :return:
+        """
+        import matplotlib.pyplot as plt
+        from dtlpymetrics.lib.Evaluator import Evaluator
+        from dtlpymetrics.lib.utils import MethodAveragePrecision
 
-    if labels is None:
-        labels = pd.concat([scores.first_label, scores.second_label]).dropna()
+        if metric.lower() == 'iou':
+            metric = 'geometry_score'
+        elif metric.lower() == 'accuracy':
+            metric = 'label_score'
 
-    for label in labels.unique():
-        label_confidence_df = scores[scores.first_label == label].copy()
+        if metric not in scores.columns:
+            raise ValueError(f'{metric} metric not included in scores.')
 
-        label_confidence_df.sort_values('second_confidence', inplace=True, ascending=True)
-        true_positives = label_confidence_df.geometry_score >= metric_threshold  # geometry score is IOU
-        false_positives = label_confidence_df.geometry_score < metric_threshold
-        #
-        num_gts = sum(scores.first_id.notna())
+        #########################
+        # plot precision/recall #
+        #########################
+        # calc
+        method = MethodAveragePrecision.EveryPointInterpolation
+        # method = MethodAveragePrecision.ElevenPointInterpolation
+        plt.figure()
+        plt.xlim(0, 1.1)
+        plt.ylim(0, 1.1)
 
-        #
-        acc_fps = np.cumsum(false_positives)
-        acc_tps = np.cumsum(true_positives)
-        recall = acc_tps / num_gts
-        precision = np.divide(acc_tps, (acc_fps + acc_tps))
-        # # Depending on the method, call the right implementation
-        if method == MethodAveragePrecision.EveryPointInterpolation:
-            [avg_precis, mpre, mrec, ii] = Evaluator.CalculateAveragePrecision(recall, precision)
+        if labels is None:
+            labels = pd.concat([scores.first_label, scores.second_label]).dropna()
+
+        for label in labels.unique():
+            label_confidence_df = scores[scores.first_label == label].copy()
+
+            label_confidence_df.sort_values('second_confidence', inplace=True, ascending=True)
+            true_positives = label_confidence_df.geometry_score >= metric_threshold  # geometry score is IOU
+            false_positives = label_confidence_df.geometry_score < metric_threshold
+            #
+            num_gts = sum(scores.first_id.notna())
+
+            #
+            acc_fps = np.cumsum(false_positives)
+            acc_tps = np.cumsum(true_positives)
+            recall = acc_tps / num_gts
+            precision = np.divide(acc_tps, (acc_fps + acc_tps))
+            # # Depending on the method, call the right implementation
+            if method == MethodAveragePrecision.EveryPointInterpolation:
+                [avg_precis, mpre, mrec, ii] = Evaluator.CalculateAveragePrecision(recall, precision)
+            else:
+                [avg_precis, mpre, mrec, _] = Evaluator.ElevenPointInterpolatedAP(recall, precision)
+            # plt.plot(recall, precision, label=[label, model_name])
+            plt.plot(mrec, mpre, label=[label])  # , model_name])
+        plt.legend()
+
+        model_id = scores["model_id"][0]
+        plot_filename = f'precision_recall_{model_id}_{metric}_{metric_threshold}.png'
+        if local_path is None:
+            save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
+            if not os.path.exists(os.path.dirname(save_path)):
+                os.makedirs(os.path.dirname(save_path))
+            plt.savefig(save_path)
         else:
-            [avg_precis, mpre, mrec, _] = Evaluator.ElevenPointInterpolatedAP(recall, precision)
-        # plt.plot(recall, precision, label=[label, model_name])
-        plt.plot(mrec, mpre, label=[label])  # , model_name])
-    plt.legend()
+            plt.savefig(plot_filename)
+        plt.close()
 
-    model_id = scores["model_id"][0]
-    plot_filename = f'precision_recall_{model_id}_{metric}_{metric_threshold}.png'
-    if local_path is None:
-        save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
-        if not os.path.exists(os.path.dirname(save_path)):
-            os.makedirs(os.path.dirname(save_path))
-        plt.savefig(save_path)
-    else:
-        plt.savefig(plot_filename)
-    plt.close()
-
-    print(f'saved precision recall plot to {plot_filename}')
-    return [mrec, mpre]
+        print(f'saved precision recall plot to {plot_filename}')
+        return [mrec, mpre]
 
 
-@staticmethod
-def get_scores_df(model: dl.Model, dataset: dl.Dataset):
-    """
-    Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file.
-    :param model: Model entity
-    :param dataset: Dataset where the model was evaluated
-    :return:
-    """
-    file_name = f'{model.id}.csv'
-    local_path = os.path.join(os.getcwd(), '.dataloop', file_name)
-    filters = dl.Filters(field='name', values=file_name)
-    filters.add(field='hidden', values=True)
-    pages = dataset.items.list(filters=filters)
+    @staticmethod
+    def get_scores_df(model: dl.Model, dataset: dl.Dataset):
+        """
+        Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file.
+        :param model: Model entity
+        :param dataset: Dataset where the model was evaluated
+        :return:
+        """
+        file_name = f'{model.id}.csv'
+        local_path = os.path.join(os.getcwd(), '.dataloop', file_name)
+        filters = dl.Filters(field='name', values=file_name)
+        filters.add(field='hidden', values=True)
+        pages = dataset.items.list(filters=filters)
 
-    if pages.items_count > 0:
-        for item in pages.all():
-            item.download(local_path=local_path)
-    else:
-        raise ValueError(
-            f'No scores file found for model {model.id} on dataset {dataset.id}. Please evaluate model on the dataset first.')
+        if pages.items_count > 0:
+            for item in pages.all():
+                item.download(local_path=local_path)
+        else:
+            raise ValueError(
+                f'No scores file found for model {model.id} on dataset {dataset.id}. Please evaluate model on the dataset first.')
 
-    scores_df = pd.read_csv(local_path)
-    return scores_df
+        scores_df = pd.read_csv(local_path)
+        return scores_df
 
-# @staticmethod
-# def item_scores_to_df(items_list: list, feature_set: dl.FeatureSet):
-#     scores_df = pd.DataFrame()
-#     score_type = feature_set.name.split(' ')[-1]
-#
-#     for item in items_list:
-#         item_scores = pd.DataFrame()
-#         # item = dl.items.get(None, '6453bc227edd9a6a11237ab0')
-#         filters = dl.Filters(use_defaults=False,
-#                              custom_filter={
-#                                  '$and':
-#                                      [
-#                                          {'refs': {'item': item.id}},
-#                                          {'featureSetId': feature_set.id},
-#                                          {'dataType': 'annotationScore'}
-#                                      ]
-#                              },
-#                              resource=dl.FiltersResource.FEATURE
-#                              )
-#         # dl.features.list(filters=filters).print()
-#         features = dl.features.list(filters=filters).all()
-#         for feature in features:
-#             feature_dict = {"annotation id": feature.entity_id,
-#                             "item id": feature.refs['item'],
-#                             "score": score_type,
-#                             "value": feature.value[0],
-#                             "GT annotation id": feature.refs['relative'],
-#                             }
-#             item_scores = pd.concat([item_scores, pd.DataFrame(feature_dict, index=[0])])
-#
-#         scores_df = pd.concat([scores_df, item_scores],
-#                               ignore_index=True)
-#
-#     return scores_df
+    # @staticmethod
+    # def item_scores_to_df(items_list: list, feature_set: dl.FeatureSet):
+    #     scores_df = pd.DataFrame()
+    #     score_type = feature_set.name.split(' ')[-1]
+    #
+    #     for item in items_list:
+    #         item_scores = pd.DataFrame()
+    #         # item = dl.items.get(None, '6453bc227edd9a6a11237ab0')
+    #         filters = dl.Filters(use_defaults=False,
+    #                              custom_filter={
+    #                                  '$and':
+    #                                      [
+    #                                          {'refs': {'item': item.id}},
+    #                                          {'featureSetId': feature_set.id},
+    #                                          {'dataType': 'annotationScore'}
+    #                                      ]
+    #                              },
+    #                              resource=dl.FiltersResource.FEATURE
+    #                              )
+    #         # dl.features.list(filters=filters).print()
+    #         features = dl.features.list(filters=filters).all()
+    #         for feature in features:
+    #             feature_dict = {"annotation id": feature.entity_id,
+    #                             "item id": feature.refs['item'],
+    #                             "score": score_type,
+    #                             "value": feature.value[0],
+    #                             "GT annotation id": feature.refs['relative'],
+    #                             }
+    #             item_scores = pd.concat([item_scores, pd.DataFrame(feature_dict, index=[0])])
+    #
+    #         scores_df = pd.concat([scores_df, item_scores],
+    #                               ignore_index=True)
+    #
+    #     return scores_df

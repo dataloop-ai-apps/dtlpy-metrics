@@ -40,10 +40,10 @@ if __name__ == "__main__":
 
     # resnet
     project = dl.projects.get('Active Learning 1.3')
-    dataset = project.datasets.get('big cats split 3')
+    dataset = project.datasets.get('big cats TEST evaluate')
     filters = dl.Filters(field='dir', values='/test')
 
-    model = project.models.get(None, '6473185c93bd97c6a30a47b9')  # resnet
+    model = project.models.get(None, '6473185c93bd97c6a30a47b9')  # resnet fine-tuned, deployed
 
     # create predictions on the test set for this model
     items_list = list(dataset.items.list(filters=filters).all())
