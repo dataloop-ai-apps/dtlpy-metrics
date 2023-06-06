@@ -161,6 +161,8 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
         if model.name is None:
             return False, 'No model name found for the second set of annotations, please provide model name.'
+        if not items_list:
+            return False, 'No items found in the dataset, please check the dataset and filters.'
 
         #################################
         # list of item annotation lists #
@@ -321,8 +323,8 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         :return:
         """
         import matplotlib.pyplot as plt
-        from dtlpymetrics.lib.Evaluator import Evaluator
-        from dtlpymetrics.lib.utils import MethodAveragePrecision
+        from dtlpymetrics.tools.Evaluator import Evaluator
+        from dtlpymetrics.tools.utils import MethodAveragePrecision
 
         if metric.lower() == 'iou':
             metric = 'geometry_score'

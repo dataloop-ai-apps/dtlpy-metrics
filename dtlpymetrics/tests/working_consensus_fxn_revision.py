@@ -7,8 +7,8 @@ import seaborn as sns
 from dtlpymetrics.metrics_utils import measure_annotations
 
 
-# from dtlpymetrics.lib.utils import MethodAveragePrecision
-# from dtlpymetrics.lib.Evaluator import Evaluator
+# from dtlpymetrics.tools.utils import MethodAveragePrecision
+# from dtlpymetrics.tools.Evaluator import Evaluator
 
 def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, local_path=None):
     import os

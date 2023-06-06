@@ -41,7 +41,7 @@ if __name__ == "__main__":
     # resnet
     project = dl.projects.get('Active Learning 1.3')
     dataset = project.datasets.get('big cats TEST evaluate')
-    filters = dl.Filters(field='dir', values='/test')
+    filters = dl.Filters(field='dir', values='/*')
 
     model = project.models.get(None, '6473185c93bd97c6a30a47b9')  # resnet fine-tuned, deployed
 

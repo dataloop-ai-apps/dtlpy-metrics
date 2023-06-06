@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 import dtlpy as dl
 import matplotlib.pyplot as plt
-from dtlpymetrics.lib.Evaluator import Evaluator
-from dtlpymetrics.lib.utils import MethodAveragePrecision
+from dtlpymetrics.tools.Evaluator import Evaluator
+from dtlpymetrics.tools.utils import MethodAveragePrecision
 
 
 def calc_precision_recall(dataset_id: str,
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     dl.setenv('rc')
 
     dataset_id = '64731b043e2dd675c25cce88'  # big cats TEST evaluate
-    model_id = '646f001424c4bc867ef5971d'  # resnet
+    model_id = '6473185c93bd97c6a30a47b9'  # resnet
     metric = 'accuracy'
 
     # plot_points = calc_precision_recall(dataset_id=dataset_id,
