@@ -5,8 +5,6 @@ import numpy as np
 import pandas as pd
 import dtlpy as dl
 import matplotlib.pyplot as plt
-from dtlpymetrics.tools.Evaluator import Evaluator
-from dtlpymetrics.tools.utils import MethodAveragePrecision
 
 
 def calc_precision_recall(dataset_id: str,
