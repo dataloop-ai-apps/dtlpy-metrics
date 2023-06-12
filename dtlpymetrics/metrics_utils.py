@@ -32,8 +32,10 @@ def measure_annotations(
     :param annotations_set_one: dl.AnnotationCollection entity with a list of annotations to compare
     :param annotations_set_two: dl.AnnotationCollection entity with a list of annotations to compare
     :param match_threshold: IoU threshold to count as a match
-    :param ignore_labels: ignore label when comparing - measure only geometry
-    :param ignore_attributes: ignore attribute score for final annotation score
+    :param ignore_labels: ignore label when comparing - measure only geometry. if annotation type is classification,
+    this will always be True
+    :param ignore_attributes: ignore attribute score for final annotation score. if annotation type is classification,
+    this will always be True
     :param compare_types: list of type to compare. enum dl.AnnotationType
 
     Returns a dictionary of all the compare data
@@ -71,7 +73,7 @@ def measure_annotations(
                                              a.type == compare_type and not a.metadata.get('system', dict()).get(
                                                  'system', False)]
         # create 2d dataframe with annotation id as names and set all to -1 -> not calculated
-        if ignore_labels:
+        if ignore_labels is True:
             matches = metrics.Matchers.general_match(matches=matches,
                                                      first_set=annotation_subset_one,
                                                      second_set=annotation_subset_two,
@@ -85,14 +87,25 @@ def measure_annotations(
             for label in unique_labels:
                 first_set = [a for a in annotation_subset_one if a.label == label]
                 second_set = [a for a in annotation_subset_two if a.label == label]
-                matches = metrics.Matchers.general_match(matches=matches,
-                                                         first_set=first_set,
-                                                         second_set=second_set,
-                                                         match_type=compare_type,
-                                                         match_threshold=match_threshold,
-                                                         ignore_labels=ignore_labels,
-                                                         ignore_attributes=ignore_attributes
-                                                         )
+                if compare_type == entities.AnnotationType.CLASSIFICATION:
+                    matches = metrics.Matchers.general_match(matches=matches,
+                                                             first_set=first_set,
+                                                             second_set=second_set,
+                                                             match_type=compare_type,
+                                                             match_threshold=match_threshold,
+                                                             ignore_labels=True,
+                                                             ignore_attributes=True
+                                                             )
+                else:
+                    matches = metrics.Matchers.general_match(matches=matches,
+                                                             first_set=first_set,
+                                                             second_set=second_set,
+                                                             match_type=compare_type,
+                                                             match_threshold=match_threshold,
+                                                             ignore_labels=ignore_labels,
+                                                             ignore_attributes=ignore_attributes
+                                                             )
+
         if len(matches) == 0:
             continue
         all_scores.extend(matches.to_df()['annotation_score'])

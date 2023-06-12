@@ -54,7 +54,7 @@ def calc_precision_recall(dataset_id: str,
 
     num_gts = sum(scores.first_id.notna())
 
-    scores_positives = scores[scores['geometry_score'] > iou_threshold]
+    scores_positives = scores[scores['geometry_score'] > iou_threshold].copy()
 
     scores_positives.sort_values('second_confidence', inplace=True, ascending=True, ignore_index=True)
     scores_positives['true_positives'] = scores_positives['second_confidence'] >= conf_threshold
@@ -204,8 +204,9 @@ def plot_precision_recall(plot_points, local_path=None):
 if __name__ == '__main__':
     dl.setenv('rc')
 
-    dataset_id = '64731b043e2dd675c25cce88'  # big cats TEST evaluate
-    model_id = '6473185c93bd97c6a30a47b9'  # resnet
+    dataset_id = '646e2c13a8386f8b38d5efb5'  # big cats GT
+    # model_id = '6473185c93bd97c6a30a47b9'  # resnet
+    model_id = '64803fcc9e5ee9b3b5716832'  # resnet with unmatched predictions
     # model_id = '' # yolov8
 
     plot_points = calc_precision_recall(dataset_id=dataset_id,

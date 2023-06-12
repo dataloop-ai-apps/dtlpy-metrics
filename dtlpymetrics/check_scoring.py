@@ -16,7 +16,7 @@ for fset in fsets:
 
 consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')  # 643be0e4bc2e4cb8b7c1a78d
 scoring = ScoringAndMetrics()
-scoring.calculate_consensus_items(consensus_task)
+scoring.calculate_consensus_score(consensus_task)
 
 #
 # #################################

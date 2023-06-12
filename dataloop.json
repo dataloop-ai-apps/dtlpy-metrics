@@ -1,6 +1,5 @@
 {
-  "id": "1",
-  "version": "1.0.39",
+  "version": "1.0.42",
   "creator": "yaya.t@dataloop.ai",
   "name": "scoring-and-metrics",
   "displayName": "Scoring and metrics app",
@@ -12,9 +11,18 @@
     "repo": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
     "tag": ""
   },
-  "scope": "organization",
+  "scope": "project",
   "components": {
     "pipelineNodes": [
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "custom_nodes.calculate_consensus_score"
+        },
+        "categories": [
+          "data"
+        ]
+      },
       {
         "invoke": {
           "type": "function",
@@ -28,13 +36,13 @@
     "modules": [
       {
         "name": "custom_nodes",
-        "entryPoint": "modules/main.py",
+        "entryPoint": "dtlpymetrics/scoring.py",
         "className": "ScoringAndMetrics",
         "initInputs": [],
         "functions": [
           {
             "name": "create_item_consensus_score",
-            "description": "Calculate the consensus score for items in a task with consensus",
+            "description": "Calculate the consensus score for each item with consensus",
             "input": [
               {
                 "type": "Item",
@@ -48,6 +56,28 @@
               }
             ],
             "displayIcon": "analytics",
+            "displayName": "Scoring and Metrics"
+          },
+          {
+            "name": "calculate_consensus_score",
+            "description": "Calculate the consensus score for items in a task with consensus",
+            "input": [
+              {
+                "type": "Task",
+                "name": "consensus_task"
+              }
+            ],
+            "output": [
+              {
+                "type": "Dict",
+                "name": "dict"
+              },
+              {
+                "type": "Task",
+                "name": "consensus_task"
+              }
+            ],
+            "displayIcon": "task-filled",
             "displayName": "Scoring and Metrics"
           }
         ]

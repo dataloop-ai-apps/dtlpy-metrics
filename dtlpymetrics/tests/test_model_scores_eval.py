@@ -23,7 +23,13 @@ def check_predictions(model):
 
     if unpredicted == len(items_ids):
         print('model has not made predictions')
+
+        if model.status == 'trained':
+            print('deploying model service and predicting')
+            model.deploy()
         model.predict(items_ids)
+        model.status = 'trained'
+        model.update()
 
 
 def check_item(model: dl.Model, item: dl.Item):
@@ -40,10 +46,10 @@ if __name__ == "__main__":
 
     # resnet
     project = dl.projects.get('Active Learning 1.3')
-    dataset = project.datasets.get('big cats TEST evaluate')
-    filters = dl.Filters(field='dir', values='/*')
+    dataset = project.datasets.get('big cats GT')
+    filters = dl.Filters(field='dir', values='/test')
 
-    model = project.models.get(None, '6473185c93bd97c6a30a47b9')  # resnet fine-tuned, deployed
+    model = project.models.get(None, '64803fcc9e5ee9b3b5716832')  # resnet fine-tuned, deployed
 
     # create predictions on the test set for this model
     items_list = list(dataset.items.list(filters=filters).all())

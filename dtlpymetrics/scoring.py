@@ -2,7 +2,7 @@ import os
 import dtlpy as dl
 import numpy as np
 import pandas as pd
-
+import matplotlib.pyplot as plt
 from dtlpymetrics.metrics_utils import measure_annotations
 
 score_names = ['IOU', 'label', 'attribute']
@@ -13,24 +13,37 @@ all_compare_types = [dl.AnnotationType.BOX,
                      dl.AnnotationType.POINT,
                      dl.AnnotationType.SEGMENTATION]
 
+scorer = dl.AppModule(name='Scoring and metrics function',
+                      description='Functions for calculating scores between annotations.'
+                      )
+
 
 @dl.Package.decorators.module(name='scoring-and-metrics',
                               description='Scoring and metrics functions')
 class ScoringAndMetrics(dl.BaseServiceRunner):
     """
     Scoring and metrics allows comparison between items, annotators, models, datasets, and tasks.
-
     """
 
     @staticmethod
-    def calculate_consensus_items(consensus_task: dl.Task):
+    @dl.Package.decorators.function(display_name='Calculate the consensus task score',
+                                    inputs={"consensus_task": dl.Task},
+                                    outputs={"score_summary": dict,
+                                             "consensus_task": dl.Task}
+                                    )
+    def calculate_consensus_score(consensus_task: dl.Task):
+        """
+        Calculate consensus scores for all items in a consensus task
+
+        :param consensus_task:
+        :return:
+        """
         # workaround for the task query returning all items, including hidden consensus clones
         filters = dl.Filters()
         filters.add(field='hidden', values=False)
         items = consensus_task.get_items(filters=filters).all()  # why is this "get_items" and not "list"?
 
         for item in items:
-            # TODO is there a cleaner way to do this?
             if item.metadata['system']['refs'][0]['metadata']['status'] == 'consensus_done':
                 item = ScoringAndMetrics.create_item_consensus_score(item)
 
@@ -46,7 +59,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
             print(f'Consensus average {score_name}: {np.mean(score_summary[score_name])}')
 
-        return score_summary
+        return score_summary, consensus_task
 
     @staticmethod
     def calculate_dataset_scores(dataset1: dl.Dataset, dataset2: dl.Dataset):
@@ -218,7 +231,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
         return True, f'Successfully created model scores and saved as item {item.id}.'
 
-
     @staticmethod
     @dl.Package.decorators.function(display_name='Compare annotations to score',
                                     inputs={"annot_collection_1": "List",
@@ -298,7 +310,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         #                                                          })
         return score_sets  # TODO: return some sort of summary? bc each pair of matched annotations will have 2 feature vectors
 
-
     @staticmethod
     def consensus_items_summary(feature_set):
         # TODO should receive items, and query by that, not by feature set
@@ -306,7 +317,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         # go through each feature, average the score
         features = feature_set.features.list().all()
         return np.mean([feature.value for feature in features])
-
 
     @staticmethod
     def plot_precision_recall(scores: pd.DataFrame,
@@ -384,6 +394,144 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         print(f'saved precision recall plot to {plot_filename}')
         return [mrec, mpre]
 
+    @staticmethod
+    def calc_precision_recall(dataset_id: str,
+                              model_id: str,
+                              conf_threshold=0.5,
+                              iou_threshold=0.5):
+        # method_type='every_point'):
+        """
+        Plot precision recall curve for a given metric threshold
+
+        :param dataset_id: str dataset ID
+        :param model_id: str model ID
+        :param conf_threshold:
+        :param iou_threshold:
+        :return:
+        """
+
+        model_filename = f'{model_id}.csv'
+        filters = dl.Filters(field='hidden', values=True)
+        filters.add(field='name', values=model_filename)
+        dataset = dl.datasets.get(dataset_id=dataset_id)
+        items = list(dataset.items.list(filters=filters).all())
+        if len(items) == 0:
+            raise ValueError(f'No scores found for model ID {model_id}.')
+        elif len(items) > 1:
+            raise ValueError(f'Found {len(items)} items with name {model_id}.')
+        else:
+            scores_file = items[0].download()
+
+        scores = pd.read_csv(scores_file)
+        labels = dataset.labels
+        label_names = [label.tag for label in labels]
+
+        ##############################
+        # calculate precision/recall #
+        #############################
+        # calc
+        if labels is None:
+            labels = pd.concat([scores.first_label, scores.second_label]).dropna()
+
+        plot_points = {'conf_threshold': conf_threshold,
+                       'iou_threshold': iou_threshold,
+                       'labels': {},
+                       'dataset_precision': [],
+                       'dataset_recall': []
+                       }
+
+        num_gts = sum(scores.first_id.notna())
+
+        scores_positives = scores[scores['geometry_score'] > iou_threshold].copy()
+
+        scores_positives.sort_values('second_confidence', inplace=True, ascending=True, ignore_index=True)
+        scores_positives['true_positives'] = scores_positives['second_confidence'] >= conf_threshold
+        scores_positives['false_positives'] = scores_positives['second_confidence'] < conf_threshold
+
+        # get dataset-level precision/recall
+        dataset_fps = np.cumsum(scores_positives['false_positives'])
+        dataset_tps = np.cumsum(scores_positives['true_positives'])
+        dataset_recall = dataset_tps / num_gts
+        dataset_precision = np.divide(dataset_tps, (dataset_fps + dataset_tps))
+
+        [_, dataset_plot_precision, dataset_plot_recall] = every_point_curve(dataset_recall, dataset_precision)
+        plot_points['dataset_precision'] = dataset_plot_precision
+        plot_points['dataset_recall'] = dataset_plot_recall
+
+        # get label-level precision/recall
+        for label in list(set(label_names)):
+            label_positives = scores_positives[scores_positives.first_label == label].copy()
+            label_positives.sort_values('second_confidence', inplace=True, ascending=True, ignore_index=True)
+
+            label_fps = np.cumsum(label_positives['false_positives'])
+            label_tps = np.cumsum(label_positives['true_positives'])
+            label_recall = label_tps / num_gts
+            label_precision = np.divide(label_tps, (label_fps + label_tps))
+
+            [_, label_plot_precision, label_plot_recall] = every_point_curve(label_recall, label_precision)
+
+            plot_points['labels'].update({label: {
+                'precision': label_plot_precision,
+                'recall': label_plot_recall}})
+
+        return plot_points
+
+    @staticmethod
+    def every_point_curve(recall: list, precision: list):
+        """
+        Calculate precision-recall curve from a list of precision & recall values
+        :param recall: list of recall values
+        :param precision: list of precision values
+        :return:
+        """
+        recall_points = np.concatenate([[0], recall, [1]])
+        precision_points = np.concatenate([[0], precision, [1]])
+
+        # find the maximum precision between each recall value, backwards
+        for i in range(len(precision_points) - 1, 0, -1):
+            precision_points[i - 1] = max(precision_points[i - 1], precision_points[i])
+
+        # build the simplified recall list, removing values when the precision doesnt change
+        recall_intervals = []
+        for i in range(len(recall_points) - 1):
+            if recall_points[1 + i] != recall_points[i]:
+                recall_intervals.append(i + 1)
+
+        avg_precis = 0
+        for i in recall_intervals:
+            avg_precis = avg_precis + np.sum((recall_points[i] - recall_points[i - 1]) * precision_points[i])
+        return [avg_precis,
+                precision_points[0:len(precision_points) - 1],
+                recall_points[0:len(precision_points) - 1]]
+
+    @staticmethod
+    def plot_precision_recall(plot_points, local_path=None):
+        labels = list(plot_points['labels'].keys())
+
+        plt.figure()
+        plt.xlim(0, 1.1)
+        plt.ylim(0, 1.1)
+
+        for label in labels:
+            plt.plot(plot_points['labels'][label]['recall'],
+                     plot_points['labels'][label]['precision'],
+                     label=[label])
+        plt.legend()
+
+        # plot_filename = f'precision_recall_{dataset_id}_{model_id}_{plot_points[metric]}_{metric_threshold}.png'
+        plot_filename = f'precision_recall.png'
+        if local_path is None:
+            save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
+            if not os.path.exists(os.path.dirname(save_path)):
+                os.makedirs(os.path.dirname(save_path))
+            plt.savefig(save_path)
+        else:
+            save_path = os.path.join(local_path, plot_filename)
+            plt.savefig(save_path)
+
+        plt.close()
+
+        return save_path
 
     @staticmethod
     def get_scores_df(model: dl.Model, dataset: dl.Dataset):
@@ -443,3 +591,26 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
     #                               ignore_index=True)
     #
     #     return scores_df
+
+
+def create_faas():
+    pass
+
+
+if __name__ == '__main__':
+    # create_faas()
+
+    project = dl.projects.get("feature vectors")
+    codebase = project.codebases.pack()
+
+    module = dl.PackageModule.from_entry_point(entry_point='scoring.py')
+
+    package_name = 'consensus_scoring'
+    package = project.packages.push(package_name=package_name,
+                                    package_type='ml',
+                                    codebase=codebase,  # can also use src_path
+                                    modules=[module],
+                                    is_global=False,
+                                    service_config=service_config,
+                                    slots=slots,
+                                    metadata=metadata)
