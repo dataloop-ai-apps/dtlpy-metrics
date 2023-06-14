@@ -1,10 +1,9 @@
 {
-  "version": "1.0.42",
+  "version": "1.0.44",
   "creator": "yaya.t@dataloop.ai",
   "name": "scoring-and-metrics",
   "displayName": "Scoring and metrics app",
   "description": "Calculate scores for items and annotations, such as in tasks with consensus.",
-  "icon": "icon-dl-analytics",
   "categories": [],
   "source": {
     "type": "git",
@@ -56,7 +55,7 @@
               }
             ],
             "displayIcon": "analytics",
-            "displayName": "Scoring and Metrics"
+            "displayName": "Create item consensus score"
           },
           {
             "name": "calculate_consensus_score",
@@ -70,7 +69,7 @@
             "output": [
               {
                 "type": "Dict",
-                "name": "dict"
+                "name": "score_summary"
               },
               {
                 "type": "Task",
@@ -78,7 +77,7 @@
               }
             ],
             "displayIcon": "task-filled",
-            "displayName": "Scoring and Metrics"
+            "displayName": "Score consensus task"
           }
         ]
       }

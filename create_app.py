@@ -13,8 +13,12 @@ subprocess.check_call('bumpversion patch --allow-dirty', shell=True)
 dpk = project.dpks.publish()
 
 app = project.apps.get(app_name=dpk.name)
-app.uninstall()
-project.apps.install(dpk)
+app.dpk_version = dpk.version
+app.update()
+
+
+# app.uninstall()
+# project.apps.install(dpk)
 
 # dl.dpks.delete(dpk_id=dpk.id)
 

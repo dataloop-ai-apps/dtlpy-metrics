@@ -167,7 +167,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         if compare_types is None:
             compare_types = all_compare_types
         if not isinstance(compare_types, list):
-            compare_types = [compare_types]
+            compare_types = [compare_types]  # TODO add validation for compare_type and model output type
 
         annot_set_1 = []
         annot_set_2 = []
@@ -256,23 +256,23 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         if task_type != 'compare projects':
             project = annot_collection_1[0].item.project
             dataset = annot_collection_1[0].item.dataset
-        if task_type == 'consensus':
-            feature_set_prefix = 'Consensus '
+        feature_set_prefix = 'Consensus ' if task_type == 'consensus' else ''
 
         score_sets = {}
 
-        for score_name in score_names:
-            try:
-                feature_set = project.feature_sets.get(feature_set_name=f'{feature_set_prefix}{score_name}')
-            except dl.exceptions.NotFound:
-                # create the feature set for each score type
-                feature_set = project.feature_sets.create(name=f'{feature_set_prefix}{score_name}',
-                                                          set_type='scores',
-                                                          # refs require data type
-                                                          data_type=dl.FeatureDataType.ANNOTATION_SCORE,
-                                                          entity_type=dl.FeatureEntityType.ANNOTATION,
-                                                          size=1)
-            score_sets.update({score_name: feature_set})
+        # TODO: update when feature vectors are working
+        # for score_name in score_names:
+        #     try:
+        #         feature_set = project.feature_sets.get(feature_set_name=f'{feature_set_prefix}{score_name}')
+        #     except dl.exceptions.NotFound:
+        #         # create the feature set for each score type
+        #         feature_set = project.feature_sets.create(name=f'{feature_set_prefix}{score_name}',
+        #                                                   set_type='scores',
+        #                                                   # refs require data type
+        #                                                   data_type=dl.FeatureDataType.ANNOTATION_SCORE,
+        #                                                   entity_type=dl.FeatureEntityType.ANNOTATION,
+        #                                                   size=1)
+        #     score_sets.update({score_name: feature_set})
 
         # compare bounding box annotations
         results = measure_annotations(
@@ -285,9 +285,9 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             results_df = results[compare_type].to_df()
 
         # TODO: update when feature vectors are working
-        #######################
-        # Create feature sets #
-        #######################
+        ###################
+        # Create features #
+        ###################
         # for i, row in results_df.iterrows():
         #     for score, feature_set in score_sets.items():
         #         if row['first_id'] is not None:
@@ -318,81 +318,42 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         features = feature_set.features.list().all()
         return np.mean([feature.value for feature in features])
 
-    @staticmethod
-    def plot_precision_recall(scores: pd.DataFrame,
-                              metric: str,
-                              metric_threshold=0.5,
-                              labels=None,
-                              local_path=None):
+    def plot_precision_recall(plot_points: dict, local_path=None):
         """
         Plot precision recall curve for a given metric threshold
 
-        :param scores: dataframe of all the annotation scores
-        :param metric: name of the column in the scores dataframe to use as the metric
-        :param metric_threshold: threshold for which to calculate TP/FP
+        :param plot_points: dictionary of precision/recall points
+        :param local_path: path to save plot
         :return:
         """
-        import matplotlib.pyplot as plt
-        from dtlpymetrics.tools.Evaluator import Evaluator
-        from dtlpymetrics.tools.utils import MethodAveragePrecision
 
-        if metric.lower() == 'iou':
-            metric = 'geometry_score'
-        elif metric.lower() == 'accuracy':
-            metric = 'label_score'
+        labels = list(plot_points['labels'].keys())
 
-        if metric not in scores.columns:
-            raise ValueError(f'{metric} metric not included in scores.')
-
-        #########################
-        # plot precision/recall #
-        #########################
-        # calc
-        method = MethodAveragePrecision.EveryPointInterpolation
-        # method = MethodAveragePrecision.ElevenPointInterpolation
         plt.figure()
         plt.xlim(0, 1.1)
         plt.ylim(0, 1.1)
 
-        if labels is None:
-            labels = pd.concat([scores.first_label, scores.second_label]).dropna()
-
-        for label in labels.unique():
-            label_confidence_df = scores[scores.first_label == label].copy()
-
-            label_confidence_df.sort_values('second_confidence', inplace=True, ascending=True)
-            true_positives = label_confidence_df.geometry_score >= metric_threshold  # geometry score is IOU
-            false_positives = label_confidence_df.geometry_score < metric_threshold
-            #
-            num_gts = sum(scores.first_id.notna())
-
-            #
-            acc_fps = np.cumsum(false_positives)
-            acc_tps = np.cumsum(true_positives)
-            recall = acc_tps / num_gts
-            precision = np.divide(acc_tps, (acc_fps + acc_tps))
-            # # Depending on the method, call the right implementation
-            if method == MethodAveragePrecision.EveryPointInterpolation:
-                [avg_precis, mpre, mrec, ii] = Evaluator.CalculateAveragePrecision(recall, precision)
-            else:
-                [avg_precis, mpre, mrec, _] = Evaluator.ElevenPointInterpolatedAP(recall, precision)
-            # plt.plot(recall, precision, label=[label, model_name])
-            plt.plot(mrec, mpre, label=[label])  # , model_name])
+        for label in labels:
+            plt.plot(plot_points['labels'][label]['recall'],
+                     plot_points['labels'][label]['precision'],
+                     label=[label])
         plt.legend()
 
-        model_id = scores["model_id"][0]
-        plot_filename = f'precision_recall_{model_id}_{metric}_{metric_threshold}.png'
+        # plot_filename = f'precision_recall_{dataset_id}_{model_id}_{plot_points[metric]}_{metric_threshold}.png'
+        plot_filename = f'precision_recall.png'
         if local_path is None:
             save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
             if not os.path.exists(os.path.dirname(save_path)):
                 os.makedirs(os.path.dirname(save_path))
             plt.savefig(save_path)
         else:
-            plt.savefig(plot_filename)
+            save_path = os.path.join(local_path, plot_filename)
+            plt.savefig(save_path)
+
         plt.close()
 
-        print(f'saved precision recall plot to {plot_filename}')
-        return [mrec, mpre]
+        print(f'saved precision recall plot to {save_path}')
+        return save_path
 
     @staticmethod
     def calc_precision_recall(dataset_id: str,
@@ -454,7 +415,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         dataset_recall = dataset_tps / num_gts
         dataset_precision = np.divide(dataset_tps, (dataset_fps + dataset_tps))
 
-        [_, dataset_plot_precision, dataset_plot_recall] = every_point_curve(dataset_recall, dataset_precision)
+        [_, dataset_plot_precision, dataset_plot_recall] = ScoringAndMetrics.every_point_curve(dataset_recall, dataset_precision)
         plot_points['dataset_precision'] = dataset_plot_precision
         plot_points['dataset_recall'] = dataset_plot_recall
 
@@ -468,7 +429,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             label_recall = label_tps / num_gts
             label_precision = np.divide(label_tps, (label_fps + label_tps))
 
-            [_, label_plot_precision, label_plot_recall] = every_point_curve(label_recall, label_precision)
+            [_, label_plot_precision, label_plot_recall] = ScoringAndMetrics.every_point_curve(label_recall, label_precision)
 
             plot_points['labels'].update({label: {
                 'precision': label_plot_precision,
@@ -505,33 +466,59 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
                 recall_points[0:len(precision_points) - 1]]
 
     @staticmethod
-    def plot_precision_recall(plot_points, local_path=None):
-        labels = list(plot_points['labels'].keys())
+    def calc_confusion_matrix(dataset_id: str,
+                              model_id: str,
+                              metric: str,
+                              show_unmatched=True):
+        """
+        Calculate confusion matrix for a given model and metric
+        :param dataset_id:
+        :param model_id:
+        :param metric:
+        :param show_unmatched: display extra column showing which GT annotations were not matched
+        :return:
+        """
+        if metric.lower() == 'iou':
+            metric = 'geometry_score'
+        elif metric.lower() == 'accuracy':
+            metric = 'label_score'
 
-        plt.figure()
-        plt.xlim(0, 1.1)
-        plt.ylim(0, 1.1)
-
-        for label in labels:
-            plt.plot(plot_points['labels'][label]['recall'],
-                     plot_points['labels'][label]['precision'],
-                     label=[label])
-        plt.legend()
-
-        # plot_filename = f'precision_recall_{dataset_id}_{model_id}_{plot_points[metric]}_{metric_threshold}.png'
-        plot_filename = f'precision_recall.png'
-        if local_path is None:
-            save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
-            if not os.path.exists(os.path.dirname(save_path)):
-                os.makedirs(os.path.dirname(save_path))
-            plt.savefig(save_path)
+        model_filename = f'{model_id}.csv'
+        filters = dl.Filters(field='hidden', values=True)
+        filters.add(field='name', values=model_filename)
+        dataset = dl.datasets.get(dataset_id=dataset_id)
+        items = list(dataset.items.list(filters=filters).all())
+        if len(items) == 0:
+            raise ValueError(f'No scores found for model ID {model_id}.')
+        elif len(items) > 1:
+            raise ValueError(f'Found {len(items)} items with name {model_id}.')
         else:
-            save_path = os.path.join(local_path, plot_filename)
-            plt.savefig(save_path)
+            scores_file = items[0].download()
 
-        plt.close()
+        scores = pd.read_csv(scores_file)
+        labels = dataset.labels
+        label_names = [label.tag for label in labels]
 
-        return save_path
+        if metric not in scores.columns:
+            raise ValueError(f'{metric} metric not included in scores.')
+
+        #########################
+        # plot precision/recall #
+        #########################
+        # calc
+        if labels is None:
+            labels = pd.concat([scores.first_label, scores.second_label]).dropna()
+
+        scores_cleaned = scores.dropna().reset_index(drop=True)
+        scores_labels = scores_cleaned[['first_label', 'second_label']]
+        grouped_labels = scores_labels.groupby(['first_label', 'second_label']).size()
+
+        conf_matrix = pd.DataFrame(index=label_names, columns=label_names, data=0)
+        for label1, label2 in grouped_labels.index:
+            # index/rows are the ground truth, cols are the predictions
+            conf_matrix.loc[label1, label2] = grouped_labels.get((label1, label2), 0)
+
+        return conf_matrix
 
     @staticmethod
     def get_scores_df(model: dl.Model, dataset: dl.Dataset):
@@ -610,7 +597,7 @@ if __name__ == '__main__':
                                     package_type='ml',
                                     codebase=codebase,  # can also use src_path
                                     modules=[module],
-                                    is_global=False,
-                                    service_config=service_config,
-                                    slots=slots,
-                                    metadata=metadata)
+                                    is_global=False)
+                                    # service_config=service_config,
+                                    # slots=slots,
+                                    # metadata=metadata)

@@ -48,56 +48,76 @@ def calc_precision_recall(dataset_id: str,
     plot_points = {'conf_threshold': conf_threshold,
                    'iou_threshold': iou_threshold,
                    'labels': {},
-                   'dataset_precision': [],
-                   'dataset_recall': []
+                   'precision': [],
+                   'recall': []
                    }
 
     num_gts = sum(scores.first_id.notna())
+    detections = scores[scores.second_id.notna()].copy()
+    passed_detections = detections[detections['second_confidence'] > conf_threshold].copy()
 
-    scores_positives = scores[scores['geometry_score'] > iou_threshold].copy()
-
-    scores_positives.sort_values('second_confidence', inplace=True, ascending=True, ignore_index=True)
-    scores_positives['true_positives'] = scores_positives['second_confidence'] >= conf_threshold
-    scores_positives['false_positives'] = scores_positives['second_confidence'] < conf_threshold
+    passed_detections.sort_values('second_confidence', inplace=True, ascending=False, ignore_index=True)
+    passed_detections['true_positives'] = passed_detections['geometry_score'] >= iou_threshold
+    passed_detections['false_positives'] = passed_detections['geometry_score'] < iou_threshold
 
     # get dataset-level precision/recall
-    dataset_fps = np.cumsum(scores_positives['false_positives'])
-    dataset_tps = np.cumsum(scores_positives['true_positives'])
+    dataset_fps = np.cumsum(passed_detections['false_positives'])
+    dataset_tps = np.cumsum(passed_detections['true_positives'])
     dataset_recall = dataset_tps / num_gts
     dataset_precision = np.divide(dataset_tps, (dataset_fps + dataset_tps))
 
-    [_, dataset_plot_precision, dataset_plot_recall] = every_point_curve(dataset_recall, dataset_precision)
-    plot_points['dataset_precision'] = dataset_plot_precision
-    plot_points['dataset_recall'] = dataset_plot_recall
+    [_,
+     dataset_plot_precision,
+     dataset_plot_recall,
+     dataset_plot_score] = every_point_curve(dataset_recall,
+                                             dataset_precision,
+                                             passed_detections[
+                                                 'second_confidence'])
+    plot_points['precision'] = dataset_plot_precision
+    plot_points['recall'] = dataset_plot_recall
+    plot_points['score'] = dataset_plot_score
 
     # get label-level precision/recall
     for label in list(set(label_names)):
-        label_positives = scores_positives[scores_positives.first_label == label].copy()
-        label_positives.sort_values('second_confidence', inplace=True, ascending=True, ignore_index=True)
+        label_positives = passed_detections[passed_detections.first_label == label].copy()
+        if label_positives.shape[0] == 0:
+            label_plot_precision = [0]
+            label_plot_recall = [0]
+            label_plot_score = [0]
+        else:
+            label_positives.sort_values('second_confidence', inplace=True, ascending=False, ignore_index=True)
 
-        label_fps = np.cumsum(label_positives['false_positives'])
-        label_tps = np.cumsum(label_positives['true_positives'])
-        label_recall = label_tps / num_gts
-        label_precision = np.divide(label_tps, (label_fps + label_tps))
+            label_fps = np.cumsum(label_positives['false_positives'])
+            label_tps = np.cumsum(label_positives['true_positives'])
+            label_recall = label_tps / num_gts
+            label_precision = np.divide(label_tps, (label_fps + label_tps))
 
-        [_, label_plot_precision, label_plot_recall] = every_point_curve(label_recall, label_precision)
+            [_,
+             label_plot_precision,
+             label_plot_recall,
+             label_plot_score] = every_point_curve(label_recall,
+                                                   label_precision,
+                                                   label_positives['second_confidence'])
 
         plot_points['labels'].update({label: {
             'precision': label_plot_precision,
-            'recall': label_plot_recall}})
+            'recall': label_plot_recall,
+            'score': label_plot_score}})
 
     return plot_points
 
 
-def every_point_curve(recall: list, precision: list):
+def every_point_curve(recall, precision, score):
     """
     Calculate precision-recall curve from a list of precision & recall values
-    :param recall: list of recall values
     :param precision: list of precision values
+    :param recall: list of recall values
+    :param score:
     :return:
     """
     recall_points = np.concatenate([[0], recall, [1]])
     precision_points = np.concatenate([[0], precision, [1]])
+    score_points = np.concatenate([[score.iloc[0]], score, [score.iloc[-1]]])
 
     # find the maximum precision between each recall value, backwards
     for i in range(len(precision_points) - 1, 0, -1):
@@ -114,7 +134,8 @@ def every_point_curve(recall: list, precision: list):
         avg_precis = avg_precis + np.sum((recall_points[i] - recall_points[i - 1]) * precision_points[i])
     return [avg_precis,
             precision_points[0:len(precision_points) - 1],
-            recall_points[0:len(precision_points) - 1]]
+            recall_points[0:len(precision_points) - 1],
+            score_points[0:len(precision_points) - 1]]
 
 
 def calc_confusion_matrix(dataset_id: str,
@@ -172,7 +193,15 @@ def calc_confusion_matrix(dataset_id: str,
     return conf_matrix
 
 
-def plot_precision_recall(plot_points, local_path=None):
+def plot_precision_recall(plot_points: dict, local_path=None):
+    """
+    Plot precision recall curve for a given metric threshold
+
+    :param plot_points: dictionary of precision/recall points
+    :param local_path: path to save plot
+    :return:
+    """
+
     labels = list(plot_points['labels'].keys())
 
     plt.figure()
@@ -198,20 +227,24 @@ def plot_precision_recall(plot_points, local_path=None):
 
     plt.close()
 
+    print(f'saved precision recall plot to {save_path}')
     return save_path
 
 
 if __name__ == '__main__':
     dl.setenv('rc')
 
-    dataset_id = '646e2c13a8386f8b38d5efb5'  # big cats GT
-    # model_id = '6473185c93bd97c6a30a47b9'  # resnet
-    model_id = '64803fcc9e5ee9b3b5716832'  # resnet with unmatched predictions
-    # model_id = '' # yolov8
+    # dataset_id = '646e2c13a8386f8b38d5efb5'  # big cats GT
+    # # model_id = '6473185c93bd97c6a30a47b9'  # resnet
+    # model_id = '64803fcc9e5ee9b3b5716832'  # resnet with unmatched predictions
+    # # model_id = '' # yolov8
+
+    dataset_id = '648174bb56e25a28ae01b32e'  # hard hats GT
+    model_id = '6481f19bf18d2526d10af94c'  # fine tuned yolo
 
     plot_points = calc_precision_recall(dataset_id=dataset_id,
                                         model_id=model_id,
-                                        conf_threshold=0.5)
+                                        conf_threshold=0.2)
     plot_precision_recall(plot_points)
 
     metric = 'accuracy'

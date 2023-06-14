@@ -1,5 +1,5 @@
 import dtlpy as dl
-from scoring import ScoringAndMetrics
+from dtlpymetrics.scoring import ScoringAndMetrics
 
 dl.setenv('rc')
 project = dl.projects.get('feature vectors')
@@ -14,7 +14,7 @@ for fset in fsets:
 # project.feature_sets.list().print()
 # fset = project.feature_sets.get('Consensus IOU')
 
-consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')  # 643be0e4bc2e4cb8b7c1a78d
+consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')
 scoring = ScoringAndMetrics()
 scoring.calculate_consensus_score(consensus_task)
 
