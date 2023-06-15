@@ -1,3 +1,4 @@
+import json
 import dtlpy as dl
 from dtlpymetrics.scoring import ScoringAndMetrics
 
@@ -42,14 +43,17 @@ def check_item(model: dl.Model, item: dl.Item):
 
 
 if __name__ == "__main__":
+    import dtlpy as dl
     dl.setenv('rc')
 
-    # resnet
     project = dl.projects.get('Active Learning 1.3')
-    dataset = project.datasets.get('big cats GT')
-    filters = dl.Filters(field='dir', values='/test')
+    dataset = project.datasets.get('model eval test')
+    model = project.models.get(None, '6481f19bf18d2526d10af94c')
 
-    model = project.models.get(None, '64803fcc9e5ee9b3b5716832')  # resnet fine-tuned, deployed
+    test_filter = '{"filter":{"$and":[{"hidden":false},{"$or":[{"metadata":{"system":{"tags":{"train":true}}}}]},{"type":"file"}]},"page":0,"pageSize":1000,"resource":"items"}'
+    filters = dl.Filters(custom_filter=json.loads(test_filter))
+    print(dataset.items.list(filters=filters).items_count)
+
 
     # create predictions on the test set for this model
     items_list = list(dataset.items.list(filters=filters).all())
@@ -66,13 +70,16 @@ if __name__ == "__main__":
                                                             model=model,
                                                             match_threshold=0.5,
                                                             # ignore_labels=True,
-                                                            compare_types=[dl.ANNOTATION_TYPE_CLASSIFICATION])
+                                                            compare_types=model.output_type)
     print(message)
 
     model_scores = ScoringAndMetrics.get_scores_df(model=model, dataset=dataset)
     metric_names = ['accuracy', 'iou', 'confidence']
-    ScoringAndMetrics.plot_precision_recall(scores=model_scores,
-                                            metric=metric_names[0],
-                                            metric_threshold=0.5)
+
+    plot_points = ScoringAndMetrics.calc_precision_recall(dataset_id=dataset.id,
+                                                          model_id=model.id,
+                                                          conf_threshold=0.2)
+
+    save_path = ScoringAndMetrics.plot_precision_recall(plot_points)
 
     print()

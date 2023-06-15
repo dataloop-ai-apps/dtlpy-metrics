@@ -1,3 +1,4 @@
 dtlpy
 fastapi
 uvicorn
+shapely

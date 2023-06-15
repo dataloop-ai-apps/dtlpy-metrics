@@ -318,6 +318,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         features = feature_set.features.list().all()
         return np.mean([feature.value for feature in features])
 
+    @staticmethod
     def plot_precision_recall(plot_points: dict, local_path=None):
         """
         Plot precision recall curve for a given metric threshold

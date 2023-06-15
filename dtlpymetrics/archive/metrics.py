@@ -41,8 +41,10 @@ class Results:
             'n_annotations_unmatched_set_two': unmatched_set_two,
             'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
             'n_annotations_matched_total': matched_set_one,
-            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (matched_set_one + unmatched_set_two) != 0 else 0,
-            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (matched_set_one + unmatched_set_one) != 0 else 0,
+            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (
+                                                                                                matched_set_one + unmatched_set_two) != 0 else 0,
+            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (
+                                                                                             matched_set_one + unmatched_set_one) != 0 else 0,
         }
 
 
@@ -150,7 +152,7 @@ class Matchers:
         :return: `float` how Intersection over Union of tho shapes
         """
         try:
-            from shapely.geometry import Polygon
+            from shapely import Polygon
         except (ImportError, ModuleNotFoundError) as err:
             raise RuntimeError('dtlpy depends on external package. Please install ') from err
         if len(pts1) == 2:
@@ -188,7 +190,10 @@ class Matchers:
                           pt2_right_top,
                           pt2_right_bottom,
                           pt2_left_bottom])
-        iou = poly_1.intersection(poly_2).area / poly_1.union(poly_2).area
+        if poly_1.intersects(poly_2):
+            iou = poly_1.intersection(poly_2).area / poly_1.union(poly_2).area
+        else:
+            iou = 0
         return iou
 
     @staticmethod
@@ -204,7 +209,7 @@ class Matchers:
     @staticmethod
     def calculate_iou_polygon(pts1, pts2, config):
         try:
-            # from shapely.geometry import Polygon
+            # from shapely import Polygon
             import cv2
         except (ImportError, ModuleNotFoundError) as err:
             raise RuntimeError('dtlpy depends on external package. Please install ') from err

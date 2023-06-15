@@ -3,6 +3,7 @@
 
 """
     After creating setup.py file run the following commands: (delete the build dir)
+    bumpversion patch --allow-dirty
     python setup.py bdist_wheel
 """
 
@@ -24,7 +25,7 @@ setup(name='dtlpymetrics',
           'Programming Language :: Python :: 3.8',
           'Programming Language :: Python :: 3.9',
       ],
-      version='1.0.44',
+      version='1.0.46',
       description='Scoring and metrics app',
       author='Dataloop Team',
       author_email='yaya.t@dataloop.ai',
