@@ -230,10 +230,9 @@ class Matchers:
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
         """
-        try:
-            from shapely.geometry import Polygon
-        except (ImportError, ModuleNotFoundError) as err:
-            raise RuntimeError(f'App depends on external package. Please install {err.name}.') from err
+
+        from shapely import Polygon
+
         if len(pts1) == 2:
             # regular box annotation (2 pts)
             pt1_left_top = [pts1[0][0], pts1[0][1]]
@@ -290,11 +289,9 @@ class Matchers:
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
         """
-        try:
-            # from shapely.geometry import Polygon
-            import cv2
-        except (ImportError, ModuleNotFoundError) as err:
-            raise RuntimeError(f'App depends on external package. Please install {err.name}.') from err
+        # from shapely import Polygon
+        import cv2
+
         # # using shapley
         # poly_1 = Polygon(pts1)
         # poly_2 = Polygon(pts2)

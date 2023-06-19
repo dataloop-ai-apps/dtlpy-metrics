@@ -2,3 +2,4 @@ dtlpy
 fastapi
 uvicorn
 shapely
+opencv-python

@@ -1,9 +1,11 @@
+import logging
 import os
 import dtlpy as dl
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from dtlpymetrics.metrics_utils import measure_annotations
+import datetime
 
 score_names = ['IOU', 'label', 'attribute']
 results_columns = {'iou': 'geometry_score', 'label': 'label_score', 'attribute': 'attribute_score'}
@@ -24,6 +26,8 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
     """
     Scoring and metrics allows comparison between items, annotators, models, datasets, and tasks.
     """
+
+
 
     @staticmethod
     @dl.Package.decorators.function(display_name='Calculate the consensus task score',
@@ -167,7 +171,9 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         if compare_types is None:
             compare_types = all_compare_types
         if not isinstance(compare_types, list):
-            compare_types = [compare_types]  # TODO add validation for compare_type and model output type
+            if compare_types not in model.output_type: # TODO check this validation logic
+                raise ValueError(f'Annotation type {compare_types} does not match model output type {model.output_type}')
+            compare_types = [compare_types]
 
         annot_set_1 = []
         annot_set_2 = []
@@ -191,9 +197,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             annot_set_1.append(item_annots_1)
             annot_set_2.append(item_annots_2)
 
-        if not item_annots_1:
-            return False, 'No ground truth annotations found. Please ensure there are annotations on the items.'
-
         #########################################################
         # Compare annotations and return concatenated dataframe #
         #########################################################
@@ -201,17 +204,23 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         for i in range(len(items_list)):
             # compare annotations for each item
             # print(f'item {i}: GT annots {len(annot_set_1[i])}, model annots {len(annot_set_2[i])}')
-            results = measure_annotations(annotations_set_one=annot_set_1[i],
-                                          annotations_set_two=annot_set_2[i],
-                                          match_threshold=match_threshold,
-                                          ignore_labels=ignore_labels,
-                                          compare_types=compare_types)
-            for compare_type in compare_types:
-                results_df = results[compare_type].to_df()
-                results_df['item_id'] = [items_list[i].id] * results_df.shape[0]
-                results_df['annotation_type'] = [compare_type] * results_df.shape[0]
-                all_results = pd.concat([all_results, results_df],
-                                        ignore_index=True)
+            if len(annot_set_1[i]) == 0 and len(annot_set_2[i]) == 0:
+                continue
+            else:
+                results = measure_annotations(annotations_set_one=annot_set_1[i],
+                                              annotations_set_two=annot_set_2[i],
+                                              match_threshold=match_threshold,
+                                              ignore_labels=ignore_labels,
+                                              compare_types=compare_types)
+                for compare_type in compare_types:
+                    try:
+                        results_df = results[compare_type].to_df()
+                    except KeyError:
+                        continue
+                    results_df['item_id'] = [items_list[i].id] * results_df.shape[0]
+                    results_df['annotation_type'] = [compare_type] * results_df.shape[0]
+                    all_results = pd.concat([all_results, results_df],
+                                            ignore_index=True)
 
         ###############################################
         # Save results to csv for IOU/label/attribute #
@@ -323,7 +332,9 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         """
         Plot precision recall curve for a given metric threshold
 
-        :param plot_points: dictionary of precision/recall points
+        :param plot_points: dict generated from calculate_precision_recall with all the points to plot by label and
+         the entire dataset. keys include: confidence threshold, iou threshold, dataset levels precision, recall, and
+         confidence, and label-level precision, recall and confidence
         :param local_path: path to save plot
         :return:
         """
@@ -334,14 +345,15 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         plt.xlim(0, 1.1)
         plt.ylim(0, 1.1)
 
+        # plot each label separately
         for label in labels:
             plt.plot(plot_points['labels'][label]['recall'],
                      plot_points['labels'][label]['precision'],
                      label=[label])
         plt.legend()
 
-        # plot_filename = f'precision_recall_{dataset_id}_{model_id}_{plot_points[metric]}_{metric_threshold}.png'
-        plot_filename = f'precision_recall.png'
+        # plot the dataset level
+        plot_filename = f"precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
         if local_path is None:
             save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
             if not os.path.exists(os.path.dirname(save_path)):

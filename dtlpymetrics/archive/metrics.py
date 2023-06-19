@@ -151,10 +151,9 @@ class Matchers:
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
         """
-        try:
-            from shapely import Polygon
-        except (ImportError, ModuleNotFoundError) as err:
-            raise RuntimeError('dtlpy depends on external package. Please install ') from err
+
+        from shapely import Polygon
+
         if len(pts1) == 2:
             # regular box annotation (2 pts)
             pt1_left_top = [pts1[0][0], pts1[0][1]]
@@ -208,11 +207,9 @@ class Matchers:
 
     @staticmethod
     def calculate_iou_polygon(pts1, pts2, config):
-        try:
-            # from shapely import Polygon
-            import cv2
-        except (ImportError, ModuleNotFoundError) as err:
-            raise RuntimeError('dtlpy depends on external package. Please install ') from err
+        # from shapely import Polygon
+        import cv2
+
         # # using shapley
         # poly_1 = Polygon(pts1)
         # poly_2 = Polygon(pts2)

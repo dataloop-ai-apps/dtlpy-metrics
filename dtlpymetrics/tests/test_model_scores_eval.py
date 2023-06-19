@@ -44,11 +44,17 @@ def check_item(model: dl.Model, item: dl.Item):
 
 if __name__ == "__main__":
     import dtlpy as dl
-    dl.setenv('rc')
+    ENV = 'prod'
+    dl.setenv(ENV)
 
-    project = dl.projects.get('Active Learning 1.3')
-    dataset = project.datasets.get('model eval test')
-    model = project.models.get(None, '6481f19bf18d2526d10af94c')
+    if ENV == 'rc':
+        project = dl.projects.get('Active Learning 1.3')
+        dataset = project.datasets.get('model eval test')
+        model = project.models.get(None, '6481f19bf18d2526d10af94c')
+    elif ENV == 'prod':
+        project = dl.projects.get('CVPR 2023 Demo')
+        dataset = project.datasets.get('Ground Truth for Active Learning')
+        model = project.models.get(None, '6490054acb7eb972681fe982')
 
     test_filter = '{"filter":{"$and":[{"hidden":false},{"$or":[{"metadata":{"system":{"tags":{"train":true}}}}]},{"type":"file"}]},"page":0,"pageSize":1000,"resource":"items"}'
     filters = dl.Filters(custom_filter=json.loads(test_filter))
@@ -59,7 +65,7 @@ if __name__ == "__main__":
     items_list = list(dataset.items.list(filters=filters).all())
     items_ids = [item.id for item in items_list]
 
-    check_predictions(model=model)
+    # check_predictions(model=model)
 
     ########################################
     # Evaluate the model and create scores #
