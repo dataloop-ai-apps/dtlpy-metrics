@@ -28,7 +28,6 @@ def measure_annotations(
     This will also return the precision and recall of the two sets, given that the first that is a GT and the second set
     is the detection (this affects the denominator of the calculation).
 
-
     :param annotations_set_one: dl.AnnotationCollection entity with a list of annotations to compare
     :param annotations_set_two: dl.AnnotationCollection entity with a list of annotations to compare
     :param match_threshold: IoU threshold to count as a match
@@ -116,10 +115,10 @@ def measure_annotations(
         false_negatives += final_results[compare_type].summary()['n_annotations_unmatched_set_one']
 
     final_results['total_mean_score'] = mean_or_nan(all_scores)
-    final_results['precision'] = true_positives / (true_positives + false_positives) if (
-                                                                                                true_positives + false_positives) != 0 else 0
-    final_results['recall'] = true_positives / (true_positives + false_negatives) if (
-                                                                                             true_positives + false_negatives) != 0 else 0
+    final_results['precision'] =\
+        true_positives / (true_positives + false_positives) if (true_positives + false_positives) != 0 else 0
+    final_results['recall'] =\
+        true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) != 0 else 0
     return final_results
 
 

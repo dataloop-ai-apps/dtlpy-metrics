@@ -1,11 +1,10 @@
 import os
-from typing import Dict, Union, List, Any
-
 import numpy as np
 import pandas as pd
 import dtlpy as dl
 import matplotlib.pyplot as plt
 
+# from typing import Dict, Union, List, Any
 
 def calc_precision_recall(dataset_id: str,
                           model_id: str,
@@ -202,12 +201,16 @@ def plot_precision_recall(plot_points: dict, local_path=None):
     :return:
     """
 
+    #################
+    # plot by label #
+    #################
     labels = list(plot_points['labels'].keys())
 
     plt.figure()
     plt.xlim(0, 1.1)
     plt.ylim(0, 1.1)
 
+    labels_df = pd.DataFrame.from_dict(plot_points['labels'], orient='index')
     for label in labels:
         plt.plot(plot_points['labels'][label]['recall'],
                  plot_points['labels'][label]['precision'],
@@ -215,42 +218,41 @@ def plot_precision_recall(plot_points: dict, local_path=None):
     plt.legend()
 
     # plot_filename = f'precision_recall_{dataset_id}_{model_id}_{plot_points[metric]}_{metric_threshold}.png'
-    plot_filename = f'precision_recall.png'
+    plot_filename_by_labels = f'precision_recall_by_label.png'
     if local_path is None:
-        save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
+        save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename_by_labels)
         if not os.path.exists(os.path.dirname(save_path)):
             os.makedirs(os.path.dirname(save_path))
         plt.savefig(save_path)
     else:
-        save_path = os.path.join(local_path, plot_filename)
+        save_path = os.path.join(local_path, plot_filename_by_labels)
         plt.savefig(save_path)
 
     plt.close()
 
     print(f'saved precision recall plot to {save_path}')
+
+    plot_data = pd.DataFrame({k: plot_points[k] for k in ('precision', 'recall', 'score')})
+    plot_data.to_csv(os.path.join(os.path.dirname(save_path), 'precision_recall.csv'))
+
     return save_path
 
 
 if __name__ == '__main__':
-    dl.setenv('rc')
+    dl.setenv('new-dev')
 
-    # dataset_id = '646e2c13a8386f8b38d5efb5'  # big cats GT
-    # # model_id = '6473185c93bd97c6a30a47b9'  # resnet
-    # model_id = '64803fcc9e5ee9b3b5716832'  # resnet with unmatched predictions
-    # # model_id = '' # yolov8
-
-    dataset_id = '648174bb56e25a28ae01b32e'  # hard hats GT
-    model_id = '6481f19bf18d2526d10af94c'  # fine tuned yolo
+    dataset_id = '648f333a943352d180df011a'
+    model_id = '649076c45a9c968a5c32ed65'
 
     plot_points = calc_precision_recall(dataset_id=dataset_id,
                                         model_id=model_id,
                                         conf_threshold=0.2)
     plot_precision_recall(plot_points)
 
-    metric = 'accuracy'
-    conf_table = calc_confusion_matrix(dataset_id=dataset_id,
-                                       model_id=model_id,
-                                       metric=metric)
-    print("columns are model predictions, rows are ground truth labels")
-    print(conf_table)
+    # metric = 'accuracy'
+    # conf_table = calc_confusion_matrix(dataset_id=dataset_id,
+    #                                    model_id=model_id,
+    #                                    metric=metric)
+    # print("columns are model predictions, rows are ground truth labels")
+    # print(conf_table)
     print()

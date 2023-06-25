@@ -27,8 +27,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
     Scoring and metrics allows comparison between items, annotators, models, datasets, and tasks.
     """
 
-
-
     @staticmethod
     @dl.Package.decorators.function(display_name='Calculate the consensus task score',
                                     inputs={"consensus_task": dl.Task},
@@ -145,7 +143,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
     def create_model_score(dataset: dl.Dataset = None,
                            filters: dl.Filters = None,
                            model: dl.Model = None,
-                           match_threshold: float = 0.5,
                            ignore_labels=False,
                            compare_types=None):
         """
@@ -154,7 +151,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         :param dataset: Dataset associated with the ground truth annotations
         :param filters: DQL Filter for retrieving the test items
         :param model: Model for evaluating predictions
-        :param match_threshold: IoU threshold to count as a match
         :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label
         :param compare_types: annotation types to compare
         :return:
@@ -171,8 +167,9 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         if compare_types is None:
             compare_types = all_compare_types
         if not isinstance(compare_types, list):
-            if compare_types not in model.output_type: # TODO check this validation logic
-                raise ValueError(f'Annotation type {compare_types} does not match model output type {model.output_type}')
+            if compare_types not in model.output_type:  # TODO check this validation logic
+                raise ValueError(
+                    f'Annotation type {compare_types} does not match model output type {model.output_type}')
             compare_types = [compare_types]
 
         annot_set_1 = []
@@ -183,9 +180,9 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         if not items_list:
             return False, 'No items found in the dataset, please check the dataset and filters.'
 
-        #################################
-        # list of item annotation lists #
-        #################################
+        ########################################
+        # Create list of item annotation lists #
+        ########################################
         for item in items_list:
             item_annots_1 = []
             item_annots_2 = []
@@ -209,7 +206,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             else:
                 results = measure_annotations(annotations_set_one=annot_set_1[i],
                                               annotations_set_two=annot_set_2[i],
-                                              match_threshold=match_threshold,
+                                              match_threshold=0.01,  # to get all possible matches
                                               ignore_labels=ignore_labels,
                                               compare_types=compare_types)
                 for compare_type in compare_types:
@@ -225,7 +222,8 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         ###############################################
         # Save results to csv for IOU/label/attribute #
         ###############################################
-        # "/.modelscores/modelId.csv"
+        # TODO save via feature vectors when ready
+        # file format "/.modelscores/modelId.csv"
         all_results['model_id'] = [model.id] * all_results.shape[0]
         all_results['dataset_id'] = [dataset.id] * all_results.shape[0]
 
@@ -317,7 +315,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         #                                                          'dataset': dataset.id,
         #                                                          'relative': row['first_id'],
         #                                                          })
-        return score_sets  # TODO: return some sort of summary? bc each pair of matched annotations will have 2 feature vectors
+        return score_sets
 
     @staticmethod
     def consensus_items_summary(feature_set):
@@ -328,29 +326,35 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         return np.mean([feature.value for feature in features])
 
     @staticmethod
-    def plot_precision_recall(plot_points: dict, local_path=None):
+    def plot_precision_recall(plot_points: pd.DataFrame,
+                              label_names=None,
+                              local_path=None):
         """
         Plot precision recall curve for a given metric threshold
 
         :param plot_points: dict generated from calculate_precision_recall with all the points to plot by label and
          the entire dataset. keys include: confidence threshold, iou threshold, dataset levels precision, recall, and
          confidence, and label-level precision, recall and confidence
+        :param label_names: list of label names to plot
         :param local_path: path to save plot
         :return:
         """
 
-        labels = list(plot_points['labels'].keys())
+        if label_names is None:
+            label_names = plot_points['label_name'].copy().drop_duplicates()
 
         plt.figure()
         plt.xlim(0, 1.1)
         plt.ylim(0, 1.1)
+        plt.legend()
 
         # plot each label separately
-        for label in labels:
-            plt.plot(plot_points['labels'][label]['recall'],
-                     plot_points['labels'][label]['precision'],
-                     label=[label])
-        plt.legend()
+        for label_name in label_names:
+            label_points = plot_points[plot_points['label_name'] == label_name]
+
+            plt.plot(label_points['recall'],
+                     label_points['precision'],
+                     label=[label_name])
 
         # plot the dataset level
         plot_filename = f"precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
@@ -371,19 +375,19 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
     @staticmethod
     def calc_precision_recall(dataset_id: str,
                               model_id: str,
-                              conf_threshold=0.5,
-                              iou_threshold=0.5):
+                              iou_threshold=0.01) -> pd.DataFrame:
         # method_type='every_point'):
         """
         Plot precision recall curve for a given metric threshold
 
         :param dataset_id: str dataset ID
         :param model_id: str model ID
-        :param conf_threshold:
-        :param iou_threshold:
-        :return:
+        :return: dataframe with all the points to plot for the dataset and individual labels
         """
-
+        ################################
+        # get matched annotations data #
+        ################################
+        # TODO use feature management once available
         model_filename = f'{model_id}.csv'
         filters = dl.Filters(field='hidden', values=True)
         filters.add(field='name', values=model_filename)
@@ -399,67 +403,108 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         scores = pd.read_csv(scores_file)
         labels = dataset.labels
         label_names = [label.tag for label in labels]
+        if len(label_names) == 0:
+            label_names = list(pd.concat([scores.first_label, scores.second_label]).dropna().drop_duplicates())
 
         ##############################
         # calculate precision/recall #
-        #############################
-        # calc
-        if labels is None:
-            labels = pd.concat([scores.first_label, scores.second_label]).dropna()
-
-        plot_points = {'conf_threshold': conf_threshold,
-                       'iou_threshold': iou_threshold,
-                       'labels': {},
-                       'dataset_precision': [],
-                       'dataset_recall': []
-                       }
+        ##############################
+        dataset_points = {'iou_threshold': {},
+                          'data': {},  # "dataset" or "label"
+                          'label_name': {},  # label name or NA,
+                          'precision': {},
+                          'recall': {},
+                          'confidence': {}
+                          }
 
         num_gts = sum(scores.first_id.notna())
+        detections = scores[scores.second_id.notna()].copy()
 
-        scores_positives = scores[scores['geometry_score'] > iou_threshold].copy()
-
-        scores_positives.sort_values('second_confidence', inplace=True, ascending=True, ignore_index=True)
-        scores_positives['true_positives'] = scores_positives['second_confidence'] >= conf_threshold
-        scores_positives['false_positives'] = scores_positives['second_confidence'] < conf_threshold
+        detections.sort_values('second_confidence', inplace=True, ascending=False, ignore_index=True)
+        detections['true_positives'] = detections['geometry_score'] >= iou_threshold
+        detections['false_positives'] = detections['geometry_score'] < iou_threshold
 
         # get dataset-level precision/recall
-        dataset_fps = np.cumsum(scores_positives['false_positives'])
-        dataset_tps = np.cumsum(scores_positives['true_positives'])
+        dataset_fps = np.cumsum(detections['false_positives'])
+        dataset_tps = np.cumsum(detections['true_positives'])
         dataset_recall = dataset_tps / num_gts
         dataset_precision = np.divide(dataset_tps, (dataset_fps + dataset_tps))
 
-        [_, dataset_plot_precision, dataset_plot_recall] = ScoringAndMetrics.every_point_curve(dataset_recall, dataset_precision)
-        plot_points['dataset_precision'] = dataset_plot_precision
-        plot_points['dataset_recall'] = dataset_plot_recall
+        [_,
+         dataset_plot_precision,
+         dataset_plot_recall,
+         dataset_plot_confidence] = \
+            ScoringAndMetrics.every_point_curve(recall=list(dataset_recall),
+                                                precision=list(dataset_precision),
+                                                confidence=list(detections['second_confidence']))
 
-        # get label-level precision/recall
-        for label in list(set(label_names)):
-            label_positives = scores_positives[scores_positives.first_label == label].copy()
-            label_positives.sort_values('second_confidence', inplace=True, ascending=True, ignore_index=True)
+        dataset_points['iou_threshold'] = [iou_threshold] * len(dataset_plot_precision)
+        dataset_points['data'] = ['dataset'] * len(dataset_plot_precision)
+        dataset_points['label_name'] = ['NA'] * len(dataset_plot_precision)
+        dataset_points['precision'] = dataset_plot_precision
+        dataset_points['recall'] = dataset_plot_recall
+        dataset_points['confidence'] = dataset_plot_confidence
 
-            label_fps = np.cumsum(label_positives['false_positives'])
-            label_tps = np.cumsum(label_positives['true_positives'])
-            label_recall = label_tps / num_gts
-            label_precision = np.divide(label_tps, (label_fps + label_tps))
+        ##########################################
+        # calculate label-level precision/recall #
+        ##########################################
+        all_labels = {key: {} for key in dataset_points}
 
-            [_, label_plot_precision, label_plot_recall] = ScoringAndMetrics.every_point_curve(label_recall, label_precision)
+        # TODO FIX ME
+        label_points = {key: [] for key in dataset_points}
+        for label_name in list(set(label_names)):
+            label_detections = detections[detections.first_label == label_name].copy()
+            if label_detections.shape[0] == 0:
+                label_plot_precision = [0]
+                label_plot_recall = [0]
+                label_plot_confidence = [0]
+            else:
+                label_detections.sort_values('second_confidence', inplace=True, ascending=False, ignore_index=True)
 
-            plot_points['labels'].update({label: {
-                'precision': label_plot_precision,
-                'recall': label_plot_recall}})
+                label_fps = np.cumsum(label_detections['false_positives'])
+                label_tps = np.cumsum(label_detections['true_positives'])
+                label_recall = label_tps / num_gts
+                label_precision = np.divide(label_tps, (label_fps + label_tps))
+
+                [_,
+                 label_plot_precision,
+                 label_plot_recall,
+                 label_plot_confidence] = \
+                    ScoringAndMetrics.every_point_curve(recall=list(label_recall),
+                                                        precision=list(label_precision),
+                                                        confidence=list(label_detections['second_confidence']))
+
+            label_points['iou_threshold'].append([iou_threshold] * len(label_plot_precision))
+            label_points['data'].append(['label'] * len(label_plot_precision))
+            label_points['label_name'].append([label_name] * len(label_plot_precision))
+            label_points['precision'].append(label_plot_precision)
+            label_points['recall'].append(label_plot_recall)
+            label_points['confidence'].append(label_plot_confidence)
+
+        for key in all_labels:
+            all_labels[key] = label_points[key][0]
+
+        ###################
+        # concat all data #
+        ###################
+        dataset_df = pd.DataFrame(dataset_points).drop_duplicates()
+        labels_df = pd.DataFrame(label_points).drop_duplicates()
+        plot_points = pd.concat([dataset_df,
+                                 labels_df])
 
         return plot_points
 
     @staticmethod
-    def every_point_curve(recall: list, precision: list):
+    def every_point_curve(recall: list, precision: list, confidence: list):
         """
         Calculate precision-recall curve from a list of precision & recall values
         :param recall: list of recall values
         :param precision: list of precision values
-        :return:
+        :return: list of average precision all values, precision points, recall points
         """
         recall_points = np.concatenate([[0], recall, [1]])
-        precision_points = np.concatenate([[0], precision, [1]])
+        precision_points = np.concatenate([[0], precision, [0]])
+        confidence_points = np.concatenate([[confidence[0]], confidence, [confidence[-1]]])
 
         # find the maximum precision between each recall value, backwards
         for i in range(len(precision_points) - 1, 0, -1):
@@ -476,7 +521,8 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             avg_precis = avg_precis + np.sum((recall_points[i] - recall_points[i - 1]) * precision_points[i])
         return [avg_precis,
                 precision_points[0:len(precision_points) - 1],
-                recall_points[0:len(precision_points) - 1]]
+                recall_points[0:len(precision_points) - 1],
+                confidence_points[0:len(precision_points) - 1]]
 
     @staticmethod
     def calc_confusion_matrix(dataset_id: str,
@@ -520,7 +566,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         #########################
         # calc
         if labels is None:
-            labels = pd.concat([scores.first_label, scores.second_label]).dropna()
+            label_names = pd.concat([scores.first_label, scores.second_label]).dropna()
 
         scores_cleaned = scores.dropna().reset_index(drop=True)
         scores_labels = scores_cleaned[['first_label', 'second_label']]
@@ -599,18 +645,63 @@ def create_faas():
 
 if __name__ == '__main__':
     # create_faas()
+    # project = dl.projects.get("feature vectors")
+    # codebase = project.codebases.pack()
+    #
+    # module = dl.PackageModule.from_entry_point(entry_point='scoring.py')
+    #
+    # package_name = 'consensus_scoring'
+    # package = project.packages.push(package_name=package_name,
+    #                                 package_type='ml',
+    #                                 codebase=codebase,  # can also use src_path
+    #                                 modules=[module],
+    #                                 is_global=False)
+    # service_config=service_config,
+    # slots=slots,
+    # metadata=metadata)
 
-    project = dl.projects.get("feature vectors")
-    codebase = project.codebases.pack()
+    import json
 
-    module = dl.PackageModule.from_entry_point(entry_point='scoring.py')
+    dl.setenv('new-dev')
 
-    package_name = 'consensus_scoring'
-    package = project.packages.push(package_name=package_name,
-                                    package_type='ml',
-                                    codebase=codebase,  # can also use src_path
-                                    modules=[module],
-                                    is_global=False)
-                                    # service_config=service_config,
-                                    # slots=slots,
-                                    # metadata=metadata)
+    dataset_id = '648f5926943352ccaddf0149'
+    model_id = '648ffafe28146328fb4e96b3'
+
+    # # models to rerun and upload: 649076c45a9c968a5c32ed65, 6490b666d8a0841b563176f6
+
+    test_filter = '{"filter": {"$and": [{"hidden": false}, {"$or": [{"metadata": {"system": {"tags": {"test": true}}}}]}, {"type": "file"}]}, "page": 0, "pageSize": 1000, "resource": "items"}'
+    filters = dl.Filters(custom_filter=json.loads(test_filter))
+    filters = dl.Filters()
+
+    # for mohamed
+    # dl.setenv('rc')
+    # dataset_id = '649306160310862369075fb2'
+    # model_id = '6493061a65aa855b8898fb00'
+    # filters = dl.Filters()
+
+    model = dl.models.get(None, model_id)
+    dataset = dl.datasets.get(dataset_id=dataset_id)
+
+    pages = dataset.items.list(filters=filters)
+    print(f'items in test set: {pages.items_count}')
+
+    # success, message = ScoringAndMetrics.create_model_score(dataset=dataset,
+    #                                                         filters=filters,
+    #                                                         model=model,
+    #                                                         compare_types=model.output_type)
+    # print(message)
+
+    # model_scores = ScoringAndMetrics.get_scores_df(model=model, dataset=dataset)
+    # metric_names = ['accuracy', 'iou', 'confidence']
+    #
+    plot_points = ScoringAndMetrics.calc_precision_recall(dataset_id=dataset.id,
+                                                          model_id=model.id)
+
+    labels = [label.tag for label in dataset.labels]
+    save_path = ScoringAndMetrics.plot_precision_recall(plot_points=plot_points,
+                                                        label_names=labels)
+    from pathlib import Path
+
+    plot_points.to_csv(Path(Path(save_path).parent, 'plot_points.csv'))
+    #
+    print()
