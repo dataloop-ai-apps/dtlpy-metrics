@@ -63,6 +63,37 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
         return score_summary, consensus_task
 
+    # @staticmethod
+    # @dl.Package.decorators.function(display_name='Calculate the consensus task score with Scoring',
+    #                                 inputs={"consensus_task": dl.Task},
+    #                                 outputs={"scores": dl.Scores},
+    #                                 )
+    # def check_consensus_with_scoring():
+    #     # delete old scores
+    #     # compare two sets of annotations
+    #     # create a bunch of scores
+    #     # declare score type
+    #     # return "scores" entity with ScoreType
+    #
+    #
+    #     success, response = dl._client_api.gen_request(req_type="delete",
+    #                                                    path="scores")
+    #
+    #     # check response
+    #     if success:
+    #         print("Feature Set deleted successfully")
+    #         return success
+    #     else:
+    #         raise dl.exceptions.PlatformException(response)
+    #
+    #     dl.FeatureEntityType.ANNOTATION_SCORE
+    #     old_scores = dl.Scores()
+    #
+    #     scores = dl.Scores()
+    #     scores.scoreType = dl.ScoreType.ANNOTATION_OVERALL
+    #
+    #     return scores
+
     @staticmethod
     def calculate_dataset_scores(dataset1: dl.Dataset, dataset2: dl.Dataset):
         # annotators = []
@@ -239,7 +270,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         return True, f'Successfully created model scores and saved as item {item.id}.'
 
     @staticmethod
-    @dl.Package.decorators.function(display_name='Compare annotations to score',
+    @dl.Package.decorators.function(display_name='Compare two sets of annotations for scoring',
                                     inputs={"annot_collection_1": "List",
                                             "annot_collection_2": "List"},
                                     outputs={})
@@ -445,13 +476,15 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         dataset_points['recall'] = dataset_plot_recall
         dataset_points['confidence'] = dataset_plot_confidence
 
+        dataset_df = pd.DataFrame(dataset_points).drop_duplicates()
+
         ##########################################
         # calculate label-level precision/recall #
         ##########################################
-        all_labels = {key: {} for key in dataset_points}
+        all_labels = pd.DataFrame(columns=dataset_df.columns)
 
         # TODO FIX ME
-        label_points = {key: [] for key in dataset_points}
+        label_points = {key: {} for key in dataset_points}
         for label_name in list(set(label_names)):
             label_detections = detections[detections.first_label == label_name].copy()
             if label_detections.shape[0] == 0:
@@ -474,23 +507,32 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
                                                         precision=list(label_precision),
                                                         confidence=list(label_detections['second_confidence']))
 
-            label_points['iou_threshold'].append([iou_threshold] * len(label_plot_precision))
-            label_points['data'].append(['label'] * len(label_plot_precision))
-            label_points['label_name'].append([label_name] * len(label_plot_precision))
-            label_points['precision'].append(label_plot_precision)
-            label_points['recall'].append(label_plot_recall)
-            label_points['confidence'].append(label_plot_confidence)
+            # label_points['iou_threshold'].append([iou_threshold] * len(label_plot_precision))
+            # label_points['data'].append(['label'] * len(label_plot_precision))
+            # label_points['label_name'].append([label_name] * len(label_plot_precision))
+            # label_points['precision'].append(label_plot_precision)
+            # label_points['recall'].append(label_plot_recall)
+            # label_points['confidence'].append(label_plot_confidence)
 
-        for key in all_labels:
-            all_labels[key] = label_points[key][0]
+            label_points['iou_threshold'] = [iou_threshold] * len(label_plot_precision)
+            label_points['data'] = ['label'] * len(label_plot_precision)
+            label_points['label_name'] = [label_name] * len(label_plot_precision)
+            label_points['precision'] = label_plot_precision
+            label_points['recall'] = label_plot_recall
+            label_points['confidence'] = label_plot_confidence
 
-        ###################
+            label_df = pd.DataFrame(label_points).drop_duplicates()
+
+            all_labels = pd.concat([all_labels, label_df])
+        # for key in all_labels:
+        #     all_labels[key] = label_points[key][0]
+
+        ##################
         # concat all data #
-        ###################
-        dataset_df = pd.DataFrame(dataset_points).drop_duplicates()
+        ##################
         labels_df = pd.DataFrame(label_points).drop_duplicates()
-        plot_points = pd.concat([dataset_df,
-                                 labels_df])
+
+        plot_points = pd.concat([dataset_df,labels_df])
 
         return plot_points
 
@@ -637,10 +679,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
     #                               ignore_index=True)
     #
     #     return scores_df
-
-
-def create_faas():
-    pass
 
 
 if __name__ == '__main__':

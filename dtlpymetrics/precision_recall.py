@@ -34,15 +34,14 @@ def calc_precision_recall(dataset_id: str,
         scores_file = items[0].download()
 
     scores = pd.read_csv(scores_file)
-    labels = dataset.labels
-    label_names = [label.tag for label in labels]
+    label_names = [label.tag for label in dataset.labels]
 
     ##############################
     # calculate precision/recall #
     #############################
     # calc
-    if labels is None:
-        labels = pd.concat([scores.first_label, scores.second_label]).dropna()
+    if label_names is None:
+        label_names = pd.concat([scores.first_label, scores.second_label]).dropna()
 
     plot_points = {'conf_threshold': conf_threshold,
                    'iou_threshold': iou_threshold,
