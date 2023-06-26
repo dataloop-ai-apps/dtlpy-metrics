@@ -758,8 +758,8 @@ if __name__ == '__main__':
     labels = [label.tag for label in dataset.labels]
     save_path = ScoringAndMetrics.plot_precision_recall(plot_points=plot_points,
                                                         label_names=labels)
-    from pathlib import Path
-
-    plot_points.to_csv(Path(Path(save_path).parent, 'plot_points.csv'))
+    # from pathlib import Path
     #
-    print()
+    # plot_points.to_csv(Path(Path(save_path).parent, '.dataloop', 'plot_points.csv'))
+    # #
+    # print()
