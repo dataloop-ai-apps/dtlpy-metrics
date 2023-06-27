@@ -192,3 +192,7 @@ def tests():
 
     dl_scores = scores.create([score])
     print([d.id for d in dl_scores])
+
+
+if __name__ == "__main__":
+    tests()

@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from dtlpymetrics.metrics_utils import measure_annotations
 import datetime
+from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 
 score_names = ['IOU', 'label', 'attribute']
 results_columns = {'iou': 'geometry_score', 'label': 'label_score', 'attribute': 'attribute_score'}
@@ -43,7 +44,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         # workaround for the task query returning all items, including hidden consensus clones
         filters = dl.Filters()
         filters.add(field='hidden', values=False)
-        items = consensus_task.get_items(filters=filters).all()  # why is this "get_items" and not "list"?
+        items = consensus_task.get_items(filters=filters).all()
 
         for item in items:
             if item.metadata['system']['refs'][0]['metadata']['status'] == 'consensus_done':
@@ -51,6 +52,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
         score_summary = {}
 
+        # this is the old way of uploading scores/features
         for score_name in score_names:
             score_summary.update({score_name: []})
             feature_set = consensus_task.project.feature_sets.get(feature_set_name=f'Consensus {score_name}')
@@ -63,36 +65,55 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
         return score_summary, consensus_task
 
-    # @staticmethod
-    # @dl.Package.decorators.function(display_name='Calculate the consensus task score with Scoring',
-    #                                 inputs={"consensus_task": dl.Task},
-    #                                 outputs={"scores": dl.Scores},
-    #                                 )
-    # def check_consensus_with_scoring():
-    #     # delete old scores
-    #     # compare two sets of annotations
-    #     # create a bunch of scores
-    #     # declare score type
-    #     # return "scores" entity with ScoreType
-    #
-    #
-    #     success, response = dl._client_api.gen_request(req_type="delete",
-    #                                                    path="scores")
-    #
-    #     # check response
-    #     if success:
-    #         print("Feature Set deleted successfully")
-    #         return success
-    #     else:
-    #         raise dl.exceptions.PlatformException(response)
-    #
-    #     dl.FeatureEntityType.ANNOTATION_SCORE
-    #     old_scores = dl.Scores()
-    #
-    #     scores = dl.Scores()
-    #     scores.scoreType = dl.ScoreType.ANNOTATION_OVERALL
-    #
-    #     return scores
+    @staticmethod
+    @dl.Package.decorators.function(display_name='Check scoring API',
+                                    inputs={"consensus_task": dl.Task},
+                                    outputs={"scores": Scores},
+                                    )
+    def check_consensus_scoring(consensus_task: dl.Task):
+        # delete old scores
+        # compare two sets of annotations
+        # create a bunch of scores
+        # declare score type
+        # return "scores" entity with ScoreType
+
+        # scores = Score(type=ScoreType.ANNOTATION_IOU.value,
+        #                value=0.9,
+        #                entity_id=annotation.id,
+        #                task_id=task.id)
+
+        # score_set = Score.create(scores)
+
+        # workaround for the task query returning all items, including hidden consensus clones
+        filters = dl.Filters()
+        filters.add(field='hidden', values=False)
+        items = consensus_task.get_items(filters=filters).all()
+
+        for item in items:
+            if item.metadata['system']['refs'][0]['metadata']['status'] == 'consensus_done':
+                item = ScoringAndMetrics.create_item_consensus_score(item)
+                annotations = item.annotations.list().all()
+
+
+
+
+        scores = []
+        score_sets = {key: {} for key in score_names}
+
+
+
+        # # this is the old way of uploading scores/features
+        # for score_name in score_names:
+        #     scores_sets.update({score_name: []})
+        #     feature_set = consensus_task.project.feature_sets.get(feature_set_name=f'Consensus {score_name}')
+        #
+        #     for feature in feature_set.features.list().all():
+        #         print(feature.value[0])
+        #         score_summary[score_name].append(feature.value[0])
+        #
+        #     print(f'Consensus average {score_name}: {np.mean(score_summary[score_name])}')
+
+        return scores
 
     @staticmethod
     def calculate_dataset_scores(dataset1: dl.Dataset, dataset2: dl.Dataset):
@@ -164,11 +185,11 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
                 annot_collection_1 = annots_by_annotator[annotators[i_annotator]]
                 annot_collection_2 = annots_by_annotator[annotators[j_annotator]]
 
-                ScoringAndMetrics.create_annotation_scores(annot_collection_1=annot_collection_1,
-                                                           annot_collection_2=annot_collection_2,
-                                                           gt_is_first=False)
+                scores = ScoringAndMetrics.create_annotation_scores(annot_collection_1=annot_collection_1,
+                                                                    annot_collection_2=annot_collection_2,
+                                                                    gt_is_first=False)
 
-        return item
+        return scores
 
     @staticmethod
     def create_model_score(dataset: dl.Dataset = None,
@@ -294,11 +315,13 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         if task_type != 'compare projects':
             project = annot_collection_1[0].item.project
             dataset = annot_collection_1[0].item.dataset
-        feature_set_prefix = 'Consensus ' if task_type == 'consensus' else ''
+        score_set_prefix = 'Consensus ' if task_type == 'consensus' else ''
 
-        score_sets = {}
+        scores = []
 
         # TODO: update when feature vectors are working
+        # score_sets = {}
+        #
         # for score_name in score_names:
         #     try:
         #         feature_set = project.feature_sets.get(feature_set_name=f'{feature_set_prefix}{score_name}')
@@ -320,7 +343,21 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             ignore_labels=False)
 
         for compare_type in compare_types:
-            results_df = results[compare_type].to_df()
+            try:
+                results_df = results[compare_type].to_df()
+            except KeyError:
+                continue
+
+        for i, row in results_df.iterrows():
+            for score, feature_set in score_sets.items():
+                dl_score = Scores.create(value=[row[results_columns[score.lower()]]],
+                                         project_id=project.id,
+                                         entity_id=row['second_id'],
+                                         refs={'item': row['item_id'],
+                                               'annotator': row['second_creator'],
+                                               'dataset': dataset.id,
+                                               'relative': row['first_id'],
+                                               })
 
         # TODO: update when feature vectors are working
         ###################
@@ -346,7 +383,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         #                                                          'dataset': dataset.id,
         #                                                          'relative': row['first_id'],
         #                                                          })
-        return score_sets
+        return scores
 
     @staticmethod
     def consensus_items_summary(feature_set):
@@ -518,7 +555,8 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         label_points = {key: {} for key in dataset_points}
 
         for label_name in list(set(label_names)):
-            label_detections = detections.loc[(detections.first_label == label_name) | (detections.second_label == label_name)].copy()
+            label_detections = detections.loc[
+                (detections.first_label == label_name) | (detections.second_label == label_name)].copy()
             if label_detections.shape[0] == 0:
                 label_plot_precision = [0]
                 label_plot_recall = [0]
