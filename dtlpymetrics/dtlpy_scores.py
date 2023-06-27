@@ -103,10 +103,11 @@ class Scores:
         # return entity
         return outputs
 
-    def delete(self, score_id: str):
+    def delete(self, context: dict):
 
         success, response = self._client_api.gen_request(req_type="delete",
-                                                         path="{}/{}".format(self.URL, score_id))
+                                                         path=self.URL,
+                                                         json_req=context)
 
         # check response
         if success:
@@ -192,3 +193,6 @@ def tests():
 
     dl_scores = scores.create([score])
     print([d.id for d in dl_scores])
+
+    scores.delete({'taskId': task.id,
+                   'itemId': item.id})
