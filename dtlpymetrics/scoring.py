@@ -63,6 +63,37 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
         return score_summary, consensus_task
 
+    # @staticmethod
+    # @dl.Package.decorators.function(display_name='Calculate the consensus task score with Scoring',
+    #                                 inputs={"consensus_task": dl.Task},
+    #                                 outputs={"scores": dl.Scores},
+    #                                 )
+    # def check_consensus_with_scoring():
+    #     # delete old scores
+    #     # compare two sets of annotations
+    #     # create a bunch of scores
+    #     # declare score type
+    #     # return "scores" entity with ScoreType
+    #
+    #
+    #     success, response = dl._client_api.gen_request(req_type="delete",
+    #                                                    path="scores")
+    #
+    #     # check response
+    #     if success:
+    #         print("Feature Set deleted successfully")
+    #         return success
+    #     else:
+    #         raise dl.exceptions.PlatformException(response)
+    #
+    #     dl.FeatureEntityType.ANNOTATION_SCORE
+    #     old_scores = dl.Scores()
+    #
+    #     scores = dl.Scores()
+    #     scores.scoreType = dl.ScoreType.ANNOTATION_OVERALL
+    #
+    #     return scores
+
     @staticmethod
     def calculate_dataset_scores(dataset1: dl.Dataset, dataset2: dl.Dataset):
         # annotators = []
@@ -239,7 +270,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         return True, f'Successfully created model scores and saved as item {item.id}.'
 
     @staticmethod
-    @dl.Package.decorators.function(display_name='Compare annotations to score',
+    @dl.Package.decorators.function(display_name='Compare two sets of annotations for scoring',
                                     inputs={"annot_collection_1": "List",
                                             "annot_collection_2": "List"},
                                     outputs={})
@@ -340,24 +371,22 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         :return:
         """
 
-        if label_names is None:
-            label_names = plot_points['label_name'].copy().drop_duplicates()
+        ###################
+        # plot by dataset #
+        ###################
 
         plt.figure()
         plt.xlim(0, 1.1)
         plt.ylim(0, 1.1)
-        plt.legend()
 
         # plot each label separately
-        for label_name in label_names:
-            label_points = plot_points[plot_points['label_name'] == label_name]
+        dataset_points = plot_points[plot_points['data'] == 'dataset']
 
-            plt.plot(label_points['recall'],
-                     label_points['precision'],
-                     label=[label_name])
+        plt.plot(dataset_points['recall'],
+                 dataset_points['precision'])
 
         # plot the dataset level
-        plot_filename = f"precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
+        plot_filename = f"dataset_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
         if local_path is None:
             save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
             if not os.path.exists(os.path.dirname(save_path)):
@@ -366,10 +395,44 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         else:
             save_path = os.path.join(local_path, plot_filename)
             plt.savefig(save_path)
-
         plt.close()
 
-        print(f'saved precision recall plot to {save_path}')
+        print(f'saved dataset precision recall plot to {save_path}')
+
+        #################
+        # plot by label #
+        #################
+        all_labels = plot_points[plot_points['data'] == 'label']
+
+        if (label_names is None) or (bool(label_names) is False):
+            label_names = all_labels['label_name'].copy().drop_duplicates()
+
+        plt.figure()
+        plt.xlim(0, 1.1)
+        plt.ylim(0, 1.1)
+        plt.legend()
+
+        # plot each label separately
+        for label_name in label_names:
+            label_points = all_labels[all_labels['label_name'] == label_name].copy()
+
+            plt.plot(label_points['recall'],
+                     label_points['precision'],
+                     label=[label_name])
+
+        # plot the dataset level
+        plot_filename = f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
+        if local_path is None:
+            save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
+            if not os.path.exists(os.path.dirname(save_path)):
+                os.makedirs(os.path.dirname(save_path))
+            plt.savefig(save_path)
+        else:
+            save_path = os.path.join(local_path, plot_filename)
+            plt.savefig(save_path)
+        plt.close()
+
+        print(f'saved labels precision recall plot to {save_path}')
         return save_path
 
     @staticmethod
@@ -445,15 +508,17 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         dataset_points['recall'] = dataset_plot_recall
         dataset_points['confidence'] = dataset_plot_confidence
 
+        dataset_df = pd.DataFrame(dataset_points).drop_duplicates()
+
         ##########################################
         # calculate label-level precision/recall #
         ##########################################
-        all_labels = {key: {} for key in dataset_points}
+        all_labels = pd.DataFrame(columns=dataset_df.columns)
 
-        # TODO FIX ME
-        label_points = {key: [] for key in dataset_points}
+        label_points = {key: {} for key in dataset_points}
+
         for label_name in list(set(label_names)):
-            label_detections = detections[detections.first_label == label_name].copy()
+            label_detections = detections.loc[(detections.first_label == label_name) | (detections.second_label == label_name)].copy()
             if label_detections.shape[0] == 0:
                 label_plot_precision = [0]
                 label_plot_recall = [0]
@@ -474,23 +539,20 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
                                                         precision=list(label_precision),
                                                         confidence=list(label_detections['second_confidence']))
 
-            label_points['iou_threshold'].append([iou_threshold] * len(label_plot_precision))
-            label_points['data'].append(['label'] * len(label_plot_precision))
-            label_points['label_name'].append([label_name] * len(label_plot_precision))
-            label_points['precision'].append(label_plot_precision)
-            label_points['recall'].append(label_plot_recall)
-            label_points['confidence'].append(label_plot_confidence)
+            label_points['iou_threshold'] = [iou_threshold] * len(label_plot_precision)
+            label_points['data'] = ['label'] * len(label_plot_precision)
+            label_points['label_name'] = [label_name] * len(label_plot_precision)
+            label_points['precision'] = label_plot_precision
+            label_points['recall'] = label_plot_recall
+            label_points['confidence'] = label_plot_confidence
 
-        for key in all_labels:
-            all_labels[key] = label_points[key][0]
+            label_df = pd.DataFrame(label_points).drop_duplicates()
+            all_labels = pd.concat([all_labels, label_df])
 
-        ###################
+        ##################
         # concat all data #
-        ###################
-        dataset_df = pd.DataFrame(dataset_points).drop_duplicates()
-        labels_df = pd.DataFrame(label_points).drop_duplicates()
-        plot_points = pd.concat([dataset_df,
-                                 labels_df])
+        ##################
+        plot_points = pd.concat([dataset_df, all_labels])
 
         return plot_points
 
@@ -639,10 +701,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
     #     return scores_df
 
 
-def create_faas():
-    pass
-
-
 if __name__ == '__main__':
     # create_faas()
     # project = dl.projects.get("feature vectors")
@@ -662,8 +720,8 @@ if __name__ == '__main__':
 
     import json
 
+    # from Or's project, which has a precision recall plot to compare
     dl.setenv('new-dev')
-
     dataset_id = '648f5926943352ccaddf0149'
     model_id = '648ffafe28146328fb4e96b3'
 
@@ -700,8 +758,8 @@ if __name__ == '__main__':
     labels = [label.tag for label in dataset.labels]
     save_path = ScoringAndMetrics.plot_precision_recall(plot_points=plot_points,
                                                         label_names=labels)
-    from pathlib import Path
-
-    plot_points.to_csv(Path(Path(save_path).parent, 'plot_points.csv'))
+    # from pathlib import Path
     #
-    print()
+    # plot_points.to_csv(Path(Path(save_path).parent, '.dataloop', 'plot_points.csv'))
+    # #
+    # print()
