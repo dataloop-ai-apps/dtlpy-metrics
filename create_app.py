@@ -12,7 +12,7 @@ subprocess.check_call('bumpversion patch --allow-dirty', shell=True)
 
 dpk = project.dpks.publish()
 
-app = project.apps.get(app_name=dpk.name)
+app = project.apps.get(app_name=dpk.name) # app_name = 'scoring-and-metrics'
 app.dpk_version = dpk.version
 app.update()
 

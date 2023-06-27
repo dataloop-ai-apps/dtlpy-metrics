@@ -1,5 +1,5 @@
 {
-  "version": "1.0.48",
+  "version": "1.0.52",
   "creator": "yaya.t@dataloop.ai",
   "name": "scoring-and-metrics",
   "displayName": "Scoring and metrics app",
@@ -10,22 +10,13 @@
     "repo": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
     "tag": ""
   },
-  "scope": "project",
+  "scope": "system",
   "components": {
     "pipelineNodes": [
       {
         "invoke": {
           "type": "function",
-          "namespace": "custom_nodes.calculate_consensus_score"
-        },
-        "categories": [
-          "data"
-        ]
-      },
-      {
-        "invoke": {
-          "type": "function",
-          "namespace": "custom_nodes.create_item_consensus_score"
+          "namespace": "scoring_functions.create_consensus_item_score"
         },
         "categories": [
           "data"
@@ -34,18 +25,22 @@
     ],
     "modules": [
       {
-        "name": "custom_nodes",
+        "name": "scoring_functions",
         "entryPoint": "dtlpymetrics/scoring.py",
         "className": "ScoringAndMetrics",
         "initInputs": [],
         "functions": [
           {
-            "name": "create_item_consensus_score",
+            "name": "create_consensus_item_score",
             "description": "Calculate the consensus score for each item with consensus",
             "input": [
               {
                 "type": "Item",
                 "name": "item"
+              },
+              {
+                "type": "Task",
+                "name": "consensus_task"
               }
             ],
             "output": [
@@ -56,36 +51,14 @@
             ],
             "displayIcon": "analytics",
             "displayName": "Create item consensus score"
-          },
-          {
-            "name": "calculate_consensus_score",
-            "description": "Calculate the consensus score for items in a task with consensus",
-            "input": [
-              {
-                "type": "Task",
-                "name": "consensus_task"
-              }
-            ],
-            "output": [
-              {
-                "type": "Dict",
-                "name": "score_summary"
-              },
-              {
-                "type": "Task",
-                "name": "consensus_task"
-              }
-            ],
-            "displayIcon": "task-filled",
-            "displayName": "Score consensus task"
           }
         ]
       }
     ],
     "services": [
       {
-        "name": "scores-and-metrics",
-        "moduleName": "custom_nodes",
+        "name": "scoring-and-metrics",
+        "moduleName": "scoring_functions",
         "runtime": {
           "podType": "regular-xs",
           "runnerImage": "gcr.io/viewo-g/piper/agent/runner/cpu/node14:latest",

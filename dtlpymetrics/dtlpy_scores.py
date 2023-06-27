@@ -195,4 +195,9 @@ def tests():
     print([d.id for d in dl_scores])
 
     scores.delete({'taskId': task.id,
-                   'itemId': item.id})
+                   'itemId': annotation.item.id})
+
+
+if __name__ == '__main__':
+    tests()
+

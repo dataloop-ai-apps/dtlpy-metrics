@@ -56,34 +56,12 @@ if __name__ == '__main__':
     project = dl.projects.get('feature vectors')
     dataset = project.datasets.get('waterfowl')
 
-    # clean up previous scores
-    # fsets = project.feature_sets.list()
-    # for fset in fsets:
-    #     if 'Consensus' in fset.name:
-    #         fset.delete()
-    #         print(f'{fset.name} deleted')
-    # project.feature_sets.list().print()
-    # fset = project.feature_sets.get('Consensus IOU')
-
-
     # create new scores for consensus task
     consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')  # 643be0e4bc2e4cb8b7c1a78d
-    consensus_scores = consensus_task.scores.list()[0]
 
-    consensus_scores.delete()
+    scores = ScoringAndMetrics.calculate_consensus_task_score(consensus_task)
 
-    new_scores = ScoringAndMetrics.calculate_consensus_score(consensus_task)
-
-    # # scoring example
-    # score = Score(type=ScoreType.ANNOTATION_IOU.value,
-    #               value=0.9,
-    #               entity_id=annotation.id,
-    #               task_id=task.id)
-    # print(score.to_json())
-    #
-    # scores = Scores(client_api=dl.client_api,
-    #                 project=project)
-    #
+    # print(scores.to_json())
     # dl_scores = scores.create([score])
     # print([d.id for d in dl_scores])
     #

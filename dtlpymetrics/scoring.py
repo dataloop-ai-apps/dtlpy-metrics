@@ -1,5 +1,7 @@
 import logging
 import os
+from typing import List
+
 import dtlpy as dl
 import numpy as np
 import pandas as pd
@@ -19,6 +21,7 @@ all_compare_types = [dl.AnnotationType.BOX,
 scorer = dl.AppModule(name='Scoring and metrics function',
                       description='Functions for calculating scores between annotations.'
                       )
+logger = logging.getLogger('scoring-and-metrics')
 
 
 @dl.Package.decorators.module(name='scoring-and-metrics',
@@ -34,7 +37,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
                                     outputs={"score_summary": dict,
                                              "consensus_task": dl.Task}
                                     )
-    def calculate_consensus_score(consensus_task: dl.Task):
+    def calculate_consensus_task_score(consensus_task: dl.Task):
         """
         Calculate consensus scores for all items in a consensus task
 
@@ -48,7 +51,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
         for item in items:
             if item.metadata['system']['refs'][0]['metadata']['status'] == 'consensus_done':
-                item = ScoringAndMetrics.create_item_consensus_score(item)
+                item = ScoringAndMetrics.create_consensus_item_score(item, consensus_task)
 
         score_summary = {}
 
@@ -66,56 +69,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         return score_summary, consensus_task
 
     @staticmethod
-    @dl.Package.decorators.function(display_name='Check scoring API',
-                                    inputs={"consensus_task": dl.Task},
-                                    outputs={"scores": Scores},
-                                    )
-    def check_consensus_scoring(consensus_task: dl.Task):
-        # delete old scores
-        # compare two sets of annotations
-        # create a bunch of scores
-        # declare score type
-        # return "scores" entity with ScoreType
-
-        # scores = Score(type=ScoreType.ANNOTATION_IOU.value,
-        #                value=0.9,
-        #                entity_id=annotation.id,
-        #                task_id=task.id)
-
-        # score_set = Score.create(scores)
-
-        # workaround for the task query returning all items, including hidden consensus clones
-        filters = dl.Filters()
-        filters.add(field='hidden', values=False)
-        items = consensus_task.get_items(filters=filters).all()
-
-        for item in items:
-            if item.metadata['system']['refs'][0]['metadata']['status'] == 'consensus_done':
-                item = ScoringAndMetrics.create_item_consensus_score(item)
-                annotations = item.annotations.list().all()
-
-
-
-
-        scores = []
-        score_sets = {key: {} for key in score_names}
-
-
-
-        # # this is the old way of uploading scores/features
-        # for score_name in score_names:
-        #     scores_sets.update({score_name: []})
-        #     feature_set = consensus_task.project.feature_sets.get(feature_set_name=f'Consensus {score_name}')
-        #
-        #     for feature in feature_set.features.list().all():
-        #         print(feature.value[0])
-        #         score_summary[score_name].append(feature.value[0])
-        #
-        #     print(f'Consensus average {score_name}: {np.mean(score_summary[score_name])}')
-
-        return scores
-
-    @staticmethod
     def calculate_dataset_scores(dataset1: dl.Dataset, dataset2: dl.Dataset):
         # annotators = []
         # assignments = consensus_task.assignments.list()
@@ -130,35 +83,44 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         # for item in items:
         #     # TODO is there a cleaner way to do this?
         #     if item.metadata['system']['refs'][0]['metadata']['status'] == 'consensus_done':
-        #         item = ScoringAndMetrics.create_item_consensus_score(item)
+        #         item = ScoringAndMetrics.create_consensus_item_score(item, consensus_task)
 
-        # return featureset id?
+        # return scores?
         return dataset1, dataset2
 
     @staticmethod
     def calculate_annotator_scores():
-        ### Call create_annotation_scores, get the feature set, and then group by annotator
+        ### Call create_annotation_scores, get annotation scores and group by annotator
         # this requires being able to query scores by annotator, which is currently not supported by R&D
 
         return
 
     @staticmethod
     @dl.Package.decorators.function(display_name='Create item consensus score',
-                                    inputs={"item": "Item"},
+                                    inputs={"item": "Item",
+                                            "task": "Task",
+                                            "assignment": "Assignment"},
                                     outputs={"item": "Item"}
                                     )
-    def create_item_consensus_score(item: dl.Item) -> dl.Item:
-        ################################
-        # find task ID to get the task #
-        ################################
+    def create_consensus_item_score(item: dl.Item,
+                                    consensus_task: dl.Task) -> dl.Item:
+        """
+        Create a consensus score for an item
 
-        metadata_list = item.metadata['system']['refs']
-        for metadata_dict in metadata_list:
-            if metadata_dict['type'] == 'task':
-                task_id = metadata_dict['id']
-                break
-
-        consensus_task = dl.tasks.get(task_id=task_id)
+        The first set of annotations is considered the reference set.
+        :param item:
+        :param task:
+        :return: item
+        """
+        # ################################
+        # # find task ID to get the task #
+        # ################################
+        #
+        # metadata_list = item.metadata['system']['refs']
+        # for metadata_dict in metadata_list:
+        #     if metadata_dict['type'] == 'task':
+        #         task_id = metadata_dict['id']
+        #         break
 
         ##################################
         # collect annotators to group by #
@@ -180,16 +142,42 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             annots_by_annotator[annotation.creator].append(annotation)
 
         # do pairwise comparisons of each annotator for all of their annotations on the item
+        annotation_scores = []
         for i_annotator in range(n_annotators):
             for j_annotator in range(0, i_annotator + 1):
                 annot_collection_1 = annots_by_annotator[annotators[i_annotator]]
                 annot_collection_2 = annots_by_annotator[annotators[j_annotator]]
 
-                scores = ScoringAndMetrics.create_annotation_scores(annot_collection_1=annot_collection_1,
-                                                                    annot_collection_2=annot_collection_2,
-                                                                    gt_is_first=False)
+                pairwise_scores = ScoringAndMetrics.create_annotation_scores(annot_collection_1=annot_collection_1,
+                                                                             annot_collection_2=annot_collection_2)
+        annotation_scores.append(pairwise_scores)
 
-        return scores
+        # calculate item overall score as the average of all scores
+        item_score_total = 0
+        for annotation_score in annotation_scores:
+            item_score_total += annotation_score.value
+
+        #############################
+        # upload scores to platform #
+        #############################
+
+        # clean previous scores first
+        dl_scores = Scores(client_api=dl.client_api)
+        dl_scores.delete(context={'itemId': item.id,
+                                  'taskId': consensus_task.id})
+        dl_annot_scores = Scores.create(annotation_scores)
+        logger.info(f'Uploaded {len(dl_annot_scores)} annotation scores to platform.')
+
+        item_score = Score(type=ScoreType.ITEM_OVERALL,
+                           value=item_score_total / len(annotation_scores),
+                           entity_id=item.id,
+                           task_id=consensus_task.id,
+                           item_id=item.id,
+                           dataset_id=item.dataset.id)
+        dl_item_score = Scores.create([item_score])
+        logger.info(f'Uploaded overall score for item {item.id} to platform.')
+
+        return item
 
     @staticmethod
     def create_model_score(dataset: dl.Dataset = None,
@@ -297,10 +285,12 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
                                     outputs={})
     def create_annotation_scores(annot_collection_1,
                                  annot_collection_2,
-                                 gt_is_first=True,
                                  task_type=None,
-                                 compare_types=None) -> dict:
+                                 compare_types=None) -> List[Score]:
         """
+
+        The first annotation collection is considered as the reference, and the second set is the test.
+        If we switch the order of the annotation collections, the scores remain the same but the user id context changes.
 
         :param annot_collection_1:
         :param annot_collection_2:
@@ -315,25 +305,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         if task_type != 'compare projects':
             project = annot_collection_1[0].item.project
             dataset = annot_collection_1[0].item.dataset
-        score_set_prefix = 'Consensus ' if task_type == 'consensus' else ''
-
-        scores = []
-
-        # TODO: update when feature vectors are working
-        # score_sets = {}
-        #
-        # for score_name in score_names:
-        #     try:
-        #         feature_set = project.feature_sets.get(feature_set_name=f'{feature_set_prefix}{score_name}')
-        #     except dl.exceptions.NotFound:
-        #         # create the feature set for each score type
-        #         feature_set = project.feature_sets.create(name=f'{feature_set_prefix}{score_name}',
-        #                                                   set_type='scores',
-        #                                                   # refs require data type
-        #                                                   data_type=dl.FeatureDataType.ANNOTATION_SCORE,
-        #                                                   entity_type=dl.FeatureEntityType.ANNOTATION,
-        #                                                   size=1)
-        #     score_sets.update({score_name: feature_set})
 
         # compare bounding box annotations
         results = measure_annotations(
@@ -342,56 +313,29 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             compare_types=[compare_types],
             ignore_labels=False)
 
+        all_results = pd.DataFrame()
         for compare_type in compare_types:
             try:
                 results_df = results[compare_type].to_df()
+                all_results = pd.concat([all_results, results_df])
             except KeyError:
                 continue
 
-        for i, row in results_df.iterrows():
-            for score, feature_set in score_sets.items():
-                dl_score = Scores.create(value=[row[results_columns[score.lower()]]],
-                                         project_id=project.id,
-                                         entity_id=row['second_id'],
-                                         refs={'item': row['item_id'],
-                                               'annotator': row['second_creator'],
-                                               'dataset': dataset.id,
-                                               'relative': row['first_id'],
-                                               })
+        scores = []
+        # TODO add support for the user to choose which score types to save
+        score_types = [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]
 
-        # TODO: update when feature vectors are working
-        ###################
-        # Create features #
-        ###################
-        # for i, row in results_df.iterrows():
-        #     for score, feature_set in score_sets.items():
-        #         if row['first_id'] is not None:
-        #             feature1 = feature_set.features.create(value=[row[results_columns[score.lower()]]],
-        #                                                    project_id=project.id,
-        #                                                    entity_id=row['first_id'],
-        #                                                    refs={'item': row['item_id'],
-        #                                                          'annotator': row['first_creator'],
-        #                                                          'dataset': dataset.id,
-        #                                                          'relative': row['second_id'],
-        #                                                          })
-        #         if row['second_id'] is not None:
-        #             feature2 = feature_set.features.create(value=[row[results_columns[score.lower()]]],
-        #                                                    project_id=project.id,
-        #                                                    entity_id=row['second_id'],
-        #                                                    refs={'item': row['item_id'],
-        #                                                          'annotator': row['second_creator'],
-        #                                                          'dataset': dataset.id,
-        #                                                          'relative': row['first_id'],
-        #                                                          })
+        for i, row in all_results.iterrows():
+            for score_type in score_types:
+                score = Score(type=score_type.value,
+                              value=row[results_columns[score_type.value.lower()]],
+                              entity_id=row['second_id'],
+                              user_id=row['second_user_id'],
+                              item_id=row['item_id'],
+                              dataset_id=row['dataset_id'])
+                scores.append(score)
+
         return scores
-
-    @staticmethod
-    def consensus_items_summary(feature_set):
-        # TODO should receive items, and query by that, not by feature set
-
-        # go through each feature, average the score
-        features = feature_set.features.list().all()
-        return np.mean([feature.value for feature in features])
 
     @staticmethod
     def plot_precision_recall(plot_points: pd.DataFrame,
