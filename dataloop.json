@@ -8,7 +8,7 @@
   "source": {
     "type": "git",
     "repo": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
-    "tag": ""
+    "tag": "main"
   },
   "scope": "system",
   "components": {
