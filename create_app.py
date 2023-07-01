@@ -5,7 +5,7 @@ env = 'rc'
 dl.setenv(env)
 
 # project = dl.projects.get(project_name='Model mgmt demo')
-project = dl.projects.get(project_name='feature vectors')
+project = dl.projects.get(project_name='DataloopApps')
 
 # install
 subprocess.check_call('bumpversion patch --allow-dirty', shell=True)
