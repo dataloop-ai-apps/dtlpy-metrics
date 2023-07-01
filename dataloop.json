@@ -1,5 +1,5 @@
 {
-    "version": "1.0.54",
+    "version": "1.0.55",
     "creator": "yaya.t@dataloop.ai",
     "name": "scoring-and-metrics",
     "displayName": "Scoring and metrics app",
@@ -73,7 +73,7 @@
                     "singleAgent": false,
                     "autoscaler": {
                         "type": "rabbitmq",
-                        "minReplicas": 1,
+                        "minReplicas": 0,
                         "maxReplicas": 2,
                         "queueLength": 10
                     },
