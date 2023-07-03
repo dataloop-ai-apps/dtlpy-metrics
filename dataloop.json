@@ -1,5 +1,5 @@
 {
-    "version": "1.0.58",
+    "version": "1.0.59",
     "creator": "yaya.t@dataloop.ai",
     "name": "scoring-and-metrics",
     "displayName": "Scoring and metrics app",
@@ -42,10 +42,6 @@
                             {
                                 "type": "Item",
                                 "name": "item"
-                            },
-                            {
-                                "type": "Task",
-                                "name": "consensus_task"
                             }
                         ],
                         "output": [
