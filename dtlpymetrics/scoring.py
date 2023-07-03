@@ -97,19 +97,17 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
     @staticmethod
     @dl.Package.decorators.function(display_name='Create item consensus score',
-                                    inputs={"item": "Item",
-                                            "task": "Task",
-                                            "assignment": "Assignment"},
+                                    inputs={"item": "Item"},
                                     outputs={"item": "Item"}
                                     )
     def create_consensus_item_score(item: dl.Item,
-                                    consensus_task: dl.Task) -> dl.Item:
+                                    context: dl.Context = None) -> dl.Item:
         """
         Create a consensus score for an item
 
         The first set of annotations is considered the reference set.
         :param item:
-        :param task:
+        :param context:
         :return: item
         """
         # ################################
@@ -126,6 +124,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         # collect annotators to group by #
         ##################################
         annotators = []
+        consensus_task = context.task
         assignments = consensus_task.assignments.list()
         for assignment in assignments:
             annotators.append(assignment.annotator)
