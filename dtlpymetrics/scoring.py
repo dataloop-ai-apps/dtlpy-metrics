@@ -149,12 +149,13 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
                 pairwise_scores = ScoringAndMetrics.create_annotation_scores(annot_collection_1=annot_collection_1,
                                                                              annot_collection_2=annot_collection_2)
-        annotation_scores.append(pairwise_scores)
+                annotation_scores.append(pairwise_scores)
 
         # calculate item overall score as the average of all scores
         item_score_total = 0
-        for annotation_score in annotation_scores:
-            item_score_total += annotation_score.value
+        for pairwise_scores in annotation_scores:
+            for annotation_score in pairwise_scores:
+                item_score_total += annotation_score.value
 
         #############################
         # upload scores to platform #
@@ -164,7 +165,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         dl_scores = Scores(client_api=dl.client_api)
         dl_scores.delete(context={'itemId': item.id,
                                   'taskId': consensus_task.id})
-        dl_annot_scores = Scores.create(annotation_scores)
+        dl_annot_scores = dl_scores.create(annotation_scores)
         logger.info(f'Uploaded {len(dl_annot_scores)} annotation scores to platform.')
 
         item_score = Score(type=ScoreType.ITEM_OVERALL,
@@ -173,7 +174,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
                            task_id=consensus_task.id,
                            item_id=item.id,
                            dataset_id=item.dataset.id)
-        dl_item_score = Scores.create([item_score])
+        dl_item_score = dl_scores.create([item_score])
         logger.info(f'Uploaded overall score for item {item.id} to platform.')
 
         return item
