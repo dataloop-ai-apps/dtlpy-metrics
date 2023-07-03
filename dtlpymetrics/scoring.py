@@ -301,10 +301,6 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         if compare_types is None:
             compare_types = all_compare_types
 
-        if task_type != 'compare projects':
-            project = annot_collection_1[0].item.project
-            dataset = annot_collection_1[0].item.dataset
-
         # compare bounding box annotations
         results = measure_annotations(
             annotations_set_one=annot_collection_1,
