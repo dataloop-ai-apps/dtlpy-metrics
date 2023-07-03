@@ -128,6 +128,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         assignments = consensus_task.assignments.list()
         for assignment in assignments:
             annotators.append(assignment.annotator)
+        logger.info(f'Starting scoring for annotators: {annotators}')
 
         #################################
         # sort annotations by annotator #
@@ -144,6 +145,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         annotation_scores = []
         for i_annotator in range(n_annotators):
             for j_annotator in range(0, i_annotator + 1):
+                logger.info(f'Comparing: {annotators[i_annotator]} with: {annotators[j_annotator]}')
                 annot_collection_1 = annots_by_annotator[annotators[i_annotator]]
                 annot_collection_2 = annots_by_annotator[annotators[j_annotator]]
 
@@ -164,11 +166,16 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         dl_scores = Scores(client_api=dl.client_api)
         dl_scores.delete(context={'itemId': item.id,
                                   'taskId': consensus_task.id})
-        dl_annot_scores = dl_scores.create(annotation_scores)
-        logger.info(f'Uploaded {len(dl_annot_scores)} annotation scores to platform.')
+        if len(annotation_scores) == 0:
+            item_score = 0
+            logger.info(f'No scores.')
+        else:
+            dl_annot_scores = dl_scores.create(annotation_scores)
+            item_score = item_score_total / len(annotation_scores)
+            logger.info(f'Uploaded {len(dl_annot_scores)} annotation scores to platform.')
 
         item_score = Score(type=ScoreType.ITEM_OVERALL,
-                           value=item_score_total / len(annotation_scores),
+                           value=item_score,
                            entity_id=item.id,
                            task_id=consensus_task.id,
                            item_id=item.id,
