@@ -107,7 +107,7 @@ class Scores:
 
         success, response = self._client_api.gen_request(req_type="delete",
                                                          path=self.URL,
-                                                         json_req=context)
+                                                         json_req={'context': context})
 
         # check response
         if success:
