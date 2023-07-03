@@ -174,7 +174,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
             item_score = item_score_total / len(annotation_scores)
             logger.info(f'Uploaded {len(dl_annot_scores)} annotation scores to platform.')
 
-        item_score = Score(type=ScoreType.ITEM_OVERALL,
+        item_score = Score(type=ScoreType.ITEM_OVERALL.value,
                            value=item_score,
                            entity_id=item.id,
                            task_id=consensus_task.id,
