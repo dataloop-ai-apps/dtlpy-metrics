@@ -149,13 +149,12 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
                 pairwise_scores = ScoringAndMetrics.create_annotation_scores(annot_collection_1=annot_collection_1,
                                                                              annot_collection_2=annot_collection_2)
-                annotation_scores.append(pairwise_scores)
+                annotation_scores.extend(pairwise_scores)
 
         # calculate item overall score as the average of all scores
         item_score_total = 0
-        for pairwise_scores in annotation_scores:
-            for annotation_score in pairwise_scores:
-                item_score_total += annotation_score.value
+        for annotation_score in annotation_scores:
+            item_score_total += annotation_score.value
 
         #############################
         # upload scores to platform #
