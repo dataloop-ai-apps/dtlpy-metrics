@@ -123,31 +123,30 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         ##################################
         # collect annotators to group by #
         ##################################
-        annotators = []
         consensus_task = context.task
         assignments = consensus_task.assignments.list()
-        for assignment in assignments:
-            annotators.append(assignment.annotator)
-        logger.info(f'Starting scoring for annotators: {annotators}')
 
         #################################
         # sort annotations by annotator #
         #################################
         annotations = item.annotations.list()
-        n_annotators = len(annotators)
-        annots_by_annotator = {annotator: [] for annotator in annotators}
+        annots_by_assignment = {assignment.id: [] for assignment in assignments}
+        logger.info(f'Starting scoring for assignments: {annots_by_assignment.keys()}')
 
-        # group by some field (e.g. 'creator' or 'assignment id'), here we use annotator/creator
+        # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
         for annotation in annotations:
-            annots_by_annotator[annotation.creator].append(annotation)
-
+            assignment_id = annotation.metadata['system'].get('assignmentId')
+            if assignment_id is None:
+                continue
+            annots_by_assignment[assignment_id].append(annotation)
+        n_assignments = len(annots_by_assignment)
         # do pairwise comparisons of each annotator for all of their annotations on the item
         annotation_scores = []
-        for i_annotator in range(n_annotators):
-            for j_annotator in range(0, i_annotator + 1):
-                logger.info(f'Comparing: {annotators[i_annotator]} with: {annotators[j_annotator]}')
-                annot_collection_1 = annots_by_annotator[annotators[i_annotator]]
-                annot_collection_2 = annots_by_annotator[annotators[j_annotator]]
+        for i_assignment in range(n_assignments):
+            for j_assignment in range(0, i_assignment + 1):
+                logger.info(f'Comparing: {assignments[i_assignment].name!r} with: {assignments[j_assignment].name!r}')
+                annot_collection_1 = annots_by_assignment[assignments[i_assignment].id]
+                annot_collection_2 = annots_by_assignment[assignments[j_assignment].id]
 
                 pairwise_scores = ScoringAndMetrics.create_annotation_scores(annot_collection_1=annot_collection_1,
                                                                              annot_collection_2=annot_collection_2)
@@ -312,7 +311,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
         results = measure_annotations(
             annotations_set_one=annot_collection_1,
             annotations_set_two=annot_collection_2,
-            compare_types=[compare_types],
+            compare_types=compare_types,
             ignore_labels=False)
 
         all_results = pd.DataFrame()
@@ -686,21 +685,7 @@ class ScoringAndMetrics(dl.BaseServiceRunner):
 
 
 if __name__ == '__main__':
-    # create_faas()
-    # project = dl.projects.get("feature vectors")
-    # codebase = project.codebases.pack()
-    #
-    # module = dl.PackageModule.from_entry_point(entry_point='scoring.py')
-    #
-    # package_name = 'consensus_scoring'
-    # package = project.packages.push(package_name=package_name,
-    #                                 package_type='ml',
-    #                                 codebase=codebase,  # can also use src_path
-    #                                 modules=[module],
-    #                                 is_global=False)
-    # service_config=service_config,
-    # slots=slots,
-    # metadata=metadata)
+
 
     import json
 

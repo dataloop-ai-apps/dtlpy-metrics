@@ -1,5 +1,5 @@
 {
-    "version": "1.0.60",
+    "version": "1.0.59",
     "creator": "yaya.t@dataloop.ai",
     "name": "scoring-and-metrics",
     "displayName": "Scoring and metrics app",
@@ -34,9 +34,9 @@
                 "entryPoint": "dtlpymetrics/scoring.py",
                 "className": "ScoringAndMetrics",
                 "initInputs": [],
-        "versions": {
-          "dtlpy": "1.78.17"
-        },
+                "versions": {
+                    "dtlpy": " 1.80.4"
+                },
                 "functions": [
                     {
                         "name": "create_consensus_item_score",
