@@ -338,15 +338,15 @@ def upload_task_annotation_scores(item: dl.Item,
             score.item_id = item.id
             score.relative = assignee2_id
 
-        # a second set of scores associated with the first annotator/assignee
-        for score2 in scores_2:
-            score2.task_id = task_id
-            score2.user_id = assignee2_id
-            score2.item_id = item.id
-            score2.relative = assignee1_id
+        # # a second set of scores associated with the first annotator/assignee
+        # for score2 in scores_2:
+        #     score2.task_id = task_id
+        #     score2.user_id = assignee2_id
+        #     score2.item_id = item.id
+        #     score2.relative = assignee1_id
 
         dl_scores.create(scores)
-        dl_scores.create(scores_2)
+        # dl_scores.create(scores_2)
 
         logger.info(f'Uploaded {len(scores) + len(scores_2)} scores to platform.')
 
