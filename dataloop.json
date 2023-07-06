@@ -1,5 +1,5 @@
 {
-    "version": "1.0.65",
+    "version": "1.0.66",
     "creator": "yaya.t@dataloop.ai",
     "name": "scoring-and-metrics",
     "displayName": "Scoring and metrics app",
@@ -32,7 +32,7 @@
             {
                 "name": "scoring_functions",
                 "entryPoint": "dtlpymetrics/scoring.py",
-                "className": "ScoringAndMetrics",
+                "className": "scorer",
                 "initInputs": [],
                 "versions": {
                     "dtlpy": "1.80.4"
