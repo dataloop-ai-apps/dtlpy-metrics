@@ -50,7 +50,7 @@ def calculate_consensus_task_score(consensus_task: dl.Task):
                 continue
             elif item_task.get('metadata', None).get('status', None) == 'consensus_done':
                 logging.info('Calculating score for item {}'.format(item.id))
-                create_consensus_item_score(item=item, context=consensus_task)
+                create_consensus_item_score(item=item, task=None)
 
     return consensus_task
 
@@ -61,6 +61,7 @@ def calculate_consensus_task_score(consensus_task: dl.Task):
                      outputs={"item": "Item"}
                      )
 def create_consensus_item_score(item: dl.Item,
+                                task:dl.Task=None,
                                 context: dl.Context = None) -> dl.Item:
     """
     Create a consensus score for an item in a consensus task.
@@ -73,10 +74,8 @@ def create_consensus_item_score(item: dl.Item,
     ####################################
     # collect assignments for grouping #
     ####################################
-    if isinstance(context, dl.Task):
-        consensus_task = context
-    else:
-        raise ValueError(f'Context must be a Task entity, not {type(context)}')
+    if task is None:
+        consensus_task = context.task
     assignments = consensus_task.assignments.list()
 
     #################################
