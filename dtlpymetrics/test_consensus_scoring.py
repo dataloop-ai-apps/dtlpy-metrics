@@ -4,9 +4,10 @@ import dtlpy as dl
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from dtlpymetrics.metrics_utils import measure_annotations
-from dtlpymetrics.scoring import ScoringAndMetrics
+from dtlpymetrics.scoring import calculate_consensus_task_score
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
+import logging
+
 
 def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, local_path=None):
     import os
@@ -52,14 +53,17 @@ def plot_matrix(item_title, filename, matrix_to_plot, axis_labels, item=None, lo
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level='INFO')
+
     dl.setenv('rc')
-    project = dl.projects.get('feature vectors')
-    dataset = project.datasets.get('waterfowl')
-
+    # project = dl.projects.get('feature vectors')
+    project = dl.projects.get('new scoring 6')
+    # dataset = project.datasets.get('waterfowl')
     # create new scores for consensus task
-    consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')  # 643be0e4bc2e4cb8b7c1a78d
+    # consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')  # 644a307ae052f434dab98ff3
 
-    scores = ScoringAndMetrics.calculate_consensus_task_score(consensus_task)
+    consensus_task = project.tasks.get(task_id='64a523cad0c94374c31c332f')
+    consensus_task = calculate_consensus_task_score(consensus_task)
 
     # print(scores.to_json())
     # dl_scores = scores.create([score])

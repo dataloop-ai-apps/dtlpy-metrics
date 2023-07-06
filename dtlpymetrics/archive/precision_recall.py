@@ -243,7 +243,7 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     # plot the dataset level
     plot_filename = f"dataset_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
     if local_path is None:
-        save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
+        save_path = os.path.join(os.getcwd(), '../.dataloop', plot_filename)
         if not os.path.exists(os.path.dirname(save_path)):
             os.makedirs(os.path.dirname(save_path))
         plt.savefig(save_path)
@@ -278,7 +278,7 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     # plot the dataset level
     plot_filename = f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
     if local_path is None:
-        save_path = os.path.join(os.getcwd(), '.dataloop', plot_filename)
+        save_path = os.path.join(os.getcwd(), '../.dataloop', plot_filename)
         if not os.path.exists(os.path.dirname(save_path)):
             os.makedirs(os.path.dirname(save_path))
         plt.savefig(save_path)
@@ -293,6 +293,8 @@ def plot_precision_recall(plot_points: pd.DataFrame,
 
 if __name__ == '__main__':
     dl.setenv('new-dev')
+    if dl.token_expired():
+        dl.login()
 
     dataset_id = '648f333a943352d180df011a'
     model_id = '649076c45a9c968a5c32ed65'

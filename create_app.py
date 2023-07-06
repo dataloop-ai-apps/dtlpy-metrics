@@ -11,10 +11,11 @@ project = dl.projects.get(project_name='DataloopApps')
 subprocess.check_call('bumpversion patch --allow-dirty', shell=True)
 
 dpk = project.dpks.publish()
-#
+
 # app = project.apps.get(app_name=dpk.name) # app_name = 'scoring-and-metrics'
-# app.dpk_version = dpk.version
-# app.update()
+app = dl.apps.get(app_id='64a51cdff44abc96fb744b7a')
+app.dpk_version = dpk.version
+app.update()
 
 
 # app.uninstall()

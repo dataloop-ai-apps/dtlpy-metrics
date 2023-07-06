@@ -349,7 +349,7 @@ class Evaluator:
         pvals = []
         pvals.append(0)
         [pvals.append(e) for e in rhoInterp]
-        pvals.append(0)
+        pvals.append(rhoInterp[-1])
         # rhoInterp = rhoInterp[::-1]
         cc = []
         for i in range(len(rvals)):

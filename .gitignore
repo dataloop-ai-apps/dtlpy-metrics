@@ -322,3 +322,4 @@ artifacts
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,pycharm,visualstudiocode
 .dataloop/.output/
 .dataloop/
+/code_cemetery/

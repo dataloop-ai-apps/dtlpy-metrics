@@ -2,11 +2,11 @@ import logging
 import uuid
 import numpy as np
 import pandas as pd
-from .archive import metrics
+from . import metrics
 
 from dtlpy import entities
 
-logger = logging.getLogger(name='dtlpy')
+logger = logging.getLogger(name='dtlpymetrics')
 
 
 def mean_or_nan(arr):

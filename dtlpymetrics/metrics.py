@@ -5,7 +5,7 @@ import datetime
 
 from dtlpy import entities
 
-logger = logging.getLogger(name='dtlpy')
+logger = logging.getLogger(name='dtlpymetrics')
 
 
 class Results:
