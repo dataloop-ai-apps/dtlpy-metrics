@@ -61,7 +61,7 @@ def calculate_consensus_task_score(consensus_task: dl.Task):
                      outputs={"item": "Item"}
                      )
 def create_consensus_item_score(item: dl.Item,
-                                task:dl.Task=None,
+                                task: dl.Task = None,
                                 context: dl.Context = None) -> dl.Item:
     """
     Create a consensus score for an item in a consensus task.
@@ -325,9 +325,11 @@ def upload_task_annotation_scores(annotations: List[dl.Annotation],
         annotation_to_item_map = {}
         for annotation in annotations:
             annotation_to_item_map[annotation.id] = annotation.item_id
-            dl_scores.delete(context={'annotationId': annotation.id,
-                                      'itemId':annotation.item_id,
-                                      'taskId': task_id})
+            dl_scores.delete(context={
+                # 'annotationId': annotation.id,
+                'itemId': annotation.item_id,
+                'taskId': task_id}
+            )
 
         # update scores with context
         scores_2 = scores.copy()
