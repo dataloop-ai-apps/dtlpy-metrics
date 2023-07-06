@@ -111,7 +111,7 @@ def create_consensus_item_score(item: dl.Item,
             if annotation_scores is None:
                 logger.info(f'No scores to upload.')
             else:
-                upload_task_annotation_scores(annotations=annotation_scores,
+                upload_task_annotation_scores(item=item,
                                               scores=annotation_scores,
                                               assignee1_id=assignments[i_assignment].id,
                                               assignee2_id=assignments[j_assignment].id,
@@ -299,7 +299,7 @@ def calculate_annotation_scores(annot_collection_1,
     return annotation_scores
 
 
-def upload_task_annotation_scores(annotations: List[dl.Annotation],
+def upload_task_annotation_scores(item: dl.Item,
                                   scores: List[Score],
                                   task_id: str,
                                   assignee1_id: str,
@@ -307,7 +307,7 @@ def upload_task_annotation_scores(annotations: List[dl.Annotation],
     """
     Uploads annotation scores to the platform for tasks. This includes two sets of scores with references for each annotator.
 
-    :param annotations: list of annotations
+    :param item: list of annotations
     :param scores: list of scores
     :param task_id: task id
     :param assignee1_id: first annotator id
@@ -322,14 +322,12 @@ def upload_task_annotation_scores(annotations: List[dl.Annotation],
         ############################
 
         dl_scores = Scores(client_api=dl.client_api)
-        annotation_to_item_map = {}
-        for annotation in annotations:
-            annotation_to_item_map[annotation.id] = annotation.item_id
-            dl_scores.delete(context={
-                # 'annotationId': annotation.id,
-                'itemId': annotation.item.id,
-                'taskId': task_id}
-            )
+
+        dl_scores.delete(context={
+            # 'annotationId': annotation.id,
+            'itemId': item.id,
+            'taskId': task_id}
+        )
 
         # update scores with context
         scores_2 = scores.copy()
@@ -337,14 +335,14 @@ def upload_task_annotation_scores(annotations: List[dl.Annotation],
         for score in scores:
             score.task_id = task_id
             score.user_id = assignee1_id
-            score.item_id = annotation_to_item_map[score.entity_id]
+            score.item_id = item.id
             score.relative = assignee2_id
 
         # a second set of scores associated with the first annotator/assignee
         for score2 in scores_2:
             score2.task_id = task_id
             score2.user_id = assignee2_id
-            score2.item_id = annotation_to_item_map[score2.entity_id]
+            score2.item_id = item.id
             score2.relative = assignee1_id
 
         dl_scores.create(scores)
