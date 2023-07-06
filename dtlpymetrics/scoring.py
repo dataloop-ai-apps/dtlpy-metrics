@@ -97,6 +97,7 @@ def create_consensus_item_score(item: dl.Item,
     annotation_scores = []  # TODO change this var to "assignment_scores"
     for i_assignment in range(n_assignments):
         for j_assignment in range(0, i_assignment + 1):
+            annotation_scores = []  # TODO change this var to "assignment_scores"
             logger.info(
                 f'Comparing annotator: {assignments[i_assignment].annotator!r} with annotator: {assignments[j_assignment].id!r}')
             annot_collection_1 = annots_by_assignment[assignments[i_assignment].id]
@@ -106,15 +107,15 @@ def create_consensus_item_score(item: dl.Item,
                                                           annot_collection_2=annot_collection_2)
             annotation_scores.extend(pairwise_scores)
 
-    # upload annotation scores
-    if annotation_scores is None:
-        logger.info(f'No scores to upload.')
-    else:
-        upload_task_annotation_scores(annotations=annotation_scores,
-                                      scores=annotation_scores,
-                                      assignee1_id=assignments[0].id,
-                                      assignee2_id=assignments[1].id,
-                                      task_id=consensus_task.id)
+            # upload annotation scores
+            if annotation_scores is None:
+                logger.info(f'No scores to upload.')
+            else:
+                upload_task_annotation_scores(annotations=annotation_scores,
+                                              scores=annotation_scores,
+                                              assignee1_id=assignments[i_assignment].id,
+                                              assignee2_id=assignments[j_assignment].id,
+                                              task_id=consensus_task.id)
 
     # calculate overall item score as the average of all scores
     item_score_total = 0
