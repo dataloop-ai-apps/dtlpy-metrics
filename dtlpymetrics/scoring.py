@@ -327,7 +327,7 @@ def upload_task_annotation_scores(annotations: List[dl.Annotation],
             annotation_to_item_map[annotation.id] = annotation.item_id
             dl_scores.delete(context={
                 # 'annotationId': annotation.id,
-                'itemId': annotation.item_id,
+                'itemId': annotation.item.id,
                 'taskId': task_id}
             )
 
