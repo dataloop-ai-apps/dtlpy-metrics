@@ -105,7 +105,9 @@ def create_consensus_item_score(item: dl.Item,
             annot_collection_2 = annots_by_assignment[assignments[j_assignment].id]
 
             pairwise_scores = calculate_annotation_scores(annot_collection_1=annot_collection_1,
-                                                          annot_collection_2=annot_collection_2)
+                                                          annot_collection_2=annot_collection_2,
+                                                          ignore_labels=True,
+                                                          match_threshold=0.01)
             # update scores with context
             for score in pairwise_scores:
                 annotation = dl.annotations.get(annotation_id=score.entity_id)
@@ -113,6 +115,7 @@ def create_consensus_item_score(item: dl.Item,
                 score.task_id = task.id
                 score.assignment_id = assignments[j_assignment].id
                 score.item_id = item.id
+                # print(score.print())  # DEBUG
 
             scores_list.extend(pairwise_scores)
 
@@ -121,7 +124,8 @@ def create_consensus_item_score(item: dl.Item,
     #############################
     if len(scores_list) == 0:
         item_score_value = 0
-        logger.info(f'No annotation scores to upload. Check that you have annotations from each assignee of the same type.')
+        logger.info(
+            f'No annotation scores to upload. Check that you have annotations from each assignee of the same type.')
     else:
         item_score_value = np.sum([score.value for score in scores_list]) / len(scores_list)
 
@@ -134,7 +138,7 @@ def create_consensus_item_score(item: dl.Item,
     scores_list.append(item_score)
 
     # clean previous scores before creating
-    logger.info(f'About to delete all scores with context itemID{item.id} and taskID {task.id}')
+    logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
     dl_scores = Scores(client_api=dl.client_api)
     dl_scores.delete(context={'itemId': item.id,
                               'taskId': task.id})
@@ -249,8 +253,9 @@ def create_model_score(dataset: dl.Dataset = None,
 def calculate_annotation_scores(annot_collection_1,
                                 annot_collection_2,
                                 compare_types=None,
-                                score_types=ScoreType.ANNOTATION_LABEL,
-                                ignore_labels=False) -> List[Score]:
+                                score_types=[ScoreType.ANNOTATION_LABEL, ScoreType.ANNOTATION_IOU],
+                                ignore_labels=False,
+                                match_threshold=0.5) -> List[Score]:
     """
     Creates scores for comparing two annotation lists.
 
@@ -273,7 +278,8 @@ def calculate_annotation_scores(annot_collection_1,
         annotations_set_one=annot_collection_1,
         annotations_set_two=annot_collection_2,
         compare_types=compare_types,
-        ignore_labels=ignore_labels)
+        ignore_labels=ignore_labels,
+        match_threshold=match_threshold)
 
     all_results = pd.DataFrame()
     for compare_type in compare_types:
@@ -282,9 +288,9 @@ def calculate_annotation_scores(annot_collection_1,
             all_results = pd.concat([all_results, results_df])
         except KeyError:
             continue
+    # all_results.to_csv('all_results.csv') # DEBUG
 
     annotation_scores = []
-
     for i, row in all_results.iterrows():
         for score_type in score_types:
             if row['second_id'] is None:
@@ -295,7 +301,7 @@ def calculate_annotation_scores(annot_collection_1,
                                 entity_id=row['second_id'],
                                 relative=row['first_id'])
             annotation_scores.append(annot_score)
-
+            # print(f'creating score type{score_type}') # DEBUG
     return annotation_scores
 
 

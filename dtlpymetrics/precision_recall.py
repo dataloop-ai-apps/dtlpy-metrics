@@ -312,7 +312,7 @@ def eleven_point_curve(recall: list, precision: list, confidence: list):
 def calc_confusion_matrix(dataset_id: str,
                           model_id: str,
                           metric: str,
-                          show_unmatched=True):
+                          show_unmatched=True) -> pd.DataFrame:
     """
     Calculate confusion matrix for a given model and metric
 

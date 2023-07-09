@@ -65,8 +65,13 @@ if __name__ == '__main__':
     # consensus_task = project.tasks.get(task_id='64a523cad0c94374c31c332f')
     # consensus_task = calculate_consensus_task_score(consensus_task)
 
-    item = dl.items.get(item_id='64a9b634a1198616d9dfc1bd')
-    task = dl.tasks.get(task_id='64a9b62e465fd3a73ef9f3fd')
+    # nir's tasks
+    # item = dl.items.get(item_id='64a9b634a1198616d9dfc1bd')
+    # task = dl.tasks.get(task_id='64a9b62e465fd3a73ef9f3fd')
+
+    item = dl.items.get(item_id='64aa74df3dbc45b7f282886d')
+    task = dl.tasks.get(task_id='64aa776da54a2acafd368370')
+
     consensus_item = create_consensus_item_score(item=item, task=task)
 
     # print(scores.to_json())

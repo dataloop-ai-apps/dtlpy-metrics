@@ -152,7 +152,7 @@ class Matchers:
         :return: `float` how Intersection over Union of tho shapes
         """
         import shapely
-        print('versionnnn', shapely.__version__)
+        # print('versionnnn', shapely.__version__)
         from shapely import Polygon
 
         if len(pts1) == 2:
