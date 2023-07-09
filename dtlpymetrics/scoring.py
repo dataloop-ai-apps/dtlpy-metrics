@@ -1,5 +1,6 @@
 import logging
 import os
+import datetime
 from typing import List
 
 import dtlpy as dl
@@ -7,7 +8,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from dtlpymetrics.metrics_utils import measure_annotations
-import datetime
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 
 score_names = ['IOU', 'label', 'attribute']
@@ -477,6 +477,8 @@ def calc_precision_recall(dataset_id: str,
     # combine all data #
     ####################
     plot_points = pd.concat([dataset_df, all_labels])
+    # DEBUG
+    plot_points.to_csv(os.path.join(os.getcwd(), 'plot_points.csv'), index=False)
 
     return plot_points
 
