@@ -4,7 +4,7 @@ import dtlpy as dl
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from dtlpymetrics.scoring import calculate_consensus_task_score
+from dtlpymetrics.scoring import calculate_consensus_task_score, create_consensus_item_score
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 import logging
 
@@ -57,13 +57,17 @@ if __name__ == '__main__':
 
     dl.setenv('rc')
     # project = dl.projects.get('feature vectors')
-    project = dl.projects.get('new scoring 6')
+    # project = dl.projects.get('new scoring 6')
     # dataset = project.datasets.get('waterfowl')
     # create new scores for consensus task
     # consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')  # 644a307ae052f434dab98ff3
 
-    consensus_task = project.tasks.get(task_id='64a523cad0c94374c31c332f')
-    consensus_task = calculate_consensus_task_score(consensus_task)
+    # consensus_task = project.tasks.get(task_id='64a523cad0c94374c31c332f')
+    # consensus_task = calculate_consensus_task_score(consensus_task)
+
+    item = dl.items.get(item_id='64a9b634a1198616d9dfc1bd')
+    task = dl.tasks.get(task_id='64a9b62e465fd3a73ef9f3fd')
+    consensus_item = create_consensus_item_score(item=item, task=task)
 
     # print(scores.to_json())
     # dl_scores = scores.create([score])

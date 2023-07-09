@@ -1,5 +1,5 @@
 import dtlpy as dl
-from dtlpymetrics.scoring import calc_precision_recall, plot_precision_recall, calc_confusion_matrix
+from dtlpymetrics.precision_recall import calc_precision_recall, plot_precision_recall, calc_confusion_matrix
 
 dl.setenv('rc')
 if dl.token_expired():

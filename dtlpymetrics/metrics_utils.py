@@ -6,7 +6,13 @@ from . import metrics
 
 from dtlpy import entities
 
-logger = logging.getLogger(name='dtlpymetrics')
+logger = logging.getLogger(name='scoring-and-metrics')
+
+all_compare_types = [entities.AnnotationType.BOX,
+                     entities.AnnotationType.CLASSIFICATION,
+                     entities.AnnotationType.POLYGON,
+                     entities.AnnotationType.POINT,
+                     entities.AnnotationType.SEGMENTATION]
 
 
 def mean_or_nan(arr):
@@ -41,11 +47,7 @@ def measure_annotations(
     """
 
     if compare_types is None:
-        compare_types = [entities.AnnotationType.BOX,
-                         entities.AnnotationType.CLASSIFICATION,
-                         entities.AnnotationType.POLYGON,
-                         entities.AnnotationType.POINT,
-                         entities.AnnotationType.SEGMENTATION]
+        compare_types = all_compare_types
     final_results = dict()
     all_scores = list()
     true_positives = 0
@@ -115,9 +117,9 @@ def measure_annotations(
         false_negatives += final_results[compare_type].summary()['n_annotations_unmatched_set_one']
 
     final_results['total_mean_score'] = mean_or_nan(all_scores)
-    final_results['precision'] =\
+    final_results['precision'] = \
         true_positives / (true_positives + false_positives) if (true_positives + false_positives) != 0 else 0
-    final_results['recall'] =\
+    final_results['recall'] = \
         true_positives / (true_positives + false_negatives) if (true_positives + false_negatives) != 0 else 0
     return final_results
 
@@ -347,6 +349,10 @@ class Matchers:
         diag = np.sqrt(height ** 2 + width ** 2)
         # 20% of the image diagonal tolerance (empirically). need to
         return np.exp(-1 / diag * 20 * np.linalg.norm(np.asarray(pt1) - np.asarray(pt2)))
+
+    @staticmethod
+    def calculate_iou_cube():
+        pass
 
     @staticmethod
     def match_attributes(attributes1, attributes2):
