@@ -1,6 +1,7 @@
 import logging
 import os
 import datetime
+from tqdm import tqdm
 from typing import List
 
 import dtlpy as dl
@@ -11,7 +12,8 @@ from dtlpymetrics.metrics_utils import measure_annotations, all_compare_types
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 
 score_names = ['IOU', 'label', 'attribute']
-results_columns = {'annotation_iou': 'geometry_score', 'annotation_label': 'label_score',
+results_columns = {'annotation_iou': 'geometry_score',
+                   'annotation_label': 'label_score',
                    'attribute': 'attribute_score'}
 
 scorer = dl.AppModule(name='Scoring and metrics function',
@@ -20,7 +22,7 @@ scorer = dl.AppModule(name='Scoring and metrics function',
 logger = logging.getLogger('scoring-and-metrics')
 
 
-@scorer.add_function(display_name='Calculate the consensus task score',
+@scorer.add_function(display_name='Calculate consensus task score',
                      inputs={"consensus_task": dl.Task},
                      outputs={"score_summary": dict,
                               "consensus_task": dl.Task}
@@ -123,9 +125,9 @@ def create_consensus_item_score(item: dl.Item,
     # upload scores to platform #
     #############################
     if len(scores_list) == 0:
-        item_score_value = 0
+        item_score_value = 1
         logger.info(
-            f'No annotation scores to upload. Check that you have annotations from each assignee of the same type.')
+            f'No annotation scores to upload. All assignees ')
     else:
         item_score_value = np.sum([score.value for score in scores_list]) / len(scores_list)
 
@@ -149,11 +151,12 @@ def create_consensus_item_score(item: dl.Item,
     return item
 
 
-@scorer.add_function(display_name='Create item consensus score')
+@scorer.add_function(display_name='Create model score')
 def create_model_score(dataset: dl.Dataset = None,
                        filters: dl.Filters = None,
                        model: dl.Model = None,
                        ignore_labels=False,
+                       match_threshold=0.01,
                        compare_types=None) -> (bool, str):
     """
     Measures scores for a set of model predictions compared against ground truth annotations.
@@ -193,7 +196,8 @@ def create_model_score(dataset: dl.Dataset = None,
     ########################################
     # Create list of item annotation lists #
     ########################################
-    for item in items_list:
+    for item in (pbar := tqdm(items_list)):
+        pbar.set_description(f'Loading annotations from items... ')
         item_annots_1 = []
         item_annots_2 = []
         for annotation in item.annotations.list():
@@ -216,7 +220,7 @@ def create_model_score(dataset: dl.Dataset = None,
         else:
             results = measure_annotations(annotations_set_one=annot_set_1[i],
                                           annotations_set_two=annot_set_2[i],
-                                          match_threshold=0.01,  # to get all possible matches
+                                          match_threshold=match_threshold,  # default 0.01 to get all possible matches
                                           ignore_labels=ignore_labels,
                                           compare_types=compare_types)
             for compare_type in compare_types:
@@ -249,11 +253,11 @@ def create_model_score(dataset: dl.Dataset = None,
     return True, f'Successfully created model scores and saved as item {item.id}.'
 
 
-@scorer.add_function(display_name='Compare two sets of annotations for scoring')
+@scorer.add_function(display_name='Compare two annotation sets for scoring')
 def calculate_annotation_scores(annot_collection_1,
                                 annot_collection_2,
                                 compare_types=None,
-                                score_types=[ScoreType.ANNOTATION_LABEL, ScoreType.ANNOTATION_IOU],
+                                score_types=None,
                                 ignore_labels=False,
                                 match_threshold=0.5) -> List[Score]:
     """
@@ -268,6 +272,8 @@ def calculate_annotation_scores(annot_collection_1,
     :param score_types: dl.ScoreType entity or string for the score types to be calculated (e.g. "annotation_iou")
     :return: dict of feature sets, indexed by the type of score (e.g. IOU)
     """
+    if score_types is None:
+        score_types = [ScoreType.ANNOTATION_LABEL, ScoreType.ANNOTATION_IOU]
     if compare_types is None:
         compare_types = all_compare_types
     if not isinstance(score_types, list):

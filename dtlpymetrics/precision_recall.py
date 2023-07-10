@@ -9,8 +9,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 prec_rec = dl.AppModule(name='Scoring and metrics function',
-                      description='Functions for calculating scores between annotations.'
-                      )
+                        description='Functions for calculating scores between annotations.'
+                        )
 logger = logging.getLogger('scoring-and-metrics')
 
 
@@ -42,7 +42,8 @@ def calc_precision_recall(dataset_id: str,
     elif len(items) > 1:
         raise ValueError(f'Found {len(items)} items with name {model_id}.')
     else:
-        scores_file = items[0].download()
+        scores_file = items[0].download(overwrite=True)
+        logger.info(f'Downloaded scores file to {scores_file}')
 
     scores = pd.read_csv(scores_file)
     labels = dataset.labels
@@ -53,6 +54,8 @@ def calc_precision_recall(dataset_id: str,
     ##############################
     # calculate precision/recall #
     ##############################
+    logger.info('Calculating precision/recall')
+
     dataset_points = {'iou_threshold': {},
                       'data': {},  # "dataset" or "label"
                       'label_name': {},  # label name or NA,
@@ -61,7 +64,9 @@ def calc_precision_recall(dataset_id: str,
                       'confidence': {}
                       }
 
+    # first set is GT
     num_gts = sum(scores.first_id.notna())
+
     detections = scores[scores.second_id.notna()].copy()
 
     detections.sort_values('second_confidence', inplace=True, ascending=False, ignore_index=True)
@@ -74,6 +79,8 @@ def calc_precision_recall(dataset_id: str,
     dataset_recall = dataset_tps / num_gts
     dataset_precision = np.divide(dataset_tps, (dataset_fps + dataset_tps))
 
+    # detections.to_csv(index=False)  # DEBUG
+
     [_,
      dataset_plot_precision,
      dataset_plot_recall,
@@ -81,6 +88,9 @@ def calc_precision_recall(dataset_id: str,
         every_point_curve(recall=list(dataset_recall),
                           precision=list(dataset_precision),
                           confidence=list(detections['second_confidence']))
+    # dataset_plot_precision = dataset_precision
+    # dataset_plot_recall = dataset_recall
+    # dataset_plot_confidence = detections['second_confidence']
 
     dataset_points['iou_threshold'] = [iou_threshold] * len(dataset_plot_precision)
     dataset_points['data'] = ['dataset'] * len(dataset_plot_precision)
@@ -88,6 +98,7 @@ def calc_precision_recall(dataset_id: str,
     dataset_points['precision'] = dataset_plot_precision
     dataset_points['recall'] = dataset_plot_recall
     dataset_points['confidence'] = dataset_plot_confidence
+    dataset_points['dataset_name'] = [dataset.name] * len(dataset_plot_precision)
 
     dataset_df = pd.DataFrame(dataset_points).drop_duplicates()
 
@@ -113,16 +124,16 @@ def calc_precision_recall(dataset_id: str,
             label_recall = label_tps / num_gts
             label_precision = np.divide(label_tps, (label_fps + label_tps))
 
-            # [_,
-            #  label_plot_precision,
-            #  label_plot_recall,
-            #  label_plot_confidence] = \
-            #     every_point_curve(recall=list(label_recall),
-            #                              precision=list(label_precision),
-            #                              confidence=list(label_detections['second_confidence']))
-            label_plot_precision = label_precision
-            label_plot_recall = label_recall
-            label_plot_confidence = label_detections['second_confidence']
+            [_,
+             label_plot_precision,
+             label_plot_recall,
+             label_plot_confidence] = \
+                every_point_curve(recall=list(label_recall),
+                                  precision=list(label_precision),
+                                  confidence=list(label_detections['second_confidence']))
+            # label_plot_precision = label_precision
+            # label_plot_recall = label_recall
+            # label_plot_confidence = label_detections['second_confidence']
 
         label_points['iou_threshold'] = [iou_threshold] * len(label_plot_precision)
         label_points['data'] = ['label'] * len(label_plot_precision)
@@ -138,15 +149,16 @@ def calc_precision_recall(dataset_id: str,
     ####################
     # combine all data #
     ####################
+    logger.info('Saving precision recall plot data')
     plot_points = pd.concat([dataset_df, all_labels])
-    # DEBUG
-    plot_points.to_csv(os.path.join(os.getcwd(), 'plot_points.csv'), index=False)
+    # plot_points.to_csv(os.path.join(os.getcwd(), 'plot_points.csv'), index=False)     # DEBUG
 
     return plot_points
 
 
 @prec_rec.add_function(display_name='Plot precision recall graph')
 def plot_precision_recall(plot_points: pd.DataFrame,
+                          dataset_name=None,
                           label_names=None,
                           local_path=None):
     """
@@ -170,19 +182,22 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     ###################
     # plot by dataset #
     ###################
+    logger.info('Plotting precision recall')
+
     plt.figure()
     plt.xlim(0, 1.1)
     plt.ylim(0, 1.1)
 
     # plot each label separately
     dataset_points = plot_points[plot_points['data'] == 'dataset']
-    dataset_legend = f"{dataset_points['dataset_name'].iloc[0]}"
+    dataset_legend = f"{dataset_points['dataset_id'].iloc[0]}" if dataset_name is None else dataset_name
 
     plt.plot(dataset_points['recall'],
              dataset_points['precision'],
              label=dataset_legend)
 
     plt.legend(loc='upper right')
+
     plt.xlabel('recall')
     plt.ylabel('precision')
     plt.grid()
@@ -191,7 +206,7 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     plot_filename = f"dataset_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
     save_path = os.path.join(save_dir, plot_filename)
     plt.savefig(save_path)
-    plt.close()
+    # plt.close()
     logger.info(f'Saved dataset precision recall plot to {save_path}')
 
     #################
@@ -223,7 +238,7 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     plot_filename = f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
     save_path = os.path.join(save_dir, plot_filename)
     plt.savefig(save_path)
-    plt.close()
+    # plt.close()
     logger.info(f'Saved labels precision recall plot to {save_path}')
 
     return save_dir
@@ -263,49 +278,60 @@ def every_point_curve(recall: list, precision: list, confidence: list):
 
 @prec_rec.add_function(display_name='Calculate precision-recall values for eleven point curves')
 def eleven_point_curve(recall: list, precision: list, confidence: list):
-    # DEBUG
-    recall = np.linspace(0, 1, 30)
-    precision = np.linspace(1, 0, 30)
-    confidence = np.linspace(0.2, 0.9, 30)
+    # TODO - implement
+    # recall = np.linspace(0, 1, 30)  # DEBUG
+    # precision = np.linspace(1, 0, 30)  # DEBUG
+    # confidence = np.linspace(0.2, 0.9, 30)  # DEBUG
 
-    recall_values = recall
-    precision_values = precision
-    confidence_values = confidence
+    recall_all = recall
+    precision_all = precision
+    confidence_all = confidence
 
-    recall_intervals = np.linspace(0, 1, 11)
-    recall_intervals = list(reversed(recall_intervals))
+    recall_intervals = np.linspace(1, 0, 11)
+    # recall_intervals = list(reversed(recall_intervals))
 
-    rho_interpol = []
+    rho_interpol = []  # the interpolated precision values for each interval range
     recall_valid = []
+    conf_indices = []
 
     for recall_interval in recall_intervals:
-        larger_recall = np.argwhere(recall_values[:] >= recall_interval)
+        larger_recall = np.argwhere(recall_all[:] >= recall_interval)
         precision_max = 0
 
         if larger_recall.size != 0:
-            precision_max = max(precision_values[larger_recall.min():])
-            recall_valid.append(recall_interval)
-            rho_interpol.append(precision_max)
+            precision_max = max(precision_all[larger_recall.min():])
+            conf_indices.append(list(precision_all).index(precision_max))
+        else:
+            conf_indices.append(0)  # TODO check
+
+        recall_valid.append(recall_interval)
+        rho_interpol.append(precision_max)
 
     avg_precis = sum(rho_interpol) / 11
 
     # make points plot-ready
     recall_points = np.concatenate([[recall_valid[0]], recall_valid, [0]])
     precision_points = np.concatenate([[0], rho_interpol, [rho_interpol[-1]]])
+    confidence_valid = [confidence_all[i] for i in conf_indices]
+    confidence_points = np.concatenate([[confidence_valid[0]], confidence_valid, [confidence_valid[-1]]])
 
     cc = []
     for i in range(len(recall_points)):
-        point_1 = (recall_points[i], precision_points[i - 1])
+        point_1 = (recall_points[i], precision_points[i - 1], confidence_points[i - 1])
         if point_1 not in cc:
             cc.append(point_1)
-        point_2 = (recall_values[i], precision_values[i])
+        point_2 = (recall_all[i], precision_all[i], confidence_all[i])
         if point_2 not in cc:
             cc.append(point_2)
 
-        recall_intervals = [i[0] for i in cc]
-        rho_interpol = [i[1] for i in cc]
+    recall_plot = [i[0] for i in cc]
+    precision_plot = [i[1] for i in cc]
+    confidence_plot = [i[2] for i in cc]
 
-    return [avg_precis, rho_interpol, recall_intervals, confidence_values]
+    print(len(rho_interpol), len(recall_intervals), len(confidence_points))  # DEBUG
+    print(len(recall_plot), len(precision_plot), len(confidence_plot))  # DEBUG
+
+    return [avg_precis, recall_plot, precision_plot, confidence_plot]
 
 
 @prec_rec.add_function(display_name='Create confusion matrix')
@@ -346,9 +372,9 @@ def calc_confusion_matrix(dataset_id: str,
     if metric not in scores.columns:
         raise ValueError(f'{metric} metric not included in scores.')
 
-    #########################
-    # plot precision/recall #
-    #########################
+    ###############################
+    # create table of comparisons #
+    ###############################
     # calc
     if labels is None:
         label_names = pd.concat([scores.first_label, scores.second_label]).dropna()
