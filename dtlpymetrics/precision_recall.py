@@ -292,17 +292,19 @@ def eleven_point_curve(recall: list, precision: list, confidence: list):
 
     rho_interpol = []  # the interpolated precision values for each interval range
     recall_valid = []
-    conf_indices = []
+    conf_valid = []
+    confidence_min = confidence_all[list(precision_all).index(min(precision_all))]
 
     for recall_interval in recall_intervals:
         larger_recall = np.argwhere(recall_all[:] >= recall_interval)
+        print(f'larger recall: {larger_recall}')
         precision_max = 0
 
         if larger_recall.size != 0:
             precision_max = max(precision_all[larger_recall.min():])
-            conf_indices.append(list(precision_all).index(precision_max))
+            conf_valid.append(confidence_all[list(precision_all).index(precision_max)])
         else:
-            conf_indices.append(0)  # TODO check
+            conf_valid.append(confidence_min)
 
         recall_valid.append(recall_interval)
         rho_interpol.append(precision_max)
@@ -312,15 +314,14 @@ def eleven_point_curve(recall: list, precision: list, confidence: list):
     # make points plot-ready
     recall_points = np.concatenate([[recall_valid[0]], recall_valid, [0]])
     precision_points = np.concatenate([[0], rho_interpol, [rho_interpol[-1]]])
-    confidence_valid = [confidence_all[i] for i in conf_indices]
-    confidence_points = np.concatenate([[confidence_valid[0]], confidence_valid, [confidence_valid[-1]]])
+    confidence_points = np.concatenate([[conf_valid[0]], conf_valid, [conf_valid[-1]]])
 
     cc = []
     for i in range(len(recall_points)):
         point_1 = (recall_points[i], precision_points[i - 1], confidence_points[i - 1])
         if point_1 not in cc:
             cc.append(point_1)
-        point_2 = (recall_all[i], precision_all[i], confidence_all[i])
+        point_2 = (recall_points[i], precision_points[i], confidence_points[i])
         if point_2 not in cc:
             cc.append(point_2)
 
@@ -328,10 +329,11 @@ def eleven_point_curve(recall: list, precision: list, confidence: list):
     precision_plot = [i[1] for i in cc]
     confidence_plot = [i[2] for i in cc]
 
-    print(len(rho_interpol), len(recall_intervals), len(confidence_points))  # DEBUG
-    print(len(recall_plot), len(precision_plot), len(confidence_plot))  # DEBUG
-
-    return [avg_precis, recall_plot, precision_plot, confidence_plot]
+    # print(len(recall_plot), len(precision_plot), len(confidence_plot))  # DEBUG
+    return [avg_precis,
+            precision_plot,
+            recall_plot,
+            confidence_plot]
 
 
 @prec_rec.add_function(display_name='Create confusion matrix')
