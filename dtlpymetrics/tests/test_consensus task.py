@@ -1,5 +1,5 @@
 import dtlpy as dl
-from dtlpymetrics.scoring import scorer
+from dtlpymetrics.scoring import calculate_consensus_task_score, calc_precision_recall, plot_precision_recall
 
 dl.setenv('rc')
 
@@ -8,7 +8,7 @@ dl.setenv('rc')
 ########################
 # consensus_task = dl.tasks.get(task_name='pipeline consensus test (test tasks)')
 consensus_task = dl.tasks.get(task_id='644a307ae052f434dab98ff3')
-scorer.calculate_consensus_task_score(consensus_task)
+calculate_consensus_task_score(consensus_task)
 
 if __name__ == '__main++__':
     import json
@@ -39,11 +39,11 @@ if __name__ == '__main++__':
     # model_scores = scorer.get_scores_df(model=model, dataset=dataset)
     # metric_names = ['accuracy', 'iou', 'confidence']
     #
-    plot_points = scorer.calc_precision_recall(dataset_id=dataset.id,
+    plot_points = calc_precision_recall(dataset_id=dataset.id,
                                                model_id=model.id)
 
     labels = [label.tag for label in dataset.labels]
-    save_path = scorer.plot_precision_recall(plot_points=plot_points,
+    save_path = plot_precision_recall(plot_points=plot_points,
                                              label_names=labels)
     # from pathlib import Path
     #
