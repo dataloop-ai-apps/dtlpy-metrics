@@ -1,5 +1,5 @@
 {
-    "version": "1.0.75",
+    "version": "1.0.76",
     "creator": "yaya.t@dataloop.ai",
     "name": "scoring-and-metrics",
     "displayName": "Scoring and metrics app",
@@ -13,7 +13,7 @@
     "codebase": {
         "type": "git",
         "gitUrl": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
-        "gitTag": "v1.0.75"
+        "gitTag": "v1.0.76"
     },
     "scope": "system",
     "components": {
