@@ -13,7 +13,7 @@
     "codebase": {
         "type": "git",
         "gitUrl": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
-        "gitTag": "main"
+        "gitTag": "v1.0.73"
     },
     "scope": "system",
     "components": {
