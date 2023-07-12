@@ -41,7 +41,6 @@ def calculate_task_score(task: dl.Task) -> dl.Task:
     filters = dl.Filters()
     filters.add(field='hidden', values=False)
     pages = task.get_items(filters=filters, get_consensus_items=True)
-    pages.print()  # DEBUG
 
     for item in pages.all():
         all_item_tasks = item.metadata['system']['refs']
@@ -125,14 +124,12 @@ def create_task_item_score(item: dl.Item,
                                                               match_threshold=0.01)
                 # update scores with context
                 for score in pairwise_scores:
-                    print(score.type)  # DEBUG
                     if score.type != 'label_confusion':  # ScoreType.LABEL_CONFUSION:
                         annotation = dl.annotations.get(annotation_id=score.entity_id)
                         score.user_id = annotation.creator
                     score.task_id = task.id
                     score.assignment_id = assignments[j_assignment].id
                     score.item_id = item.id
-                    # print(score.print())  # DEBUG
 
                 scores_list.extend(pairwise_scores)
     else:

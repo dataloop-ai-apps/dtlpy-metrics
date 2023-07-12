@@ -56,15 +56,6 @@ if __name__ == '__main__':
     logging.basicConfig(level='INFO')
 
     dl.setenv('rc')
-    # project = dl.projects.get('feature vectors')
-    # project = dl.projects.get('new scoring 6')
-    # dataset = project.datasets.get('waterfowl')
-    # create new scores for consensus task
-    # consensus_task = dataset.tasks.get('pipeline consensus test (test tasks)')  # 644a307ae052f434dab98ff3
-
-    # consensus_task = project.tasks.get(task_id='64a523cad0c94374c31c332f')
-    # consensus_task = calculate_consensus_task_score(consensus_task)
-
     # nir's tasks
     # item = dl.items.get(item_id='64a9b634a1198616d9dfc1bd')
     # task = dl.tasks.get(task_id='64a9b62e465fd3a73ef9f3fd')
@@ -72,9 +63,6 @@ if __name__ == '__main__':
     item = dl.items.get(item_id='64aa74df3dbc45b7f282886d')
     task = dl.tasks.get(task_id='64aa776da54a2acafd368370')  # guy's task
 
-    consensus_item = calculate_task_score(task=task)
+    consensus_task = calculate_task_score(task=task)
 
-    # print(scores.to_json())
-    # dl_scores = scores.create([score])
-    # print([d.id for d in dl_scores])
-    #
+    print()
