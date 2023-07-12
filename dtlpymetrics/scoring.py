@@ -124,9 +124,9 @@ def create_task_item_score(item: dl.Item,
                                                               match_threshold=0.01)
                 # update scores with context
                 for score in pairwise_scores:
-                    if score.type != 'label_confusion':  # ScoreType.LABEL_CONFUSION:
-                        annotation = dl.annotations.get(annotation_id=score.entity_id)
-                        score.user_id = annotation.creator
+                    # if score.type != 'label_confusion':  # ScoreType.LABEL_CONFUSION:
+                    #     annotation = dl.annotations.get(annotation_id=score.entity_id)
+                    score.user_id = assignments[j_assignment].annotator
                     score.task_id = task.id
                     score.assignment_id = assignments[j_assignment].id
                     score.item_id = item.id
@@ -146,8 +146,10 @@ def create_task_item_score(item: dl.Item,
                                                       match_threshold=0.01)
         # update scores with context
         for score in pairwise_scores:
-            annotation = dl.annotations.get(annotation_id=score.entity_id)
-            score.user_id = annotation.creator
+            # if score.type != 'label_confusion':  # ScoreType.LABEL_CONFUSION:
+            #     annotation = dl.annotations.get(annotation_id=score.entity_id)
+            #     score.user_id = annotation.creator
+            score.user_id = assignments[0].annotator
             score.task_id = task.id
             score.assignment_id = assignments[0].id
             score.item_id = item.id
@@ -320,7 +322,7 @@ def calculate_annotation_scores(annot_collection_1,
     :return: list of Score entities
     """
     if score_types is None:
-        score_types = [ScoreType.ANNOTATION_LABEL, ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_OVERALL]
+        score_types = [ScoreType.ANNOTATION_LABEL, ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_ATTRIBUTE]
     if compare_types is None:
         compare_types = all_compare_types
     if not isinstance(score_types, list):
@@ -372,7 +374,7 @@ def calculate_annotation_scores(annot_collection_1,
 
     for i, row in label_confusion_summary.iterrows():
         confusion_score = Score(type=ScoreType.LABEL_CONFUSION.value,
-                                value=row['counts'],
+                                value=row['counts'] / len(label_confusion_set),  # normalized score
                                 entity_id=row['first_label'],
                                 relative=row['second_label'])
         annotation_scores.append(confusion_score)
