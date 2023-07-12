@@ -128,9 +128,9 @@ def calc_precision_recall(dataset_id: str,
              label_plot_precision,
              label_plot_recall,
              label_plot_confidence] = \
-                every_point_curve(recall=list(label_recall),
-                                  precision=list(label_precision),
-                                  confidence=list(label_detections['second_confidence']))
+                eleven_point_curve(recall=list(label_recall),
+                                   precision=list(label_precision),
+                                   confidence=list(label_detections['second_confidence']))
             # label_plot_precision = label_precision
             # label_plot_recall = label_recall
             # label_plot_confidence = label_detections['second_confidence']
@@ -278,11 +278,6 @@ def every_point_curve(recall: list, precision: list, confidence: list):
 
 @prec_rec.add_function(display_name='Calculate precision-recall values for eleven point curves')
 def eleven_point_curve(recall: list, precision: list, confidence: list):
-    # TODO - implement
-    # recall = np.linspace(0, 1, 30)  # DEBUG
-    # precision = np.linspace(1, 0, 30)  # DEBUG
-    # confidence = np.linspace(0.2, 0.9, 30)  # DEBUG
-
     recall_all = recall
     precision_all = precision
     confidence_all = confidence
@@ -297,7 +292,7 @@ def eleven_point_curve(recall: list, precision: list, confidence: list):
 
     for recall_interval in recall_intervals:
         larger_recall = np.argwhere(recall_all[:] >= recall_interval)
-        print(f'larger recall: {larger_recall}')
+        # print(f'larger recall: {larger_recall}')  # DEBUG
         precision_max = 0
 
         if larger_recall.size != 0:
@@ -312,16 +307,16 @@ def eleven_point_curve(recall: list, precision: list, confidence: list):
     avg_precis = sum(rho_interpol) / 11
 
     # make points plot-ready
-    recall_points = np.concatenate([[recall_valid[0]], recall_valid, [0]])
-    precision_points = np.concatenate([[0], rho_interpol, [rho_interpol[-1]]])
-    confidence_points = np.concatenate([[conf_valid[0]], conf_valid, [conf_valid[-1]]])
+    recall_points = np.concatenate([[recall_valid[0]], recall_valid, [0]])  # 1 to 0
+    precision_points = np.concatenate([[rho_interpol[0]], rho_interpol, [rho_interpol[0]]])  # 0 to 1
+    confidence_points = np.concatenate([[conf_valid[0]], conf_valid, [conf_valid[0]]])  # conf min to max
 
     cc = []
     for i in range(len(recall_points)):
         point_1 = (recall_points[i], precision_points[i - 1], confidence_points[i - 1])
+        point_2 = (recall_points[i], precision_points[i], confidence_points[i])
         if point_1 not in cc:
             cc.append(point_1)
-        point_2 = (recall_points[i], precision_points[i], confidence_points[i])
         if point_2 not in cc:
             cc.append(point_2)
 
