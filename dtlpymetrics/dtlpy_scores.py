@@ -8,9 +8,11 @@ from dtlpy.services.api_client import ApiClient
 class ScoreType(Enum):
     ANNOTATION_IOU = 'annotation_iou'
     ANNOTATION_LABEL = 'annotation_label'
+    # ANNOTATION_ATTRIBUTE = 'annotation_attribute'
     ANNOTATION_OVERALL = 'annotation_overall'
     ITEM_OVERALL = 'item_overall'
     USER_OVERALL = 'user_overall'
+    LABEL_CONFUSION = 'label_confusion'
 
 
 class Score(entities.DlEntity):

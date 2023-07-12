@@ -3,6 +3,7 @@ import uuid
 import numpy as np
 import pandas as pd
 from . import metrics
+from typing import Union
 
 from dtlpy import entities
 
@@ -23,8 +24,8 @@ def mean_or_nan(arr):
 
 
 def measure_annotations(
-        annotations_set_one: entities.AnnotationCollection,
-        annotations_set_two: entities.AnnotationCollection,
+        annotations_set_one: Union[entities.AnnotationCollection, list],
+        annotations_set_two: Union[entities.AnnotationCollection, list],
         match_threshold=0.5,
         ignore_labels=False,
         ignore_attributes=False,
