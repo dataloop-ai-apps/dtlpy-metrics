@@ -63,6 +63,6 @@ if __name__ == '__main__':
     item = dl.items.get(item_id='64aa74df3dbc45b7f282886d')
     task = dl.tasks.get(task_id='64aa776da54a2acafd368370')  # guy's task
 
-    consensus_task = calculate_task_score(task=task)
+    consensus_item = calculate_task_score(task=task)
 
     print()

@@ -22,6 +22,5 @@ class TestRunner(unittest.TestCase):
     #     print(f'faces -> {faces}')
     #     self.assertIsInstance(faces, dl.Item)
 
-
 if __name__ == "__main__":
     unittest.main()
