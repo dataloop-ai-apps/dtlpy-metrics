@@ -1,0 +1,89 @@
+{
+  "version": "1.0.82",
+  "creator": "yaya.t@dataloop.ai",
+  "name": "scoring-and-metrics",
+  "displayName": "Scoring and metrics app",
+  "description": "Calculate scores for items and annotations, such as in tasks with consensus.",
+  "categories": [],
+  "source": {
+    "type": "git",
+    "repo": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
+    "tag": "main"
+  },
+  "codebase": {
+    "type": "git",
+    "gitUrl": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
+    "gitTag": "v1.0.82"
+  },
+  "scope": "system",
+  "components": {
+    "pipelineNodes": [
+      {
+        "invoke": {
+          "type": "function",
+          "namespace": "scoring_functions.create_task_item_score"
+        },
+        "categories": [
+          "data"
+        ]
+      }
+    ],
+    "modules": [
+      {
+        "name": "scoring_functions",
+        "entryPoint": "dtlpymetrics/scoring.py",
+        "className": "scorer",
+        "initInputs": [],
+        "versions": {
+          "dtlpy": "1.80.4"
+        },
+        "functions": [
+          {
+            "name": "create_task_item_score",
+            "description": "Calculate the score for each item with in a task (consensus, qualification, honeypot)",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "displayIcon": "analytics",
+            "displayName": "Create Score for Task Item"
+          }
+        ]
+      }
+    ],
+    "services": [
+      {
+        "name": "scoring-and-metrics",
+        "moduleName": "scoring_functions",
+        "runtime": {
+          "podType": "regular-xs",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/cpu/scoring:0.2.0",
+          "numReplicas": 1,
+          "concurrency": 10,
+          "pyPackages": {},
+          "singleAgent": false,
+          "autoscaler": {
+            "type": "rabbitmq",
+            "minReplicas": 0,
+            "maxReplicas": 2,
+            "queueLength": 10
+          },
+          "preemptible": false,
+          "executionTimeout": 3600,
+          "drainTime": 600,
+          "onReset": "failed",
+          "runExecutionAsProcess": false
+        },
+        "maxAttempts": 3
+      }
+    ]
+  }
+}
