@@ -84,5 +84,3 @@ project.apps.install(dpk=dpk)
 
 We welcome anyone to help us improve this app.  
 [Here's](CONTRIBUTING.md) detailed instructions to help you open a bug or ask for a feature request
-
-

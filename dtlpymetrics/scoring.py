@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from dtlpy import Item
 from tqdm import tqdm
 from typing import List, Union
 from dtlpymetrics.metrics_utils import measure_annotations, all_compare_types, mean_or_default
@@ -58,8 +59,11 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
             # for testing tasks, check if the item is complete via metadata
             elif item_task_dict.get('metadata', None) is None:
                 continue
-            elif item_task_dict.get('metadata').get('status', None) in ['complete', 'consensus_done']:
+            elif item_task_dict.get('metadata').get('status', None) in ['complete', 'completed', 'consensus_done']:
                 create_task_item_score(item=item, task=task, score_types=score_types)
+            else:
+                logger.info(f'Item {item.id} is not complete, skipping scoring')
+                continue
 
     return task
 
@@ -68,7 +72,7 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
 def create_task_item_score(item: dl.Item = None,
                            task: dl.Task = None,
                            context: dl.Context = None,
-                           score_types=None) -> dl.Task:
+                           score_types=None) -> dl.Item:
     """
     Create scores for items in a task.
 
@@ -113,6 +117,7 @@ def create_task_item_score(item: dl.Item = None,
         # TODO handle models
         assignment_id = annotation.metadata['system'].get('assignmentId', 'ref')
         task_id = annotation.metadata['system'].get('taskId', None)
+
         if task_id is None:
             if task_type == 'testing':
                 if 'ref' not in annots_by_assignment:
@@ -230,18 +235,16 @@ def create_task_item_score(item: dl.Item = None,
     dl_scores = dl_scores.create(all_scores)
     logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
 
-    if scores_debug is True:
-        logger.info('Saving scores locally')
+    if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
+        debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
+        logger.debug('Saving scores locally')
 
-        if not os.path.isdir(os.path.join(os.getcwd(), '.dataloop')):
-            os.mkdir(os.path.join(os.getcwd(), '.dataloop'))
-        scores_filepath = os.path.join(os.getcwd(), '.dataloop', f'{item.id}.csv')
-
-        scores_json = dict()
+        save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
+        os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
+        scores_json = list()
         for score in all_scores:
-            scores_json.update({score.entity_id: score.to_json()})
-
-        with open(scores_filepath, 'w', encoding='utf-8') as f:
+            scores_json.append(score.to_json())
+        with open(save_filepath, 'w', encoding='utf-8') as f:
             json.dump(scores_json, f, ensure_ascii=False, indent=4)
 
     return item
@@ -427,8 +430,8 @@ def calculate_annotation_scores(annot_collection_1: Union[dl.AnnotationCollectio
         for i, row in label_confusion_summary.iterrows():
             confusion_score = Score(type=ScoreType.LABEL_CONFUSION,
                                     value=row['counts'],
-                                    entity_id=row['first_label'],
-                                    relative=row['second_label'])
+                                    entity_id=row['second_label'],
+                                    relative=row['first_label'])
             annotation_scores.append(confusion_score)
 
     return annotation_scores

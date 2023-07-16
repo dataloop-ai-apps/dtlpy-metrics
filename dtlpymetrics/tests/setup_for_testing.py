@@ -84,22 +84,20 @@ def setup_qual_assignee(assignment: dl.Assignment,
         item.update_status(status=dl.ItemStatus.COMPLETED)
 
 
-def setup_consensus_assignee(assignment, recipe):
-    items = list(assignment.get_items().all())
+def setup_consensus_bbox_assignee(assignment, recipe):
+    filters = dl.Filters()
+    filters.sort_by(field='filename', value=dl.FiltersOrderByDirection.ASCENDING)
+    items = list(assignment.get_items(filters=filters).all())
     context = {'taskId': assignment.task.id,
                'assignmentId': assignment.id,
                'recipeId': recipe.id,
                }
 
-    for item in items:
+    for i, item in enumerate(items):
         annotations = item.annotations.list()
         for annotation in annotations:
-            annotation.delete()
-
-        print(item.filename)  # DEBUG
-        builder = item.annotations.builder()
-
-        i = int(item.filename.split('blank_space_')[-1].split('.')[0])
+            if annotation.metadata.get('system', {}).get('assignmentId') == assignment.id:
+                annotation.delete()
 
         # create consensus annotations with noise
         builder = item.annotations.builder()
@@ -124,51 +122,53 @@ if __name__ == '__main__':
     dl.setenv('rc')
     project = dl.projects.get(project_name='Quality Task Scores Testing')
 
-    ######################
-    # Qualification task #
-    ######################
-    try:
-        dataset = project.datasets.get(dataset_name='bbox items')
-    except dl.exceptions.NotFound:
-        dataset = project.datasets.create(dataset_name='bbox items')
-        setup_qual_gt(dataset=dataset)
-
-    task = project.tasks.get(task_name='qualification testing task')
-    assignment = project.assignments.get(assignment_name='qualification testing - bbox (Score-task-3) (1)')
-    recipe = dataset.recipes.get(recipe_id='64b011b946fcc124d980cff5')
-    setup_qual_assignee(assignment=assignment, recipe=recipe)
-
-    #################
-    # Honeypot task #
-    #################
-    try:
-        dataset = project.datasets.get(dataset_name='bbox items')
-    except dl.exceptions.NotFound:
-        dataset = project.datasets.create(dataset_name='bbox items')
-
-    task = project.tasks.get(task_name='honeypot testing task')
-    assignment = project.assignments.get(assignment_name='')
+    # ######################
+    # # Qualification task #
+    # ######################
+    # try:
+    #     dataset = project.datasets.get(dataset_name='bbox items')
+    # except dl.exceptions.NotFound:
+    #     dataset = project.datasets.create(dataset_name='bbox items')
+    #     setup_qual_gt(dataset=dataset)
+    #
+    # task = project.tasks.get(task_name='qualification testing task')
+    # assignment = project.assignments.get(assignment_name='qualification testing - bbox (Score-task-3) (1)')
     # recipe = dataset.recipes.get(recipe_id='64b011b946fcc124d980cff5')
-    recipe = dataset.recipes.list()[0]
-    setup_qual_assignee(assignment=assignment, recipe=recipe)
+    # setup_qual_assignee(assignment=assignment, recipe=recipe)
+    #
+    # #################
+    # # Honeypot task #
+    # #################
+    # try:
+    #     dataset = project.datasets.get(dataset_name='bbox items')
+    # except dl.exceptions.NotFound:
+    #     dataset = project.datasets.create(dataset_name='bbox items')
+    #
+    # task = project.tasks.get(task_name='honeypot testing task')
+    # assignment = project.assignments.get(assignment_name='')
+    # # recipe = dataset.recipes.get(recipe_id='64b011b946fcc124d980cff5')
+    # recipe = dataset.recipes.list()[0]
+    # setup_qual_assignee(assignment=assignment, recipe=recipe)
 
     ##################
     # Consensus task #
     ##################
+
     try:
         dataset = project.datasets.get(dataset_name='bbox items')
     except dl.exceptions.NotFound:
         dataset = project.datasets.create(dataset_name='bbox items')
 
-    task = project.tasks.get(task_name='consensus testing task')
-    assignment = project.assignments.get(assignment_name='consensus task (Score-task-5) (2)')  # the other one is (1)
+    task = project.tasks.get(task_name='consensus testing task - bbox')
+    # assignment = project.assignments.get(assignment_name='consensus task (Score-task-5) (2)')  # the other one is (1)
+    assignment = project.assignments.get(assignment_id='64b3ce1e43645d3f2c2a5b4a')
     recipe = dataset.recipes.list()[0]
-    setup_consensus_assignee(assignment=assignment, recipe=recipe)
+    setup_consensus_bbox_assignee(assignment=assignment, recipe=recipe)
 
     ###################
     # Label confusion #
     ###################
-    try:
-        dataset = project.datasets.get(dataset_name='classification items')
-    except dl.exceptions.NotFound:
-        dataset = project.datasets.create(dataset_name='classification items')
+    # try:
+    #     dataset = project.datasets.get(dataset_name='classification items')
+    # except dl.exceptions.NotFound:
+    #     dataset = project.datasets.create(dataset_name='classification items')
