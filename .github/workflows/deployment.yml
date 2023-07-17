@@ -19,8 +19,8 @@ jobs:
          pip3 install dtlpy --upgrade
      - name: Publish & Install in project
        env:
-         PROJECT_ID: "${{ secrets.PROJECT_ID_RC }}"
-         BOT_EMAIL: "${{ secrets.BOT_EMAIL_RC }}"
+         PROJECT_ID: "${{ vars.PROJECT_ID_RC }}"
+         BOT_EMAIL: "${{ vars.BOT_EMAIL_RC }}"
          BOT_PASSWORD: "${{ secrets.BOT_PASSWORD_RC }}"
          ENV: "rc"
        run: |
