@@ -83,4 +83,4 @@ project.apps.install(dpk=dpk)
 ## Contributions, Bugs and Issues - How to Contribute
 
 We welcome anyone to help us improve this app.  
-[Here's](CONTRIBUTING.md) detailed instructions to help you open a bug or ask for a feature request
+[Here](CONTRIBUTING.md) are detailed instructions to help you open a bug or ask for a feature request

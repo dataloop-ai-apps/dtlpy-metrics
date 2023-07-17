@@ -45,7 +45,7 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
         filters.add(field='hidden', values=True)
         filters.add(field='dir', values='/.consensus/*')
         pages = task.get_items(filters=filters, get_consensus_items=True)
-    else:
+    else:  # for consensus
         # default filter for quality tasks is hidden = True, so this hides the clones and returns only original items
         filters = dl.Filters()
         filters.add(field='hidden', values=False)
@@ -59,7 +59,7 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
             # for testing tasks, check if the item is complete via metadata
             elif item_task_dict.get('metadata', None) is None:
                 continue
-            elif item_task_dict.get('metadata').get('status', None) in ['complete', 'completed', 'consensus_done']:
+            elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
                 create_task_item_score(item=item, task=task, score_types=score_types)
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
@@ -81,6 +81,7 @@ def create_task_item_score(item: dl.Item = None,
     :param item: dl.Item entity
     :param task: dl.Task entity (optional)
     :param context: dl.Context entity that includes references to associated entities
+    :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL])
     :return: item
     """
     ####################################
@@ -117,18 +118,17 @@ def create_task_item_score(item: dl.Item = None,
         # TODO handle models
         assignment_id = annotation.metadata['system'].get('assignmentId', 'ref')
         task_id = annotation.metadata['system'].get('taskId', None)
-
-        if task_id is None:
-            if task_type == 'testing':
-                if 'ref' not in annots_by_assignment:
-                    annots_by_assignment['ref'] = list()
-                annots_by_assignment['ref'].append(annotation)
-        elif task_id == task.id:
+        if task_id == task.id:
             assignment_annotator = assignments_by_id[assignment_id].annotator
             annots_by_assignment[assignment_annotator].append(annotation)
         else:
             # annotation from another task
             continue
+
+    if task_type == 'testing':
+        # get all ref from the src item
+        src_item = dl.items.get(item_id=item._src_item)
+        annots_by_assignment['ref'] = src_item.annotations.list()
 
     labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
     confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
@@ -155,6 +155,7 @@ def create_task_item_score(item: dl.Item = None,
                                                           ignore_labels=True,
                                                           match_threshold=0.01,
                                                           score_types=score_types)
+
             # update scores with context
             for score in pairwise_scores:
                 score.user_id = assignment_annotator_j
@@ -247,6 +248,7 @@ def create_task_item_score(item: dl.Item = None,
         with open(save_filepath, 'w', encoding='utf-8') as f:
             json.dump(scores_json, f, ensure_ascii=False, indent=4)
 
+        logger.debug(f'SAVED score to: {save_filepath}')
     return item
 
 
@@ -438,39 +440,55 @@ def calculate_annotation_scores(annot_collection_1: Union[dl.AnnotationCollectio
 
 
 # @scorer.add_function(display_name='Create label confusion matrix')
-def calculate_confusion_matrix(dataset: dl.Dataset,
-                               scores: List[Score],
-                               save_plot=True) -> pd.DataFrame:
+def calculate_confusion_matrix_item(item: dl.Item,
+                                    scores: List[Score],
+                                    save_plot=True) -> pd.DataFrame:
     """
     Calculate confusion matrix from a set of label confusion scores
 
     :return:
     """
-    labels = dataset.labels
-    label_names = [label.tag for label in labels]
+    scores_dl = []
+    for score in scores:
+        scores_dl.append(Score.from_json(score))
 
-    ###############################
-    # create table of comparisons #
-    ###############################
-    # calc
-    if label_names is None:
-        for score in scores:
-            if score.type == ScoreType.LABEL_CONFUSION:
-                if score.entity_id not in label_names:
-                    label_names.append(score.entity_id)
-                if score.relative not in label_names:
-                    label_names.append(score.relative)
+    # ###############################
+    # # create table of comparisons #
+    # ###############################
+    label_names = []
+    for score in scores_dl:
+        if score.type == ScoreType.LABEL_CONFUSION:
+            if score.entity_id not in label_names:
+                label_names.append(score.entity_id)
+            if score.relative not in label_names:
+                label_names.append(score.relative)
 
     conf_matrix = pd.DataFrame(index=label_names, columns=label_names)
-    for score in scores:
+
+    for score in scores_dl:
         if score.type == ScoreType.LABEL_CONFUSION:
+            conf_matrix.loc[score.entity_id] = score.value
             conf_matrix.loc[score.entity_id, score.relative] = score.value
 
+    conf_matrix.fillna(0, inplace=True)
+    conf_matrix.rename(columns={None: 'unlabeled'}, inplace=True)
+    conf_matrix.rename(index={None: 'unlabeled'}, inplace=True)
+    label_names = ['unlabeled' if label is None else label for label in label_names]
+
     if save_plot is True:
-        plot_matrix(item_title='label confusion matrix',
-                    filename='label_confusion_matrix.png',
-                    matrix_to_plot=conf_matrix,
-                    axis_labels=label_names)
+        if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
+            debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
+
+            plot_matrix(item_title=f'label confusion matrix {item.id}',
+                        filename=os.path.join(debug_path, 'label_confusion', f'label_confusion_matrix_{item.id}.png'),
+                        matrix_to_plot=conf_matrix,
+                        axis_labels=label_names)
+
+        else:
+            plot_matrix(item_title=f'label confusion matrix {item.id}',
+                        filename=os.path.join('.dataloop', 'label_confusion', f'label_confusion_matrix_{item.id}.png'),
+                        matrix_to_plot=conf_matrix,
+                        axis_labels=label_names)
 
     return conf_matrix
 
@@ -478,7 +496,7 @@ def calculate_confusion_matrix(dataset: dl.Dataset,
 def plot_matrix(item_title, filename, matrix_to_plot, axis_labels):
     # annotators matrix plot, per item
     mask = np.zeros_like(matrix_to_plot, dtype=bool)
-    mask[np.triu_indices_from(mask)] = True
+    # mask[np.triu_indices_from(mask)] = True
 
     sns.set(rc={'figure.figsize': (20, 10),
                 'axes.facecolor': 'white'},
@@ -495,10 +513,11 @@ def plot_matrix(item_title, filename, matrix_to_plot, axis_labels):
     sns_plot.set_yticklabels(sns_plot.get_yticklabels(), rotation=270)
 
     fig = sns_plot.get_figure()
+    os.makedirs(os.path.dirname(filename), exist_ok=True)
     fig.savefig(filename)
     plt.close()
 
-    return True
+    return filename
 
 
 @scorer.add_function(display_name='Get model annotation scores dataframe from scores csv')

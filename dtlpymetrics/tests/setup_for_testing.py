@@ -3,7 +3,7 @@ import random
 from dtlpymetrics.scoring import calculate_task_score, ScoreType
 
 
-def setup_qual_gt(dataset: dl.Dataset):
+def setup_qual_bbox_gt(dataset: dl.Dataset):
     # FOR IOU SCORES
     # upload blank items + annotations
     img_path = r'G:\My Drive\DATASETS\blank_space.png'
@@ -35,8 +35,8 @@ def setup_qual_gt(dataset: dl.Dataset):
         builder.upload()
 
 
-def setup_qual_assignee(assignment: dl.Assignment,
-                        recipe: dl.Recipe):
+def setup_qual_bbox_assignee(assignment: dl.Assignment,
+                             recipe: dl.Recipe):
     # upload annotations with overlap IOUs of 0.1, 0.2, ..... 0.9
     items = list(assignment.get_items().all())
     context = {'taskId': assignment.task.id,
@@ -47,7 +47,8 @@ def setup_qual_assignee(assignment: dl.Assignment,
     for item in items:
         annotations = item.annotations.list()
         for annotation in annotations:
-            annotation.delete()
+            if annotation.metadata.get('system', {}).get('assignmentId') == assignment.id:
+                annotation.delete()
         print(item)
 
     for item in items:
@@ -84,20 +85,22 @@ def setup_qual_assignee(assignment: dl.Assignment,
         item.update_status(status=dl.ItemStatus.COMPLETED)
 
 
-def setup_consensus_bbox_assignee(assignment, recipe):
-    filters = dl.Filters()
-    filters.sort_by(field='filename', value=dl.FiltersOrderByDirection.ASCENDING)
-    items = list(assignment.get_items(filters=filters).all())
+def setup_consensus_bbox_assignee(assignment, recipe, delete_annotations=False):
+    items = list(assignment.get_items().all())
+    items = sorted(items, key=lambda x: x.name)
     context = {'taskId': assignment.task.id,
                'assignmentId': assignment.id,
                'recipeId': recipe.id,
                }
 
     for i, item in enumerate(items):
-        annotations = item.annotations.list()
-        for annotation in annotations:
-            if annotation.metadata.get('system', {}).get('assignmentId') == assignment.id:
-                annotation.delete()
+        if delete_annotations is True:
+            # delete previous annotations from this assignment
+            annotations = item.annotations.list()
+            for annotation in annotations:
+                if annotation.metadata.get('system', {}).get('assignmentId') == assignment.id:
+                    annotation.delete()
+                    print(f'deleting {annotation.id}')
 
         # create consensus annotations with noise
         builder = item.annotations.builder()
@@ -114,8 +117,28 @@ def setup_consensus_bbox_assignee(assignment, recipe):
 
         # builder.upload()
         item.annotations.upload(annotations=builder)
+        item.update_status(status=dl.ItemStatus.COMPLETED,
+                           assignment_id=assignment.id)
 
     return
+
+def cleanup_annotations(project):
+    all_assignments = list(project.assignments.list())
+
+    assignment_ids = [assignment.id for assignment in all_assignments]
+
+    dataset1 = project.datasets.get(dataset_name='classification items')
+    dataset2 = project.datasets.get(dataset_name='bbox items')
+
+    all_annotations = list(dataset1.annotations.list().all()) + list(dataset2.annotations.list().all())
+
+    for annotation in all_annotations:
+        if annotation.metadata.get('system', {}).get('assignmentId') is not None:
+            if annotation.metadata.get('system', {}).get('assignmentId') not in assignment_ids:
+                print(f'deleting {annotation.id}')
+                input('ready to delete? press enter')
+                annotation.delete()
+
 
 
 if __name__ == '__main__':
@@ -153,17 +176,18 @@ if __name__ == '__main__':
     ##################
     # Consensus task #
     ##################
-
-    try:
-        dataset = project.datasets.get(dataset_name='bbox items')
-    except dl.exceptions.NotFound:
-        dataset = project.datasets.create(dataset_name='bbox items')
-
-    task = project.tasks.get(task_name='consensus testing task - bbox')
-    # assignment = project.assignments.get(assignment_name='consensus task (Score-task-5) (2)')  # the other one is (1)
-    assignment = project.assignments.get(assignment_id='64b3ce1e43645d3f2c2a5b4a')
-    recipe = dataset.recipes.list()[0]
-    setup_consensus_bbox_assignee(assignment=assignment, recipe=recipe)
+    #
+    # try:
+    #     dataset = project.datasets.get(dataset_name='bbox items')
+    # except dl.exceptions.NotFound:
+    #     dataset = project.datasets.create(dataset_name='bbox items')
+    #
+    # task = project.tasks.get(task_name='consensus testing task - bbox')
+    # # assignment = project.assignments.get(assignment_name='consensus task (Score-task-5) (2)')  # the other one is (1)
+    # # assignment = project.assignments.get(assignment_id='64b3ce1e43645d3f2c2a5b4a')
+    # assignment = project.assignments.get(assignment_name='consensus testing task (2)')
+    # recipe = dataset.recipes.list()[0]
+    # setup_consensus_bbox_assignee(assignment=assignment, recipe=recipe, delete_annotations=False)
 
     ###################
     # Label confusion #
@@ -172,3 +196,8 @@ if __name__ == '__main__':
     #     dataset = project.datasets.get(dataset_name='classification items')
     # except dl.exceptions.NotFound:
     #     dataset = project.datasets.create(dataset_name='classification items')
+    #
+    # task = project.tasks.get(task_name='qualification testing - confusion matrix')
+
+
+    cleanup_annotations(project=project)
