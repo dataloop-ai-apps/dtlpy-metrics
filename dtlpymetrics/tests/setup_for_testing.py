@@ -122,6 +122,7 @@ def setup_consensus_bbox_assignee(assignment, recipe, delete_annotations=False):
 
     return
 
+
 def cleanup_annotations(project):
     all_assignments = list(project.assignments.list())
 
@@ -140,10 +141,34 @@ def cleanup_annotations(project):
                 annotation.delete()
 
 
+def check_num_gts(project):
+    dataset1 = project.datasets.get(dataset_name='classification items')
+    # dataset2 = project.datasets.get(dataset_name='bbox items')
+
+    items = list(dataset1.items.list().all())  # + list(dataset2.items.list().all())
+
+    for item in items:
+        annotations = item.annotations.list()
+        yaya_annotations = []
+        for annotation in annotations:
+            if annotation.metadata.get('system', {}).get(
+                    'assignmentId') is None and annotation.creator == 'yaya.t@dataloop.ai':
+                yaya_annotations.append(annotation)
+        print(f'in item {item.id} there are {len(yaya_annotations)} GT annotations')
+
+        if len(yaya_annotations) > 1:
+            for annotation in yaya_annotations:
+                if annotation.metadata['system']['automated'] == True:
+                    print(f'deleting {annotation.id}')
+                    response = input('ready to delete? press y or n')
+                    if response == 'y':
+                        annotation.delete()
+
 
 if __name__ == '__main__':
     dl.setenv('rc')
-    project = dl.projects.get(project_name='Quality Task Scores Testing')
+    # project = dl.projects.get(project_name='Quality Task Scores Testing')
+    project = dl.projects.get(project_id='1c5f0cae-f2f8-48da-9429-9de875721759')
 
     # ######################
     # # Qualification task #
@@ -199,5 +224,6 @@ if __name__ == '__main__':
     #
     # task = project.tasks.get(task_name='qualification testing - confusion matrix')
 
+    # cleanup_annotations(project=project)
 
-    cleanup_annotations(project=project)
+    check_num_gts(project=project)

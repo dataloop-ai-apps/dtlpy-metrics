@@ -415,7 +415,6 @@ def calculate_annotation_scores(annot_collection_1: Union[dl.AnnotationCollectio
                                 entity_id=row['second_id'],
                                 relative=row['first_id'])
             annotation_scores.append(annot_score)
-            # print(f'creating score type{score_type}') # DEBUG
 
     ##############################################
     # create label confusion scores for this set #

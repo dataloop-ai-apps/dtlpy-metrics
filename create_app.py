@@ -16,3 +16,19 @@ print(f'publishing to project: {project.name}')
 # publish dpk to app store
 dpk = project.dpks.publish()
 print(f'published successfully! dpk name: {dpk.name}, dpk id: {dpk.id}, version: {dpk.version}')
+print(
+    """\
+                 .  ---  .
+               /          \
+              |   O  _  O  |
+              |   ./   \.  |
+              /   `-._.-'   \
+            .'  /         \  `.
+        .-~.-~ /           \ ~-.~-.
+    .-~ ~     |             |     ~ ~-.
+    `- .      |             |      . -'
+         ~ -  |             |  - ~
+              \             /
+            ___\           /___
+            ~;_  >- . . -<  _i~
+    """)
