@@ -25,6 +25,12 @@ Alternatively, in Python the app can be installed with DPK:
 ```python 
 project.apps.install(dpk=dpk)
 ```
+## Python installation
+
+```shell
+pip install git+https://github.com/dataloop-ai-apps/dtlpy-metrics
+```
+
 
 ## Tutorial and How-To
 
