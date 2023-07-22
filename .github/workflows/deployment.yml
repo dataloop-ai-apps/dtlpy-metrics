@@ -7,21 +7,43 @@ on:
       - '*'
 
 jobs:
- build-publish-and-install-rc:
-   runs-on: ubuntu-latest
-   container:
-     image: docker.io/dataloopai/py3.8.node16:1.74.14
-   steps:
-     - name: Checkout code
-       uses: actions/checkout@v2
-     - name: Install dependencies and build
-       run: |
-         pip3 install dtlpy --upgrade
-     - name: Publish & Install in project
-       env:
-         PROJECT_ID: "${{ vars.PROJECT_ID_RC }}"
-         BOT_EMAIL: "${{ vars.BOT_EMAIL_RC }}"
-         BOT_PASSWORD: "${{ secrets.BOT_PASSWORD_RC }}"
-         ENV: "rc"
-       run: |
-         python3 create_app.py
+  build-publish-and-install-rc:
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/dataloopai/py3.8.node16:1.74.14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install dependencies and build
+        run: |
+          pip3 install dtlpy --upgrade
+      - name: Publish & Install in project
+        env:
+          PROJECT_ID: "${{ vars.PROJECT_ID_RC }}"
+          BOT_EMAIL: "${{ vars.BOT_EMAIL_RC }}"
+          BOT_PASSWORD: "${{ secrets.BOT_PASSWORD_RC }}"
+          ENV: "rc"
+        run: |
+          python3 create_app.py
+  publish-and-install-production:
+    runs-on: ubuntu-latest
+    needs: build-publish-and-install-rc
+    container:
+      image: docker.io/dataloopai/py3.8.node16:1.74.14
+    steps:
+      - name: Manual approval for the Production Release
+        uses: "trstringer/manual-approval@v1"
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: orshabtay,yayat
+          minimum-approvals: 1
+          issue-title: "Continue production release for ${{ github.event.head_commit.message }} with commit id: ${{ github.sha }}"
+          resources: "build-publish-and-install-rc"
+          timeout: "24h"
+      - name: Publish and release to production
+          PROJECT_ID: "${{ vars.PROJECT_ID_PROD }}"
+          BOT_EMAIL: "${{ vars.BOT_EMAIL_PROD }}"
+          BOT_PASSWORD: "${{ secrets.BOT_PASSWORD_PROD }}"
+          ENV: "prod"
+        run: |
+          python3 create_app.py

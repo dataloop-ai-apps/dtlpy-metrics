@@ -23,7 +23,7 @@ def update():
     apps = dl.apps.list(filters=filters)
     for app in apps.all():
         print(app.dpk_name, app.dpk_version)
-        app.dpk_version= dpk.version
+        app.dpk_version = dpk.version
         app.update()
 
 
