@@ -34,7 +34,11 @@ jobs:
           # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Test with pytest
+        env:
+          BOT_PASSWORD: "${{ secrets.TEST_BOT_PASSWORD_RC }}"
+          BOT_EMAIL: "${{ vars.TEST_BOT_EMAIL_RC }}"
         run: |
           dlp api setenv --env rc
-          dlp login-m2m --email ${{vars.TEST_BOT_EMAIL_RC}} --password ${{secrets.TEST_BOT_PASSWORD_RC}}
+          dlp login-m2m --email ${{ vars.TEST_BOT_EMAIL_RC }} --password ${{ secrets.TEST_BOT_PASSWORD_RC }}
+          dlp login-m2m --email $BOT_EMAIL --password $BOT_PASSWORD
           pytest
