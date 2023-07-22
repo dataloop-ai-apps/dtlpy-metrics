@@ -41,6 +41,7 @@ jobs:
           resources: "build-publish-and-install-rc"
           timeout: "24h"
       - name: Publish and release to production
+        env:
           PROJECT_ID: "${{ vars.PROJECT_ID_PROD }}"
           BOT_EMAIL: "${{ vars.BOT_EMAIL_PROD }}"
           BOT_PASSWORD: "${{ secrets.BOT_PASSWORD_PROD }}"
