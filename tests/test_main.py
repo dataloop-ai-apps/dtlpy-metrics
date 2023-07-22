@@ -14,17 +14,6 @@ logger = logging.getLogger()
 class TestRunner(unittest.TestCase):
     def setUp(self):
         dl.setenv("rc")
-        print(f'env -> {dl.environment()}')
-        if dl.token_expired():
-            email = os.environ.get('BOT_EMAIL', None)
-            password = os.environ.get('BOT_PASSWORD', None)
-            print(f'email {email}')
-            if email is not None and password is not None:
-                is_logged_in = dl.login_m2m(email, password)
-                print(f'is_logged_in {is_logged_in}')
-            else:
-                dl.login()
-
         # self.project = dl.projects.get(project_name='Quality Task Scores Testing')
         self.project = dl.projects.get(project_id='1c5f0cae-f2f8-48da-9429-9de875721759')  # Quality Task Scores Testing
 
