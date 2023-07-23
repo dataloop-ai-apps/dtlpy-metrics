@@ -33,6 +33,7 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
     Calculate scores for all items in a quality task, based on the item scores from each assignment.
 
     :param task: dl.Task entity
+    :param score_types: optional list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL])
     :return: dl.Task entity
     """
     # determine task type
@@ -42,15 +43,14 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
     if task.metadata['system'].get('consensusTaskType') in ['honeypot', 'qualification']:
         # qualification and honeypot scoring is completed on cloned items for each assignee
         filters = dl.Filters()
-        filters.add(field='hidden', values=True)
-        filters.add(field='dir', values='/.consensus/*')
-        pages = task.get_items(filters=filters, get_consensus_items=True)
+        filters.add(field='hidden', values=True)  # return only the clones
+        pages = task.get_items(filters=filters)
+        pages.print()
     else:  # for consensus
         # default filter for quality tasks is hidden = True, so this hides the clones and returns only original items
         filters = dl.Filters()
         filters.add(field='hidden', values=False)
         pages = task.get_items(filters=filters, get_consensus_items=True)
-
     for item in pages.all():
         all_item_tasks = item.metadata['system']['refs']
         for item_task_dict in all_item_tasks:
@@ -78,10 +78,10 @@ def create_task_item_score(item: dl.Item = None,
 
     In the case of qualification and honeypot, the first set of annotations is considered the reference set.
     In the case of consensus, annotations are compared twice-- once as a reference set, and once as a test set.
-    :param item: dl.Item entity
+    :param item: dl.Item entity (optional)
     :param task: dl.Task entity (optional)
-    :param context: dl.Context entity that includes references to associated entities
-    :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL])
+    :param context: dl.Context entity that includes references to associated entities (optional)
+    :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
     :return: item
     """
     ####################################
@@ -95,6 +95,8 @@ def create_task_item_score(item: dl.Item = None,
         else:
             task = context.task
     assignments = task.assignments.list()
+
+    # create lookup dictionaries getting assignments by id or annotator
     assignments_by_id = {assignment.id: assignment for assignment in assignments}
     assignments_by_annotator = {assignment.annotator: assignment for assignment in assignments}
 
@@ -173,7 +175,7 @@ def create_task_item_score(item: dl.Item = None,
                 if score.relative not in confusion_by_label[score.entity_id]:
                     confusion_by_label[score.entity_id][score.relative] = 0
                 confusion_by_label[score.entity_id][score.relative] += score.value
-
+                print(confusion_by_label)  # DEBUG
             # calc annotation_overall
             user_annotation_overalls = list()
 
@@ -398,7 +400,6 @@ def calculate_annotation_scores(annot_collection_1: Union[dl.AnnotationCollectio
             all_results = pd.concat([all_results, results_df])
         except KeyError:
             continue
-    # all_results.to_csv('all_results.csv') # DEBUG
 
     #########################
     # create score entities #
@@ -419,7 +420,6 @@ def calculate_annotation_scores(annot_collection_1: Union[dl.AnnotationCollectio
     ##############################################
     # create label confusion scores for this set #
     ##############################################
-    # TODO check that this makes sense
     if all_results.shape[0] > 0:
 
         label_confusion_set = all_results[['first_label', 'second_label']]
@@ -427,12 +427,12 @@ def calculate_annotation_scores(annot_collection_1: Union[dl.AnnotationCollectio
 
         label_confusion_summary = label_confusion_set.groupby(['first_label', 'second_label']).size().reset_index(
             name='counts')
-
+        print(label_confusion_summary)
         for i, row in label_confusion_summary.iterrows():
             confusion_score = Score(type=ScoreType.LABEL_CONFUSION,
                                     value=row['counts'],
-                                    entity_id=row['second_label'],
-                                    relative=row['first_label'])
+                                    entity_id=row['second_label'],  # assignee label
+                                    relative=row['first_label'])  # ground truth label
             annotation_scores.append(confusion_score)
 
     return annotation_scores

@@ -12,6 +12,9 @@ The components of this app are:
 1. Functions to calculate scores for quality tasks and model predictions.
 2. Custom nodes that can be added to pipelines to calculate scores when a task's quality items are completed.
 
+Currently there is support for quality tasks (i.e qualification, honeypot, and consensus), model prediction scoring, and 
+precision-recall 
+
 ## Install App in a Project
 
 When the dpk is published, a DPK ID is generated. This ID is used to install the app into a project.

@@ -57,8 +57,7 @@ class TestRunner(unittest.TestCase):
 
         filters = dl.Filters()
         filters.add(field='hidden', values=True)
-        # filters.add(field='dir', values='/.consensus/*')
-        honeypot_items = list(self.honeypot_task.get_items(filters=filters, get_consensus_items=True).all())
+        honeypot_items = list(self.honeypot_task.get_items(filters=filters).all())
         for item in honeypot_items:
             logger.info(f'Comparing calculated scores with reference scores for item: {item.id}')
             with open(os.path.join(self.assets_path, self.honeypot_task.id, f'{item.id}.json'), 'r') as f:
@@ -94,14 +93,12 @@ class TestRunner(unittest.TestCase):
         #################
         # for bbox task #
         #################
-
         logger.info('calculating scores for consensus object detection task')
         self.consensus_task_bbox = calculate_task_score(task=self.consensus_task_bbox,
                                                         score_types=[ScoreType.ANNOTATION_LABEL,
                                                                      ScoreType.ANNOTATION_IOU])
         filters = dl.Filters()
         filters.add(field='hidden', values=False)
-        # filters.add_join(field='type', values='box')
         consensus_bbox_items = self.consensus_task_bbox.get_items(filters=filters,
                                                                   get_consensus_items=True)
         for item in consensus_bbox_items.all():
