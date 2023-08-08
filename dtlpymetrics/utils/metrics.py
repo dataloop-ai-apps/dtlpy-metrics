@@ -32,6 +32,7 @@ class Results:
         return {
             'annotation_type': self.annotation_type,
             'mean_annotations_scores': df['annotation_score'].mean(),
+            'mean_geometries_scores': df['geometry_score'].mean(),
             'mean_attributes_scores': df['attribute_score'].mean(),
             'mean_labels_scores': df['label_score'].mean(),
             'n_annotations_set_one': total_set_one,
@@ -42,9 +43,9 @@ class Results:
             'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
             'n_annotations_matched_total': matched_set_one,
             'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (
-                                                                                                matched_set_one + unmatched_set_two) != 0 else 0,
+                                                                                            matched_set_one + unmatched_set_two) > 0 else 0,
             'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (
-                                                                                             matched_set_one + unmatched_set_one) != 0 else 0,
+                                                                                         matched_set_one + unmatched_set_one) > 0 else 0
         }
 
 
@@ -409,56 +410,3 @@ class Matchers:
                                     second_annotation_label=None,
                                     second_annotation_confidence=None))
         return matches
-
-
-def item_annotation_duration(item: entities.Item = None,
-                             dataset: entities.Dataset = None,
-                             project: entities.Project = None,
-                             task: entities.Task = None,
-                             assignment: entities.Assignment = None):
-    if all(ent is None for ent in [item, dataset, project, assignment, task]):
-        raise ValueError('At least one input to annotation duration must not be None')
-    query = {
-        "startTime": 0,
-        "context": {
-            "accountId": [],
-            "orgId": [],
-            "projectId": [],
-            "datasetId": [],
-            "taskId": [],
-            "assignmentId": [],
-            "itemId": [],
-            "userId": [],
-            "serviceId": [],
-            "podId": [],
-        },
-        "measures": [
-            {
-                "measureType": "itemAnnotationDuration",
-                "pageSize": 1000,
-                "page": 0,
-            },
-        ]
-    }
-    # add context for analytics
-    created_at = list()
-    if item is not None:
-        query['context']['itemId'].append(item.id)
-        created_at.append(int(1000 * datetime.datetime.fromisoformat(item.created_at[:-1]).timestamp()))
-    if task is not None:
-        query['context']['taskId'].append(task.id)
-        created_at.append(int(1000 * datetime.datetime.fromisoformat(task.created_at[:-1]).timestamp()))
-    if dataset is not None:
-        query['context']['datasetId'].append(dataset.id)
-        created_at.append(int(1000 * datetime.datetime.fromisoformat(dataset.created_at[:-1]).timestamp()))
-    if assignment is not None:
-        query['context']['assignmentId'].append(assignment.id)
-        # assignment doesnt have "created_at" attribute
-    query['startTime'] = int(np.min(created_at))
-    raw = project.analytics.get_samples(query=query, return_field=None, return_raw=True)
-    res = {row['itemId']: row['duration'] for row in raw[0]['response']}
-    if item.id not in res:
-        total_time_s = 0
-    else:
-        total_time_s = res[item.id] / 1000
-    return total_time_s
