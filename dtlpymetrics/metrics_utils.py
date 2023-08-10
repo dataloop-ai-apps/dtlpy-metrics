@@ -83,12 +83,12 @@ def measure_annotations(
         # create 2d dataframe with annotation id as names and set all to -1 -> not calculated
         if ignore_labels is True:
             matches = Matchers.general_match(matches=matches,
-                                                     first_set=annotation_subset_one,
-                                                     second_set=annotation_subset_two,
-                                                     match_type=compare_type,
-                                                     match_threshold=match_threshold,
-                                                     ignore_labels=ignore_labels,
-                                                     ignore_attributes=ignore_attributes)
+                                             first_set=annotation_subset_one,
+                                             second_set=annotation_subset_two,
+                                             match_type=compare_type,
+                                             match_threshold=match_threshold,
+                                             ignore_labels=ignore_labels,
+                                             ignore_attributes=ignore_attributes)
         else:
             unique_labels = np.unique([a.label for a in annotation_subset_one] +
                                       [a.label for a in annotation_subset_two])
@@ -97,28 +97,28 @@ def measure_annotations(
                 second_set = [a for a in annotation_subset_two if a.label == label]
                 if compare_type == entities.AnnotationType.CLASSIFICATION:
                     matches = Matchers.general_match(matches=matches,
-                                                             first_set=first_set,
-                                                             second_set=second_set,
-                                                             match_type=compare_type,
-                                                             match_threshold=match_threshold,
-                                                             ignore_labels=True,
-                                                             ignore_attributes=True
-                                                             )
+                                                     first_set=first_set,
+                                                     second_set=second_set,
+                                                     match_type=compare_type,
+                                                     match_threshold=match_threshold,
+                                                     ignore_labels=True,
+                                                     ignore_attributes=True
+                                                     )
                 else:
                     matches = Matchers.general_match(matches=matches,
-                                                             first_set=first_set,
-                                                             second_set=second_set,
-                                                             match_type=compare_type,
-                                                             match_threshold=match_threshold,
-                                                             ignore_labels=ignore_labels,
-                                                             ignore_attributes=ignore_attributes
-                                                             )
+                                                     first_set=first_set,
+                                                     second_set=second_set,
+                                                     match_type=compare_type,
+                                                     match_threshold=match_threshold,
+                                                     ignore_labels=ignore_labels,
+                                                     ignore_attributes=ignore_attributes
+                                                     )
 
         if len(matches) == 0:
             continue
         all_scores.extend(matches.to_df()['annotation_score'])
         final_results[compare_type] = Results(matches=matches,
-                                                      annotation_type=compare_type)
+                                              annotation_type=compare_type)
         true_positives += final_results[compare_type].summary()['n_annotations_matched_total']
         false_positives += final_results[compare_type].summary()['n_annotations_unmatched_set_two']
         false_negatives += final_results[compare_type].summary()['n_annotations_unmatched_set_one']
@@ -166,9 +166,9 @@ class Results:
             'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
             'n_annotations_matched_total': matched_set_one,
             'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (
-                                                                                            matched_set_one + unmatched_set_two) > 0 else 0,
+                                                                                            matched_set_one + unmatched_set_two) != 0 else 0,
             'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (
-                                                                                         matched_set_one + unmatched_set_one) > 0 else 0
+                                                                                         matched_set_one + unmatched_set_one) != 0 else 0
         }
 
 
