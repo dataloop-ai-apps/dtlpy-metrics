@@ -21,7 +21,7 @@ def update():
 
 
 print(
-    """\
+    r"""\
                  .  ---  .
                /          \
               |   O  _  O  |

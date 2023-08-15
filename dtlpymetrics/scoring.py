@@ -135,6 +135,10 @@ def create_task_item_score(item: dl.Item = None,
     labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
     confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
     all_scores = list()
+
+    ###########################
+    # compare annotation sets #
+    ###########################
     # do pairwise comparisons of each assignment for all annotations on the item
     for i_assignment, assignment_annotator_i in enumerate(annots_by_assignment):
         if task_type == "testing" and assignment_annotator_i != 'ref':
@@ -152,11 +156,11 @@ def create_task_item_score(item: dl.Item = None,
             annot_collection_1 = annots_by_assignment[assignment_annotator_i]
             annot_collection_2 = annots_by_assignment[assignment_annotator_j]
             # ANNOTATION_IOU, ANNOTATION_LABEL, ANNOTATION_ATTRIBUTE
-            pairwise_scores = calculate_annotation_scores(annot_collection_1=annot_collection_1,
-                                                          annot_collection_2=annot_collection_2,
-                                                          ignore_labels=True,
-                                                          match_threshold=0.01,
-                                                          score_types=score_types)
+            pairwise_scores = calculate_annotation_score(annot_collection_1=annot_collection_1,
+                                                         annot_collection_2=annot_collection_2,
+                                                         ignore_labels=True,
+                                                         match_threshold=0.01,
+                                                         score_types=score_types)
 
             # update scores with context
             for score in pairwise_scores:
@@ -175,8 +179,8 @@ def create_task_item_score(item: dl.Item = None,
                 if score.relative not in confusion_by_label[score.entity_id]:
                     confusion_by_label[score.entity_id][score.relative] = 0
                 confusion_by_label[score.entity_id][score.relative] += score.value
-                print(confusion_by_label)  # DEBUG
-            # calc annotation_overall
+
+            # calc overall annotation
             user_annotation_overalls = list()
 
             for annotation in annot_collection_2:  # go over all annotations from the "test" set
@@ -195,6 +199,7 @@ def create_task_item_score(item: dl.Item = None,
                                            dataset_id=item.dataset.id)
                 all_scores.append(annotation_overall)
 
+            # calc user confusion
             user_confusion_score = Score(type=ScoreType.USER_CONFUSION,
                                          value=mean_or_default(arr=user_annotation_overalls,
                                                                default=1),
@@ -209,14 +214,16 @@ def create_task_item_score(item: dl.Item = None,
 
     for label_a, rest in confusion_by_label.items():
         for label_b, value in rest.items():
-            item_score = Score(type=ScoreType.LABEL_CONFUSION,
-                               value=value,
-                               entity_id=label_a,
-                               relative=label_b,
-                               task_id=task.id,
-                               item_id=item.id,
-                               dataset_id=item.dataset.id)
-            all_scores.append(item_score)
+            item_confusion_score = Score(type=ScoreType.LABEL_CONFUSION,
+                                         value=value,
+                                         entity_id=label_a,
+                                         relative=label_b,
+                                         task_id=task.id,
+                                         item_id=item.id,
+                                         dataset_id=item.dataset.id)
+            all_scores.append(item_confusion_score)
+
+    # calc overall item score
     item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
     item_score = Score(type=ScoreType.ITEM_OVERALL,
                        value=mean_or_default(arr=item_overall, default=1),
@@ -254,7 +261,7 @@ def create_task_item_score(item: dl.Item = None,
     return item
 
 
-@scorer.add_function(display_name='Create model score')
+@scorer.add_function(display_name='Create scores for model predictions on a dataset per annotation')
 def create_model_score(dataset: dl.Dataset = None,
                        model: dl.Model = None,
                        filters: dl.Filters = None,
@@ -357,13 +364,23 @@ def create_model_score(dataset: dl.Dataset = None,
     return model
 
 
+def calculate_model_item_score(model_scores: pd.DataFrame):
+    """
+    Calculate scores for each item that a model predicts on
+
+    @return:
+    """
+
+    pass
+
+
 @scorer.add_function(display_name='Compare two annotation sets for scoring')
-def calculate_annotation_scores(annot_collection_1: Union[dl.AnnotationCollection, List[dl.Annotation]],
-                                annot_collection_2: Union[dl.AnnotationCollection, List[dl.Annotation]],
-                                ignore_labels=False,
-                                match_threshold=0.5,
-                                compare_types=None,
-                                score_types=None) -> List[Score]:
+def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection, List[dl.Annotation]],
+                               annot_collection_2: Union[dl.AnnotationCollection, List[dl.Annotation]],
+                               ignore_labels=False,
+                               match_threshold=0.5,
+                               compare_types=None,
+                               score_types=None) -> List[Score]:
     """
     Creates scores for comparing two annotation lists.
 
