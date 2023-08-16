@@ -24,7 +24,7 @@ pip install git+https://github.com/dataloop-ai-apps/dtlpy-metrics
 
 ## Tutorial and How-To
 
-See ![this tutorial](docs/Quality task scoring tutorial.ipynb) for details on scoring for Dataloop "quality tasks" (qualification, honeypot, and consensus tasks).
+See [this tutorial](../docs/Quality task scoring tutorial.ipynb) for details on scoring for Dataloop "quality tasks" (qualification, honeypot, and consensus tasks).
 
 ## Functions
 
