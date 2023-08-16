@@ -15,19 +15,6 @@ The components of this app are:
 Currently there is support for quality tasks (i.e qualification, honeypot, and consensus), model prediction scoring, and 
 precision-recall 
 
-## Install App in a Project
-
-When the dpk is published, a DPK ID is generated. This ID is used to install the app into a project.
-
-```
-dlp app install --dpk-id <DPK ID> --project-name <PROJECT_NAME>
-```
-
-Alternatively, in Python the app can be installed with DPK:
-
-```python 
-project.apps.install(dpk=dpk)
-```
 ## Python installation
 
 ```shell
@@ -37,7 +24,7 @@ pip install git+https://github.com/dataloop-ai-apps/dtlpy-metrics
 
 ## Tutorial and How-To
 
-* Scores for a quality task will be automatically calculated when this app is installed.
+See ![this tutorial](docs/Quality task scoring tutorial.ipynb) for details on scoring for Dataloop "quality tasks" (qualification, honeypot, and consensus tasks).
 
 ## Functions
 
