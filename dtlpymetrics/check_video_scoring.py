@@ -19,8 +19,8 @@ now = datetime.datetime.now().isoformat(sep='.', timespec='seconds').replace(':'
 test_dump_path = os.path.join('dtlpymetrics', now)
 
 # item = dl.items.get(item_id='64c8f0efb118f77c071a0706')  # the middle video
-qual_poly = project.tasks.get(task_id='64c8f0e4a3f0796c68c35532')
-qual_poly_scores = calculate_task_score(task=qual_poly)
+qualification_task = project.tasks.get(task_id='64c8f0e4a3f0796c68c35532')
+qualification_task_scores = calculate_task_score(task=qualification_task)
 
 # dl_scores = Scores(client_api=dl.client_api)
 # dl_scores.get(score_id='64c8f0e4a3f0796c68c35532')

@@ -27,6 +27,15 @@ logger = logging.getLogger('scoring-and-metrics')
 scores_debug = True
 
 
+def check_if_video(item: dl.Item):
+    if item.metadata.get('system', dict()):
+        item_mimetype = item.metadata['system'].get('mimetype', None)
+        is_video = 'video' in item_mimetype
+    else:
+        is_video = False
+    return is_video
+
+
 @scorer.add_function(display_name='Calculate task scores for quality tasks')
 def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
     """
@@ -61,8 +70,10 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
             elif item_task_dict.get('metadata', None) is None:
                 continue
             elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
-
-                create_task_item_score(item=item, task=task, score_types=score_types)
+                if check_if_video(item) is False:
+                    create_task_item_score(item=item, task=task, score_types=score_types)
+                else:
+                    create_task_video_score(item=item, task=task, score_types=score_types)
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
                 continue
@@ -70,13 +81,27 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
     return task
 
 
-def create_compare_scores(annots_by_assignment: dict, task_type, score_types, task, assignments_by_annotator, item,
-                          confusion_by_label):
-    all_scores = []
+def create_comparison_scores(annots_by_assignment: dict,
+                             task_type,
+                             score_types,
+                             task,
+                             assignments_by_annotator,
+                             item,
+                             confusion_by_label):
+    """
+    Create comparison scores compares annotation sets from assignments in pairs.
 
-    ###########################
-    # compare annotation sets #
-    ###########################
+    @param annots_by_assignment: dict with assignment id as key and list of annotations as value
+    @param task_type: the task type (testings vs consensus)
+    @param score_types: the score types to include when calculating scores
+    @param task: dl.Task entity
+    @param assignments_by_annotator: dict lookup of assignments by annotator name
+    @param item: dl.Item to be scored
+    @param confusion_by_label: empty dict with all possible label confusion combinations
+    @return:
+    """
+    compared_scores = list()
+
     # do pairwise comparisons of each assignment for all annotations on the item
     for i_assignment, assignment_annotator_i in enumerate(annots_by_assignment):
         if task_type == "testing" and assignment_annotator_i != 'ref':
@@ -110,7 +135,7 @@ def create_compare_scores(annots_by_assignment: dict, task_type, score_types, ta
             raw_annotation_scores = [score for score in pairwise_scores if score.type != ScoreType.LABEL_CONFUSION]
             confusion_scores = [score for score in pairwise_scores if score.type == ScoreType.LABEL_CONFUSION]
 
-            # calc general confusion
+            # calc general label confusion for the entire annotation collection/item
             for score in confusion_scores:
                 if score.entity_id not in confusion_by_label:
                     confusion_by_label[score.entity_id] = dict()
@@ -120,7 +145,6 @@ def create_compare_scores(annots_by_assignment: dict, task_type, score_types, ta
 
             # calc overall annotation
             user_annotation_overalls = list()
-
             for annotation in annot_collection_2:  # go over all annotations from the "test" set
                 single_annotation_scores = mean_or_default(arr=[score.value
                                                                 for score in raw_annotation_scores
@@ -135,7 +159,7 @@ def create_compare_scores(annots_by_assignment: dict, task_type, score_types, ta
                                            item_id=item.id,
                                            user_id=assignment_annotator_j,
                                            dataset_id=item.dataset.id)
-                all_scores.append(annotation_overall)
+                compared_scores.append(annotation_overall)
 
             # calc user confusion
             user_confusion_score = Score(type=ScoreType.USER_CONFUSION,
@@ -147,8 +171,8 @@ def create_compare_scores(annots_by_assignment: dict, task_type, score_types, ta
                                          task_id=task.id,
                                          item_id=item.id,
                                          dataset_id=item.dataset.id)
-            all_scores.append(user_confusion_score)
-            all_scores.extend(raw_annotation_scores)
+            compared_scores.append(user_confusion_score)
+            compared_scores.extend(raw_annotation_scores)
 
     # label confusion at the item level
     for label_a, rest in confusion_by_label.items():
@@ -160,11 +184,11 @@ def create_compare_scores(annots_by_assignment: dict, task_type, score_types, ta
                                          task_id=task.id,
                                          item_id=item.id,
                                          dataset_id=item.dataset.id)
-            all_scores.append(item_confusion_score)
-    return all_scores
+            compared_scores.append(item_confusion_score)
+    return compared_scores
 
 
-@scorer.add_function(display_name='Create scores for items in a quality task')
+@scorer.add_function(display_name='Create scores for image items in a quality task')
 def create_task_item_score(item: dl.Item = None,
                            task: dl.Task = None,
                            context: dl.Context = None,
@@ -210,128 +234,38 @@ def create_task_item_score(item: dl.Item = None,
     annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
     logger.info(f'Starting scoring for assignments: {list(annots_by_assignment.keys())}')
 
-    # check if the item is a video
-    # if it's a video, then go through all the annotations and split them frame by frame
-    # then, in each frame, split by assignment (dict in dict)
-    # within each frame, do the pairwise comparison
-    # once each frame's score is calculated, take the average score of all frames (between the two assignees)
-    # return this score as the score for the item
-    # the common function for this could be called, "compare annotation collections"
+    # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
+    for annotation in annotations:
+        # default is "ref"
+        # TODO handle models
+        assignment_id = annotation.metadata['system'].get('assignmentId', 'ref')
+        task_id = annotation.metadata['system'].get('taskId', None)
+        if task_id == task.id:
+            assignment_annotator = assignments_by_id[assignment_id].annotator
+            annots_by_assignment[assignment_annotator].append(annotation)
+        else:
+            # TODO comparing annotations from another task
+            continue
 
-    # check if the item is a video, in which case we compare assignees frame by frame
-    if item.metadata.get('system', dict()):
-        item_mimetype = item.metadata['system'].get('mimetype', None)
-        is_video = 'video' in item_mimetype
+    if task_type == 'testing':
+        # get all ref from the src item
+        src_item = dl.items.get(item_id=item._src_item)
+        annots_by_assignment['ref'] = src_item.annotations.list()
 
-    # if it's a video, then go through all the annotations and split them frame by frame
-    if is_video is True:
-        annotations_by_frame = dict()
+    labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
+    confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
+    all_scores = create_comparison_scores(annots_by_assignment, task_type, score_types, task, assignments_by_annotator,
+                                          item, confusion_by_label)
 
-        for annotation in annotations:
-            # then, in each frame, split by assignment (dict in dict)
-            for frame, f_annotation in annotation.frames.items():
-                if frame not in annotations_by_frame:
-                    annotations_by_frame[frame] = [f_annotation]
-                else:
-                    annotations_by_frame[frame].append(f_annotation)
-
-        for frame, f_annots in annotations_by_frame.items():
-            for f_annotation in f_annots:
-                # TODO compare annotations between models
-                # default is "ref", if no assignment ID is found
-                assignment_id = f_annotation.annotation.metadata['system'].get('assignmentId', 'ref')
-                task_id = f_annotation.annotation.metadata['system'].get('taskId', None)
-                if task_id == task.id:
-                    assignment_annotator = assignments_by_id[assignment_id].annotator
-                    annots_by_assignment[assignment_annotator].append(f_annotation)
-                else:
-                    # TODO comparing annotations from another task
-                    continue
-
-            if task_type == 'testing':
-                # get all ref from the src item
-                src_item = dl.items.get(item_id=item._src_item)
-                annots_by_assignment['ref'] = src_item.annotations.list()
-
-            annotations_by_frame.update({frame: annots_by_assignment})
-
-        labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
-        confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
-        all_scores = list()
-        all_frame_annotations = dict()
-
-        for frame, frame_annotations in annotations_by_frame.items():
-            # within each frame, do the pairwise comparison
-            frame_scores = create_compare_scores(frame_annotations, task_type, score_types, task,
-                                                 assignments_by_annotator, item, confusion_by_label)
-            for score in frame_scores:
-                if score.entity_id not in all_frame_annotations:
-                    all_frame_annotations[score.entity_id] = list()
-                all_frame_annotations[score.entity_id].append(score)
-
-        # once each frame's score is calculated, take the average score of all frames
-        for annotation_id, annotation_frame_scores in all_frame_annotations.items():
-            all_scores.append(Score(type=ScoreType.ANNOTATION_OVERALL,
-                                    value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
-                                                               score.type == ScoreType.ANNOTATION_OVERALL.value],
-                                                          default=1)))
-            all_scores.append(Score(type=ScoreType.ANNOTATION_LABEL,
-                                    value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
-                                                               score.type == ScoreType.ANNOTATION_LABEL.value],
-                                                          default=1)))
-            all_scores.append(Score(type=ScoreType.ANNOTATION_IOU,
-                                    value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
-                                                               score.type == ScoreType.ANNOTATION_IOU.value],
-                                                          default=1)))
-            all_scores.append(Score(type=ScoreType.ANNOTATION_ATTRIBUTE,
-                                    value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
-                                                               score.type == ScoreType.ANNOTATION_ATTRIBUTE.value],
-                                                          default=1)))
-
-        # calc overall video item score as an average of all frame scores
-        item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
-
-        item_score = Score(type=ScoreType.ITEM_OVERALL,
-                           value=mean_or_default(arr=item_overall, default=1),
-                           entity_id=item.id,
-                           task_id=task.id,
-                           item_id=item.id,
-                           dataset_id=item.dataset.id)
-        all_scores.append(item_score)
-
-    else:  # if it's not a video
-        # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
-        for annotation in annotations:
-            # default is "ref"
-            # TODO handle models
-            assignment_id = annotation.metadata['system'].get('assignmentId', 'ref')
-            task_id = annotation.metadata['system'].get('taskId', None)
-            if task_id == task.id:
-                assignment_annotator = assignments_by_id[assignment_id].annotator
-                annots_by_assignment[assignment_annotator].append(annotation)
-            else:
-                # TODO comparing annotations from another task
-                continue
-
-        if task_type == 'testing':
-            # get all ref from the src item
-            src_item = dl.items.get(item_id=item._src_item)
-            annots_by_assignment['ref'] = src_item.annotations.list()
-
-        labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
-        confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
-        all_scores = create_compare_scores(annots_by_assignment, task_type, score_types, task, assignments_by_annotator,
-                                           item, confusion_by_label)
-
-        # calc overall item score as an average of all overall annotation scores
-        item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
-        item_score = Score(type=ScoreType.ITEM_OVERALL,
-                           value=mean_or_default(arr=item_overall, default=1),
-                           entity_id=item.id,
-                           task_id=task.id,
-                           item_id=item.id,
-                           dataset_id=item.dataset.id)
-        all_scores.append(item_score)
+    # calc overall item score as an average of all overall annotation scores
+    item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
+    item_score = Score(type=ScoreType.ITEM_OVERALL,
+                       value=mean_or_default(arr=item_overall, default=1),
+                       entity_id=item.id,
+                       task_id=task.id,
+                       item_id=item.id,
+                       dataset_id=item.dataset.id)
+    all_scores.append(item_score)
 
     #############################
     # upload scores to platform #
@@ -358,6 +292,153 @@ def create_task_item_score(item: dl.Item = None,
             json.dump(scores_json, f, ensure_ascii=False, indent=4)
 
         logger.debug(f'SAVED score to: {save_filepath}')
+    return item
+
+
+def get_annotations_from_frames(annotations: List[dl.Annotation]):
+    """
+    Split video annotations by frame
+    @param annotations: a list of annotations from a video item
+    @return: annotations_by_frame, dict with frame number as key and list of annotations as value
+    """
+    annotations_by_frame = dict()
+    for annotation in annotations:
+        # then, in each frame, split by assignment (dict in dict)
+        for frame, frame_annotation in annotation.frames.items():
+            frame_annotation.annotation.set_frame(frame=frame)
+            if frame not in annotations_by_frame:
+                annotations_by_frame[frame] = [frame_annotation.annotation]
+            else:
+                annotations_by_frame[frame].append(frame_annotation.annotation)
+    return annotations_by_frame
+
+
+@scorer.add_function(display_name='Create scores for video items in a quality task')
+def create_task_video_score(item: dl.Item = None,
+                            task: dl.Task = None,
+                            context: dl.Context = None,
+                            score_types=None) -> dl.Item:
+    """
+    Create scores for a video item in a task.
+
+    @param item:
+    @param task:
+    @param context:
+    @param score_types:
+    @return:
+    """
+    # check if the item is a video
+    # if it's a video, then go through all the annotations and split them frame by frame
+    # then, in each frame, split by assignment (dict in dict)
+    # within each frame, do the pairwise comparison
+    # once each frame's score is calculated, take the average score of all frames (between the two assignees)
+    # return this score as the score for the item
+    # the common function for this could be called, "compare annotation collections"
+
+    if item is None:
+        raise KeyError('No dataset provided, please provide a dataset.')
+    if task is None:
+        if context is None:
+            raise ValueError('Must provide either task or context.')
+        else:
+            task = context.task
+    assignments = task.assignments.list()
+
+    # create lookup dictionaries getting assignments by id or annotator
+    assignments_by_id = {assignment.id: assignment for assignment in assignments}
+    assignments_by_annotator = {assignment.annotator: assignment for assignment in assignments}
+
+    if task.metadata['system'].get('consensusTaskType') == 'consensus':
+        task_type = 'consensus'
+    elif task.metadata['system'].get('consensusTaskType') in ['qualification', 'honeypot']:
+        task_type = 'testing'
+    else:
+        raise ValueError(f'Task type is not suitable for scoring.')
+
+    ################################
+    # sort annotations by assignee #
+    ################################
+    annotations = item.annotations.list()
+    annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
+    logger.info(f'Starting scoring for assignments: {list(annots_by_assignment.keys())}')
+
+    # collect all annotations by frame
+    annotations_by_frame = get_annotations_from_frames(annotations)
+    # split all annotation slices to its corresponding assignment
+    for frame, annotation_slices in annotations_by_frame.items():
+        for annotation_slice in annotation_slices:
+            # TODO compare annotations between models
+            # default is "ref", if no assignment ID is found
+            assignment_id = annotation_slice.metadata['system'].get('assignmentId', 'ref')
+            task_id = annotation_slice.metadata['system'].get('taskId', None)
+            if task_id == task.id:
+                assignment_annotator = assignments_by_id[assignment_id].annotator
+                annots_by_assignment[assignment_annotator].append(annotation_slice)
+            else:
+                # TODO comparing annotations from another task
+                continue
+        annotations_by_frame.update({frame: annots_by_assignment})
+
+    if task_type == 'testing':
+        # get all ref from the src item
+        src_item = dl.items.get(item_id=item._src_item)
+        annotation_list = src_item.annotations.list()
+        annots_by_assignment['ref'] = get_annotations_from_frames(annotation_list)
+        # for frame, annotation_slices in
+
+    # # DEBUG
+    # for frame, frame_annotations in annotations_by_frame.items():
+    #     print(f'Frame: {frame}, # annotations: {len(frame_annotations)}')
+    # # /end DEBUG
+    labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
+    confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
+    all_scores = list()
+    all_frame_annotations = dict()
+
+    for frame, frame_annotations in annotations_by_frame.items():
+        # within each frame, do the pairwise comparison
+        frame_scores = create_comparison_scores(annots_by_assignment=frame_annotations,
+                                                task_type=task_type,
+                                                score_types=score_types,
+                                                task=task,
+                                                assignments_by_annotator=assignments_by_annotator,
+                                                item=item,
+                                                confusion_by_label=confusion_by_label)
+        for score in frame_scores:
+            if score.entity_id not in all_frame_annotations:
+                all_frame_annotations[score.entity_id] = list()
+            all_frame_annotations[score.entity_id].append(score)
+
+    # once each frame's score is calculated, take the average score of all frames
+    for annotation_id, annotation_frame_scores in all_frame_annotations.items():
+        all_scores.append(Score(type=ScoreType.ANNOTATION_OVERALL,
+                                value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
+                                                           score.type == ScoreType.ANNOTATION_OVERALL.value],
+                                                      default=1)))
+        all_scores.append(Score(type=ScoreType.ANNOTATION_LABEL,
+                                value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
+                                                           score.type == ScoreType.ANNOTATION_LABEL.value],
+                                                      default=1)))
+        all_scores.append(Score(type=ScoreType.ANNOTATION_IOU,
+                                value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
+                                                           score.type == ScoreType.ANNOTATION_IOU.value],
+                                                      default=1)))
+        all_scores.append(Score(type=ScoreType.ANNOTATION_ATTRIBUTE,
+                                value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
+                                                           score.type == ScoreType.ANNOTATION_ATTRIBUTE.value],
+                                                      default=1)))
+
+    # calc overall video item score as an average of all frame scores
+    item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
+
+    item_score = Score(type=ScoreType.ITEM_OVERALL,
+                       value=mean_or_default(arr=item_overall, default=1),
+                       entity_id=item.id,
+                       task_id=task.id,
+                       item_id=item.id,
+                       dataset_id=item.dataset.id)
+    all_scores.append(item_score)
+
     return item
 
 
@@ -490,7 +571,7 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
     :param annot_collection_1: dl.AnnotationCollection or list of annotations
     :param annot_collection_2: dl.AnnotationCollection or list of annotations
     :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label classification
-    :param match_threshold: float, threshold for matching annotations
+    :param match_threshold: float, threshold for considering two annotations a "match"
     :param compare_types: dl.AnnotationType entity or string for the annotation types to be compared
     :param score_types: dl.ScoreType entity or string for the score types to be calculated (e.g. "annotation_iou")
     :return: list of Score entities
@@ -502,7 +583,9 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
     if not isinstance(score_types, list):
         score_types = [score_types]
 
-    # compare all relevant annotations
+    #######################
+    # compare annotations #
+    #######################
     results = measure_annotations(
         annotations_set_one=annot_collection_1,
         annotations_set_two=annot_collection_2,
