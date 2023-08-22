@@ -25,3 +25,5 @@ qualification_task_scores = calculate_task_score(task=qualification_task)
 # dl_scores = Scores(client_api=dl.client_api)
 # dl_scores.get(score_id='64c8f0e4a3f0796c68c35532')
 
+input('Press enter to continue...')
+print()
