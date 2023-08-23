@@ -7,7 +7,7 @@ from tqdm import tqdm
 from typing import List, Union
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics.quality_tasks.image import get_image_scores, get_video_scores
-from dtlpymetrics.utils.helpers import check_if_video, get_annotations_from_frames, plot_matrix
+from dtlpymetrics.utils.helpers import check_if_video, plot_matrix  # get_annotations_from_frames
 from dtlpymetrics.utils.metrics_utils import measure_annotations, all_compare_types, mean_or_default
 
 dl.use_attributes_2()
@@ -111,7 +111,11 @@ def create_task_item_score(item: dl.Item = None,
     is_video = check_if_video(item=item)
     if is_video is True:  # video items
         # sort all annotations by frame
-        all_annotation_slices = get_annotations_from_frames(annotations)
+        num_frames = item.metadata['system']['nb_frames']
+        all_annotation_slices = dict()
+        for f in range(num_frames):
+            all_annotation_slices[f] = annotations.get_frame(frame_num=f)
+        # all_annotation_slices = get_annotations_from_frames(annotations)
         annotations_by_frame = {}
 
         # within each frame, sort all annotation slices to their corresponding assignment/annotator
@@ -134,10 +138,12 @@ def create_task_item_score(item: dl.Item = None,
         if task_type == 'testing':
             # get all ref from the src item
             src_item = dl.items.get(item_id=item._src_item)
-            ref_annots_by_frame = get_annotations_from_frames(src_item.annotations.list())
-            for frame, annotation_slices in ref_annots_by_frame.items():
-                # print(len(annotation_slices))
-                annotations_by_frame[frame]['ref'] = annotation_slices
+            # ref_annots_by_frame = get_annotations_from_frames(src_item.annotations.list())
+            ref_annotations = src_item.annotations.list()
+            num_frames = src_item.metadata['system']['nb_frames']
+            for f in range(num_frames):
+                annotations_by_frame[f]['ref'] = ref_annotations.get_frame(frame_num=f)
+                # annotations_by_frame[frame]['ref'] = annotation_slices
 
         # calculate scores
         all_scores = get_video_scores(annotations_by_frame=annotations_by_frame,
