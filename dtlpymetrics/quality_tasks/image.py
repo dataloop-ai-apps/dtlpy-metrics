@@ -1,7 +1,7 @@
 import logging
 import dtlpy as dl
 from dtlpymetrics.dtlpy_scores import Score, ScoreType
-from dtlpymetrics.utils.metrics_utils import mean_or_default, calculate_annotation_score
+from dtlpymetrics.utils import mean_or_default, calculate_annotation_score, add_score_context
 
 
 def get_image_scores(annots_by_assignment: dict,
@@ -58,14 +58,17 @@ def get_image_scores(annots_by_assignment: dict,
                                                          score_types=score_types)
 
             # update scores with context
+            updated_scores = []
             for score in pairwise_scores:
-                score.user_id = assignment_annotator_j
-                score.task_id = task.id
-                score.assignment_id = assignments_by_annotator[assignment_annotator_j].id
-                score.item_id = item.id
+                updated_score = add_score_context(score=score,
+                                                  user_id=assignment_annotator_j,
+                                                  task_id=task.id,
+                                                  assignment_id=assignments_by_annotator[assignment_annotator_j].id,
+                                                  item_id=item.id)
+                updated_scores.append(updated_score)
 
-            raw_annotation_scores = [score for score in pairwise_scores if score.type != ScoreType.LABEL_CONFUSION]
-            confusion_scores = [score for score in pairwise_scores if score.type == ScoreType.LABEL_CONFUSION]
+            raw_annotation_scores = [score for score in updated_scores if score.type != ScoreType.LABEL_CONFUSION]
+            confusion_scores = [score for score in updated_scores if score.type == ScoreType.LABEL_CONFUSION]
 
             # calc general label confusion for the entire annotation collection/item
             for score in confusion_scores:
@@ -163,14 +166,18 @@ def get_video_scores(annotations_by_frame: dict,
                                                              match_threshold=0.01,
                                                              score_types=score_types)
 
+                updated_scores = []
                 # update scores with context
                 for score in pairwise_scores:
-                    score.user_id = assignment_annotator_j
-                    score.task_id = task.id
-                    score.assignment_id = assignments_by_annotator[assignment_annotator_j].id
-                    score.item_id = item.id
+                    updated_score = add_score_context(score=score,
+                                                      user_id=assignment_annotator_j,
+                                                      task_id=task.id,
+                                                      assignment_id=assignments_by_annotator[assignment_annotator_j].id,
+                                                      item_id=item.id,
+                                                      dataset_id=item.dataset.id)
+                    updated_scores.append(updated_score)
 
-                raw_annotation_scores = [score for score in pairwise_scores if score.type != ScoreType.LABEL_CONFUSION]
+                raw_annotation_scores = [score for score in updated_scores if score.type != ScoreType.LABEL_CONFUSION]
                 frame_scores.extend(raw_annotation_scores)
 
                 # calc overall annotation

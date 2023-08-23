@@ -16,35 +16,26 @@ def check_if_video(item: dl.Item):
     return is_video
 
 
-# def get_annotations_from_frames(annotations: List[dl.Annotation]):
-#     """
-#     Split video annotations by frame
-#     @param annotations: a list of annotations from a video item
-#     @return: annotations_by_frame, dict with frame number as key and list of annotations as value
-#     """
-#     annotations_by_frame = dict()
-#     for annotation in annotations:
-#         # then, in each frame, split by assignment (dict in dict)
-#         for frame, frame_annotation in annotation.frames.items():
-#             frame_annotation.annotation.set_frame(frame=frame)
-#             if frame not in annotations_by_frame:
-#                 annotations_by_frame[frame] = [frame_annotation.annotation]
-#             else:
-#                 annotations_by_frame[frame].append(frame_annotation.annotation)
-#     return annotations_by_frame
-
-
-def add_score_context(score: Score, **kwargs):
-    """
-    Adds context to a score
-    :param kwargs: context to add to score
-    :return: score with context
-    """
-    score = kwargs.get('score')
-    context = kwargs.get('context')
-    if context is None:
-        context = dict()
-    score.context = context
+def add_score_context(score: Score,
+                      annotation_id=None,
+                      user_id=None,
+                      assignment_id=None,
+                      task_id=None,
+                      item_id=None,
+                      dataset_id=None):
+    # update scores with context
+    if annotation_id is not None:
+        score.entity_id = annotation_id
+    if user_id is not None:
+        score.user_id = user_id
+    if assignment_id is not None:
+        score.assignment_id = assignment_id
+    if task_id is not None:
+        score.task_id = task_id
+    if item_id is not None:
+        score.item_id = item_id
+    if dataset_id is not None:
+        score.dataset_id = dataset_id
     return score
 
 
