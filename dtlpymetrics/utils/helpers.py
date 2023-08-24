@@ -2,8 +2,9 @@ import os
 import dtlpy as dl
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import seaborn as sns
-from dtlpymetrics.dtlpy_scores import Score
+from dtlpymetrics.dtlpy_scores import Score, ScoreType
 from typing import List
 
 
@@ -39,8 +40,70 @@ def add_score_context(score: Score,
     return score
 
 
-# @scorer.add_function(display_name='Plot annotators confusion matrix')
+def calculate_confusion_matrix_item(item: dl.Item,
+                                    scores: List[Score],
+                                    save_plot=True) -> pd.DataFrame:
+    """
+    Calculate confusion matrix from a set of label confusion scores
+
+    :return:
+    """
+    scores_dl = []
+    for score in scores:
+        scores_dl.append(Score.from_json(score))
+
+    # ###############################
+    # # create table of comparisons #
+    # ###############################
+    label_names = []
+    for score in scores_dl:
+        if score.type == ScoreType.LABEL_CONFUSION:
+            if score.entity_id not in label_names:
+                label_names.append(score.entity_id)
+            if score.relative not in label_names:
+                label_names.append(score.relative)
+
+    conf_matrix = pd.DataFrame(index=label_names, columns=label_names)
+
+    for score in scores_dl:
+        if score.type == ScoreType.LABEL_CONFUSION:
+            conf_matrix.loc[score.entity_id] = score.value
+            conf_matrix.loc[score.entity_id, score.relative] = score.value
+
+    conf_matrix.fillna(0, inplace=True)
+    conf_matrix.rename(columns={None: 'unlabeled'}, inplace=True)
+    conf_matrix.rename(index={None: 'unlabeled'}, inplace=True)
+    label_names = ['unlabeled' if label is None else label for label in label_names]
+
+    if save_plot is True:
+        if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
+            debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
+
+            plot_matrix(item_title=f'label confusion matrix {item.id}',
+                        filename=os.path.join(debug_path, 'label_confusion',
+                                              f'label_confusion_matrix_{item.id}.png'),
+                        matrix_to_plot=conf_matrix,
+                        axis_labels=label_names)
+
+        else:
+            plot_matrix(item_title=f'label confusion matrix {item.id}',
+                        filename=os.path.join('.dataloop', 'label_confusion',
+                                              f'label_confusion_matrix_{item.id}.png'),
+                        matrix_to_plot=conf_matrix,
+                        axis_labels=label_names)
+
+    return conf_matrix
+
+
 def plot_matrix(item_title, filename, matrix_to_plot, axis_labels):
+    """
+    Plot confusion matrix between annotator pairs
+    @param item_title:
+    @param filename:
+    @param matrix_to_plot:
+    @param axis_labels:
+    @return:
+    """
     # annotators matrix plot, per item
     mask = np.zeros_like(matrix_to_plot, dtype=bool)
     # mask[np.triu_indices_from(mask)] = True
