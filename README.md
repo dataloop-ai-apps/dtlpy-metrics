@@ -64,6 +64,8 @@ qualification, honeypot, and consensus tasks).
         * `match_threshold`: optional float for IOU threshold for matching model predictions to ground truth annotations
         * `compare_types`: optional list for specifying which annotation types are to be compared
 
+See [this page](../docs/dtlpymetrics_fxns.md) for details on additional functions.
+
 ## Contributions, Bugs and Issues - How to Contribute
 
 We welcome anyone to help us improve this app.  
