@@ -7,7 +7,8 @@ import os
 
 import dtlpy as dl
 from dtlpymetrics.dtlpy_scores import ScoreType
-from dtlpymetrics.scoring import calculate_task_score, calculate_confusion_matrix_item
+from dtlpymetrics import calculate_task_score
+from dtlpymetrics.utils import calculate_confusion_matrix_item
 
 logger = logging.getLogger()
 
