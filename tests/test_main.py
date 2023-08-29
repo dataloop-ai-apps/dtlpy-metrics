@@ -27,9 +27,9 @@ class TestRunner(unittest.TestCase):
         self.label_confusion_task = self.project.tasks.get(task_name='qualification testing - confusion matrix')  # e14
 
         logger.info('[SETUP] - done getting entities')
-        now = datetime.datetime.now().isoformat(sep='.', timespec='seconds').replace(':', '.').replace('-', '.')
+        now = datetime.datetime.now().isoformat(sep='_', timespec='seconds').replace(':', '.').replace('-', '.')
         self.assets_path = os.path.join(os.getcwd(), 'assets')  # './tests/assets'
-        self.test_dump_path = os.path.join('tests', 'assets', now)
+        self.test_dump_path = os.path.join(os.getcwd(), 'assets', now)
         os.environ['SCORES_DEBUG_PATH'] = self.test_dump_path
 
     def tearDown(self) -> None:

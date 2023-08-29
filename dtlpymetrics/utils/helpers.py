@@ -25,25 +25,21 @@ def add_score_context(score: Score,
                       task_id=None,
                       item_id=None,
                       dataset_id=None):
-    new_entity_id = annotation_id if annotation_id is not None else score.entity_id
-    new_user_id = user_id if user_id is not None else score.user_id
-    new_relative = relative if relative is not None else score.relative
-    new_assignment_id = assignment_id if assignment_id is not None else score.assignment_id
-    new_task_id = task_id if task_id is not None else score.task_id
-    new_item_id = item_id if item_id is not None else score.item_id
-    new_dataset_id = dataset_id if dataset_id is not None else score.dataset_id
-
-    new_score = Score(type=score.type,
-                      value=score.value,
-                      entity_id=new_entity_id,
-                      relative=new_relative,
-                      assignment_id=new_assignment_id,
-                      task_id=new_task_id,
-                      item_id=new_item_id,
-                      user_id=new_user_id,
-                      dataset_id=new_dataset_id)
-
-    return new_score
+    if annotation_id is not None:
+        score.entity_id = annotation_id
+    if user_id is not None:
+        score.user_id = user_id
+    if relative is not None:
+        score.relative = relative
+    if assignment_id is not None:
+        score.assignment_id = assignment_id
+    if task_id is not None:
+        score.task_id = task_id
+    if item_id is not None:
+        score.item_id = item_id
+    if dataset_id is not None:
+        score.dataset_id = dataset_id
+    return score
 
 
 def calculate_confusion_matrix_item(item: dl.Item,

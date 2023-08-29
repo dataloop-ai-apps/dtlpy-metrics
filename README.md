@@ -12,8 +12,13 @@ The components of this app are:
 1. Functions to calculate scores for quality tasks and model predictions.
 2. Custom nodes that can be added to pipelines to calculate scores when a task's quality items are completed.
 
-Currently there is support for quality tasks (i.e qualification, honeypot, and consensus), model prediction scoring, and
-precision-recall
+Currently, there is support for scores on quality tasks (i.e qualification, honeypot, and consensus).
+
+Annotation types supported include:
+- 
+- bounding boxes
+- polygons
+
 
 ## Python installation
 
@@ -23,7 +28,7 @@ pip install git+https://github.com/dataloop-ai-apps/dtlpy-metrics
 
 ## Tutorial and How-To
 
-See [this tutorial](../docs/Quality task scoring tutorial.ipynb) for details on scoring for Dataloop "quality tasks" (
+See [this tutorial](docs/Quality task scoring tutorial.ipynb) for details on scoring for Dataloop "quality tasks" (
 qualification, honeypot, and consensus tasks).
 
 ## Functions
@@ -64,7 +69,7 @@ qualification, honeypot, and consensus tasks).
         * `match_threshold`: optional float for IOU threshold for matching model predictions to ground truth annotations
         * `compare_types`: optional list for specifying which annotation types are to be compared
 
-See [this page](../docs/dtlpymetrics_fxns.md) for details on additional functions.
+See [this page](docs/dtlpymetrics_fxns.md) for details on additional functions.
 
 ## Contributions, Bugs and Issues - How to Contribute
 

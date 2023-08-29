@@ -215,7 +215,7 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
             label_confusion_summary = label_confusion_set.groupby(
                 ['first_label', 'second_label']).size().reset_index(
                 name='counts')
-            print(label_confusion_summary)
+            # print(label_confusion_summary)  # debug
             for i, row in label_confusion_summary.iterrows():
                 confusion_score = Score(type=ScoreType.LABEL_CONFUSION,
                                         value=row['counts'],
