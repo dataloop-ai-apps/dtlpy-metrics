@@ -27,7 +27,7 @@
         "value": 1,
         "entityId": "64b4e244dd035db617c50bde",
         "context": {
-            "relative": "64b402ee92f41896fc623432",
+            "relative": null,
             "userId": "yaya.t@dataloop.ai",
             "taskId": "64b4e157ab37074a96f007f7",
             "assignmentId": "64b4e158ab370776b8f007f9",
@@ -124,7 +124,7 @@
     },
     {
         "type": "label_confusion",
-        "value": 1,
+        "value": 0,
         "entityId": "pizza",
         "context": {
             "relative": "pizza",
@@ -136,6 +136,17 @@
     {
         "type": "label_confusion",
         "value": 1,
+        "entityId": "pizza",
+        "context": {
+            "relative": "unlabeled",
+            "taskId": "64b4e157ab37074a96f007f7",
+            "itemId": "64b4e17ce7d3e8c0491617fb",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 2,
         "entityId": "unlabeled",
         "context": {
             "relative": "pizza",

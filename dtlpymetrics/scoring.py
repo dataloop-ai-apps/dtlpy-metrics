@@ -45,12 +45,11 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
         filters = dl.Filters()
         filters.add(field='hidden', values=True)  # return only the clones
         pages = task.get_items(filters=filters)
+        print("All items in the task:")
         pages.print()
     else:  # for consensus
         # default filter for quality tasks is hidden = True, so this hides the clones and returns only original items
-        filters = dl.Filters()
-        filters.add(field='hidden', values=False)
-        pages = task.get_items(filters=filters, get_consensus_items=True)
+        pages = task.get_items(get_consensus_items=True)
     for item in pages.all():
         all_item_tasks = item.metadata['system']['refs']
         for item_task_dict in all_item_tasks:
@@ -88,17 +87,12 @@ def create_task_item_score(item: dl.Item = None,
     # collect assignments for grouping #
     ####################################
     if item is None:
-        raise KeyError('No dataset provided, please provide a dataset.')
+        raise KeyError('No item provided, please provide an item.')
     if task is None:
         if context is None:
             raise ValueError('Must provide either task or context.')
         else:
             task = context.task
-    assignments = task.assignments.list()
-
-    # create lookup dictionaries getting assignments by id or annotator
-    assignments_by_id = {assignment.id: assignment for assignment in assignments}
-    assignments_by_annotator = {assignment.annotator: assignment for assignment in assignments}
 
     if task.metadata['system'].get('consensusTaskType') == 'consensus':
         task_type = 'consensus'
@@ -107,157 +101,185 @@ def create_task_item_score(item: dl.Item = None,
     else:
         raise ValueError(f'Task type is not suitable for scoring.')
 
-    ################################
-    # sort annotations by assignee #
-    ################################
-    annotations = item.annotations.list()
-    annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
-    logger.info(f'Starting scoring for assignments: {list(annots_by_assignment.keys())}')
+    assignments = task.assignments.list()
 
-    # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
-    for annotation in annotations:
-        # default is "ref"
-        # TODO handle models
-        assignment_id = annotation.metadata['system'].get('assignmentId', 'ref')
-        task_id = annotation.metadata['system'].get('taskId', None)
-        if task_id == task.id:
-            assignment_annotator = assignments_by_id[assignment_id].annotator
-            annots_by_assignment[assignment_annotator].append(annotation)
-        else:
-            # annotation from another task
-            continue
+    run_fxn = False
+    if task_type == 'consensus':
+        consensus_assignment = task.metadata['system']['consensusAssignmentId']
+        all_item_refs = item.metadata['system']['refs']
+        if consensus_assignment is not None:
+            for ref_dict in all_item_refs:
+                if ref_dict['id'] == consensus_assignment:
+                    run_fxn = True
+    else:
+        if item.dir.startswith('/.consensus/'):
+            run_fxn = True
 
-    if task_type == 'testing':
-        # get all ref from the src item
-        src_item = dl.items.get(item_id=item._src_item)
-        annots_by_assignment['ref'] = src_item.annotations.list()
+    if run_fxn is True:
+        # create lookup dictionaries getting assignments by id or annotator
+        assignments_by_id = {}
+        assignments_by_annotator = {}
+        for assignment in assignments:
+            assignments_by_id[assignment.id] = assignment
+            assignments_by_annotator[assignment.annotator] = assignment
 
-    labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
-    confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
-    all_scores = list()
+        # if no assignments are associated with this i
+        if len(assignments_by_id) == 0:
+            raise ValueError(
+                f'No assignments found for task {task.id} and item {item.id}. Please check that task was properly configured and completed.')
 
-    ###########################
-    # compare annotation sets #
-    ###########################
-    # do pairwise comparisons of each assignment for all annotations on the item
-    for i_assignment, assignment_annotator_i in enumerate(annots_by_assignment):
-        if task_type == "testing" and assignment_annotator_i != 'ref':
-            # if "testing", run only on ref
-            continue
-        for j_assignment, assignment_annotator_j in enumerate(annots_by_assignment):
-            # dont compare same sets
-            if i_assignment == j_assignment:
+
+        ################################
+        # sort annotations by assignee #
+        ################################
+        annotations = item.annotations.list()
+        annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
+        logger.info(f'Starting scoring for assignments: {list(annots_by_assignment.keys())}')
+
+        # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
+        for annotation in annotations:
+            # TODO handle models
+            # default assignee is "ref" if no assignment id is found
+            assignment_id = annotation.metadata['system'].get('assignmentId', 'ref')
+            task_id = annotation.metadata['system'].get('taskId', None)
+            if task_id == task.id:
+                assignment_annotator = assignments_by_id[assignment_id].annotator
+                annots_by_assignment[assignment_annotator].append(annotation)
+            else:
+                # annotation from another task
                 continue
-            # skip ref in inner loop
-            if assignment_annotator_j == 'ref':
+
+        if task_type == 'testing':
+            # get all ref from the src item
+            src_item = dl.items.get(item_id=item._src_item)
+            annots_by_assignment['ref'] = src_item.annotations.list()
+
+        labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
+        confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
+        all_scores = list()
+
+        ###########################
+        # compare annotation sets #
+        ###########################
+        # do pairwise comparisons of each assignment for all annotations on the item
+        for i_assignment, assignment_annotator_i in enumerate(annots_by_assignment):
+            if task_type == "testing" and assignment_annotator_i != 'ref':
+                # if "testing", run only on ref
                 continue
-            logger.info(
-                f'Comparing assignee: {assignment_annotator_i!r} with assignee: {assignment_annotator_j!r}')
-            annot_collection_1 = annots_by_assignment[assignment_annotator_i]
-            annot_collection_2 = annots_by_assignment[assignment_annotator_j]
-            # ANNOTATION_IOU, ANNOTATION_LABEL, ANNOTATION_ATTRIBUTE
-            pairwise_scores = calculate_annotation_score(annot_collection_1=annot_collection_1,
-                                                         annot_collection_2=annot_collection_2,
-                                                         ignore_labels=True,
-                                                         match_threshold=0.01,
-                                                         score_types=score_types)
+            for j_assignment, assignment_annotator_j in enumerate(annots_by_assignment):
+                # dont compare same sets
+                if i_assignment == j_assignment:
+                    continue
+                # skip ref in inner loop
+                if assignment_annotator_j == 'ref':
+                    continue
+                logger.info(
+                    f'Comparing assignee: {assignment_annotator_i!r} with assignee: {assignment_annotator_j!r}')
+                annot_collection_1 = annots_by_assignment[assignment_annotator_i]
+                annot_collection_2 = annots_by_assignment[assignment_annotator_j]
+                # ANNOTATION_IOU, ANNOTATION_LABEL, ANNOTATION_ATTRIBUTE
+                pairwise_scores = calculate_annotation_score(annot_collection_1=annot_collection_1,
+                                                             annot_collection_2=annot_collection_2,
+                                                             ignore_labels=True,
+                                                             match_threshold=0.01,
+                                                             score_types=score_types)
 
-            # update scores with context
-            for score in pairwise_scores:
-                score.user_id = assignment_annotator_j
-                score.task_id = task.id
-                score.assignment_id = assignments_by_annotator[assignment_annotator_j].id
-                score.item_id = item.id
+                # update scores with context
+                for score in pairwise_scores:
+                    score.user_id = assignment_annotator_j
+                    score.task_id = task.id
+                    score.assignment_id = assignments_by_annotator[assignment_annotator_j].id
+                    score.item_id = item.id
 
-            raw_annotation_scores = [score for score in pairwise_scores if score.type != ScoreType.LABEL_CONFUSION]
-            confusion_scores = [score for score in pairwise_scores if score.type == ScoreType.LABEL_CONFUSION]
+                raw_annotation_scores = [score for score in pairwise_scores if score.type != ScoreType.LABEL_CONFUSION]
+                confusion_scores = [score for score in pairwise_scores if score.type == ScoreType.LABEL_CONFUSION]
 
-            # calc general confusion
-            for score in confusion_scores:
-                if score.entity_id not in confusion_by_label:
-                    confusion_by_label[score.entity_id] = dict()
-                if score.relative not in confusion_by_label[score.entity_id]:
-                    confusion_by_label[score.entity_id][score.relative] = 0
-                confusion_by_label[score.entity_id][score.relative] += score.value
+                # calc general confusion
+                for score in confusion_scores:
+                    if score.entity_id not in confusion_by_label:
+                        confusion_by_label[score.entity_id] = dict()
+                    if score.relative not in confusion_by_label[score.entity_id]:
+                        confusion_by_label[score.entity_id][score.relative] = 0
+                    confusion_by_label[score.entity_id][score.relative] += score.value
 
-            # calc overall annotation
-            user_annotation_overalls = list()
+                # calc overall annotation
+                user_annotation_overalls = list()
 
-            for annotation in annot_collection_2:  # go over all annotations from the "test" set
-                single_annotation_scores = mean_or_default(arr=[score.value
-                                                                for score in raw_annotation_scores
-                                                                if score.entity_id == annotation.id],
-                                                           default=1)
-                # ANNOTATION_OVERALL
-                user_annotation_overalls.append(single_annotation_scores)
-                annotation_overall = Score(type=ScoreType.ANNOTATION_OVERALL,
-                                           value=single_annotation_scores,
-                                           entity_id=annotation.id,
-                                           task_id=task.id,
-                                           item_id=item.id,
-                                           user_id=assignment_annotator_j,
-                                           dataset_id=item.dataset.id)
-                all_scores.append(annotation_overall)
+                for annotation in annot_collection_2:  # go over all annotations from the "test" set
+                    single_annotation_scores = mean_or_default(arr=[score.value
+                                                                    for score in raw_annotation_scores
+                                                                    if score.entity_id == annotation.id],
+                                                               default=1)
+                    # ANNOTATION_OVERALL
+                    user_annotation_overalls.append(single_annotation_scores)
+                    annotation_overall = Score(type=ScoreType.ANNOTATION_OVERALL,
+                                               value=single_annotation_scores,
+                                               entity_id=annotation.id,
+                                               task_id=task.id,
+                                               item_id=item.id,
+                                               user_id=assignment_annotator_j,
+                                               dataset_id=item.dataset.id)
+                    all_scores.append(annotation_overall)
 
-            # calc user confusion
-            user_confusion_score = Score(type=ScoreType.USER_CONFUSION,
-                                         value=mean_or_default(arr=user_annotation_overalls,
-                                                               default=1),
-                                         entity_id=assignment_annotator_j,
-                                         user_id=assignment_annotator_j,
-                                         relative=assignment_annotator_i,  # this can be "ref"
-                                         task_id=task.id,
-                                         item_id=item.id,
-                                         dataset_id=item.dataset.id)
-            all_scores.append(user_confusion_score)
-            all_scores.extend(raw_annotation_scores)
+                # calc user confusion
+                user_confusion_score = Score(type=ScoreType.USER_CONFUSION,
+                                             value=mean_or_default(arr=user_annotation_overalls,
+                                                                   default=1),
+                                             entity_id=assignment_annotator_j,
+                                             user_id=assignment_annotator_j,
+                                             relative=assignment_annotator_i,  # this can be "ref"
+                                             task_id=task.id,
+                                             item_id=item.id,
+                                             dataset_id=item.dataset.id)
+                all_scores.append(user_confusion_score)
+                all_scores.extend(raw_annotation_scores)
 
-    for label_a, rest in confusion_by_label.items():
-        for label_b, value in rest.items():
-            item_confusion_score = Score(type=ScoreType.LABEL_CONFUSION,
-                                         value=value,
-                                         entity_id=label_a,
-                                         relative=label_b,
-                                         task_id=task.id,
-                                         item_id=item.id,
-                                         dataset_id=item.dataset.id)
-            all_scores.append(item_confusion_score)
+        for label_a, rest in confusion_by_label.items():
+            for label_b, value in rest.items():
+                item_confusion_score = Score(type=ScoreType.LABEL_CONFUSION,
+                                             value=value,
+                                             entity_id=label_a,
+                                             relative=label_b,
+                                             task_id=task.id,
+                                             item_id=item.id,
+                                             dataset_id=item.dataset.id)
+                all_scores.append(item_confusion_score)
 
-    # calc overall item score
-    item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
-    item_score = Score(type=ScoreType.ITEM_OVERALL,
-                       value=mean_or_default(arr=item_overall, default=1),
-                       entity_id=item.id,
-                       task_id=task.id,
-                       item_id=item.id,
-                       dataset_id=item.dataset.id)
-    all_scores.append(item_score)
+        # calc overall item score
+        item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
+        item_score = Score(type=ScoreType.ITEM_OVERALL,
+                           value=mean_or_default(arr=item_overall, default=1),
+                           entity_id=item.id,
+                           task_id=task.id,
+                           item_id=item.id,
+                           dataset_id=item.dataset.id)
+        all_scores.append(item_score)
 
-    #############################
-    # upload scores to platform #
-    #############################
+        #############################
+        # upload scores to platform #
+        #############################
 
-    # clean previous scores before creating new ones
-    logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
-    dl_scores = Scores(client_api=dl.client_api)
-    dl_scores.delete(context={'itemId': item.id,
-                              'taskId': task.id})
-    dl_scores = dl_scores.create(all_scores)
-    logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
+        # clean previous scores before creating new ones
+        logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
+        dl_scores = Scores(client_api=dl.client_api)
+        dl_scores.delete(context={'itemId': item.id,
+                                  'taskId': task.id})
+        dl_scores = dl_scores.create(all_scores)
+        logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
 
-    if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
-        debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-        logger.debug('Saving scores locally')
+        if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
+            debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
+            logger.debug('Saving scores locally')
 
-        save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
-        os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
-        scores_json = list()
-        for score in all_scores:
-            scores_json.append(score.to_json())
-        with open(save_filepath, 'w', encoding='utf-8') as f:
-            json.dump(scores_json, f, ensure_ascii=False, indent=4)
+            save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
+            os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
+            scores_json = list()
+            for score in all_scores:
+                scores_json.append(score.to_json())
+            with open(save_filepath, 'w', encoding='utf-8') as f:
+                json.dump(scores_json, f, ensure_ascii=False, indent=4)
 
-        logger.debug(f'SAVED score to: {save_filepath}')
+            logger.debug(f'SAVED score to: {save_filepath}')
     return item
 
 
@@ -444,7 +466,7 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
 
         label_confusion_summary = label_confusion_set.groupby(['first_label', 'second_label']).size().reset_index(
             name='counts')
-        print(label_confusion_summary)
+        # print(label_confusion_summary)
         for i, row in label_confusion_summary.iterrows():
             confusion_score = Score(type=ScoreType.LABEL_CONFUSION,
                                     value=row['counts'],
