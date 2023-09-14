@@ -1,0 +1,180 @@
+[
+    {
+        "type": "user_confusion",
+        "value": 1,
+        "entityId": "yaya.t@dataloop.ai",
+        "context": {
+            "userId": "yaya.t@dataloop.ai",
+            "relative": "daniel.f@dataloop.ai",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "annotation_overall",
+        "value": 0.0,
+        "entityId": "64b4045492f418255d62345b",
+        "context": {
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "userId": "daniel.f@dataloop.ai",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "user_confusion",
+        "value": 0.0,
+        "entityId": "daniel.f@dataloop.ai",
+        "context": {
+            "userId": "daniel.f@dataloop.ai",
+            "relative": "yaya.t@dataloop.ai",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "annotation_label",
+        "value": 0,
+        "entityId": "64b4045492f418255d62345b",
+        "context": {
+            "relative": null,
+            "userId": "daniel.f@dataloop.ai",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "assignmentId": "64b3ce1e43645d4c002a5b49",
+            "itemId": "64b38a6a6d608f45170277ba"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "ice cream",
+        "context": {
+            "relative": "ice cream",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "ice cream",
+        "context": {
+            "relative": "popsicle",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "ice cream",
+        "context": {
+            "relative": "pizza",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "popsicle",
+        "context": {
+            "relative": "ice cream",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "popsicle",
+        "context": {
+            "relative": "popsicle",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "popsicle",
+        "context": {
+            "relative": "pizza",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 1,
+        "entityId": "popsicle",
+        "context": {
+            "relative": "unlabeled",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "pizza",
+        "context": {
+            "relative": "ice cream",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "pizza",
+        "context": {
+            "relative": "popsicle",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 0,
+        "entityId": "pizza",
+        "context": {
+            "relative": "pizza",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 1,
+        "entityId": "unlabeled",
+        "context": {
+            "relative": "popsicle",
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "item_overall",
+        "value": 0.0,
+        "entityId": "64b38a6a6d608f45170277ba",
+        "context": {
+            "taskId": "64b3ce1e43645d09be2a5b47",
+            "itemId": "64b38a6a6d608f45170277ba",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    }
+]
