@@ -11,6 +11,7 @@ from dtlpymetrics import calculate_task_score
 
 logger = logging.getLogger()
 
+PATH = os.path.dirname(os.path.abspath(__file__))
 
 class TestRunner(unittest.TestCase):
     def setUp(self):
@@ -27,8 +28,8 @@ class TestRunner(unittest.TestCase):
 
         logger.info('[SETUP] - done getting entities')
         now = datetime.datetime.now().isoformat(sep='.', timespec='minutes').replace(':', '.').replace('-', '_')
-        self.assets_path = os.path.join(os.getcwd(), 'assets')  # './tests/assets'
-        self.test_dump_path = os.path.join(os.getcwd(), 'assets', now)
+        self.assets_path = os.path.join(PATH, 'assets')  # './tests/assets'
+        self.test_dump_path = os.path.join(PATH, 'assets', now)
         os.environ['SCORES_DEBUG_PATH'] = self.test_dump_path
 
     def tearDown(self) -> None:
