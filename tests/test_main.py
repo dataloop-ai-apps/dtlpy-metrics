@@ -28,7 +28,7 @@ class TestRunner(unittest.TestCase):
 
         logger.info('[SETUP] - done getting entities')
         now = datetime.datetime.now().isoformat(sep='.', timespec='minutes').replace(':', '.').replace('-', '_')
-        self.assets_path = os.path.join(PATH, 'assets')  # './tests/assets'
+        self.assets_path = os.path.join(PATH, 'assets')
         self.test_dump_path = os.path.join(PATH, 'assets', now)
         os.environ['SCORES_DEBUG_PATH'] = self.test_dump_path
 

@@ -81,17 +81,12 @@ def create_task_item_score(item: dl.Item = None,
     # collect assignments for grouping #
     ####################################
     if item is None:
-        raise KeyError('No dataset provided, please provide a dataset.')
+        raise KeyError('No item provided, please provide an item.')
     if task is None:
         if context is None:
             raise ValueError('Must provide either task or context.')
         else:
             task = context.task
-    assignments = task.assignments.list()
-
-    # create lookup dictionaries getting assignments by id or annotator
-    assignments_by_id = {assignment.id: assignment for assignment in assignments}
-    assignments_by_annotator = {assignment.annotator: assignment for assignment in assignments}
 
     if task.metadata['system'].get('consensusTaskType') == 'consensus':
         task_type = 'consensus'
@@ -100,122 +95,149 @@ def create_task_item_score(item: dl.Item = None,
     else:
         raise ValueError(f'Task type is not suitable for scoring.')
 
-    #########################################
-    # sort annotations and calculate scores #
-    #########################################
-    annotations = item.annotations.list()
-    annotators_list = [assignment.annotator for assignment in assignments]
-    logger.info(f'Starting scoring for assignments: {annotators_list}')
+    assignments = task.assignments.list()
 
-    is_video = check_if_video(item=item)
-    if is_video is True:  # video items
-        # sort all annotations by frame
-        num_frames = item.metadata['system']['nb_frames']
-        all_annotation_slices = dict()
-        for f in range(num_frames):
-            all_annotation_slices[f] = annotations.get_frame(frame_num=f)
-        annotations_by_frame = {}
+    run_fxn = False
+    if task_type == 'consensus':
+        consensus_assignment = task.metadata['system']['consensusAssignmentId']
+        all_item_refs = item.metadata['system']['refs']
+        if consensus_assignment is not None:
+            for ref_dict in all_item_refs:
+                if ref_dict['id'] == consensus_assignment:
+                    run_fxn = True
+    else:
+        if item.dir.startswith('/.consensus/'):
+            run_fxn = True
 
-        # within each frame, sort all annotation slices to their corresponding assignment/annotator
-        for frame, annotation_slices in all_annotation_slices.items():
-            frame_annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
-            for annotation_slice in annotation_slices:
-                # TODO compare annotations between models
-                # default is "ref", if no assignment ID is found
-                assignment_id = annotation_slice.metadata['system'].get('assignmentId', 'ref')
-                task_id = annotation_slice.metadata['system'].get('taskId', None)
+    if run_fxn is True:
+        # create lookup dictionaries getting assignments by id or annotator
+        assignments_by_id = {}
+        assignments_by_annotator = {}
+        for assignment in assignments:
+            assignments_by_id[assignment.id] = assignment
+            assignments_by_annotator[assignment.annotator] = assignment
+
+        # if no assignments are associated with this item
+        if len(assignments_by_id) == 0:
+            raise ValueError(
+                f'No assignments found for task {task.id} and item {item.id}. Please check that task was properly configured and completed.')
+
+        #########################################
+        # sort annotations and calculate scores #
+        #########################################
+        annotations = item.annotations.list()
+        annotators_list = [assignment.annotator for assignment in assignments]
+        logger.info(f'Starting scoring for assignments: {annotators_list}')
+
+        is_video = check_if_video(item=item)
+        if is_video is True:  # video items
+            # sort all annotations by frame
+            num_frames = item.metadata['system']['nb_frames']
+            all_annotation_slices = dict()
+            for f in range(num_frames):
+                all_annotation_slices[f] = annotations.get_frame(frame_num=f)
+            annotations_by_frame = {}
+
+            # within each frame, sort all annotation slices to their corresponding assignment/annotator
+            for frame, annotation_slices in all_annotation_slices.items():
+                frame_annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
+                for annotation_slice in annotation_slices:
+                    # TODO compare annotations between models
+                    # default is "ref", if no assignment ID is found
+                    assignment_id = annotation_slice.metadata['system'].get('assignmentId', 'ref')
+                    task_id = annotation_slice.metadata['system'].get('taskId', None)
+                    if task_id == task.id:
+                        assignment_annotator = assignments_by_id[assignment_id].annotator
+                        frame_annots_by_assignment[assignment_annotator].append(annotation_slice)
+                    else:
+                        # TODO comparing annotations from another task
+                        continue
+                annotations_by_frame[frame] = frame_annots_by_assignment
+
+            # add in reference annotations if testing task
+            if task_type == 'testing':
+                # get all ref from the src item
+                src_item = dl.items.get(item_id=item._src_item)
+                # ref_annots_by_frame = get_annotations_from_frames(src_item.annotations.list())
+                ref_annotations = src_item.annotations.list()
+                num_frames = src_item.metadata['system']['nb_frames']
+                for f in range(num_frames):
+                    annotations_by_frame[f]['ref'] = ref_annotations.get_frame(frame_num=f)
+                    # annotations_by_frame[frame]['ref'] = annotation_slices
+
+            # calculate scores
+            all_scores = get_video_scores(annotations_by_frame=annotations_by_frame,
+                                          assignments_by_annotator=assignments_by_annotator,
+                                          task=task,
+                                          item=item,
+                                          score_types=score_types,
+                                          task_type=task_type,
+                                          logger=logger)
+        else:  # image items
+            # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
+            annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
+            for annotation in annotations:
+                # default is "ref"
+                # TODO handle models
+                assignment_id = annotation.metadata['system'].get('assignmentId', 'ref')
+                task_id = annotation.metadata['system'].get('taskId', None)
                 if task_id == task.id:
                     assignment_annotator = assignments_by_id[assignment_id].annotator
-                    frame_annots_by_assignment[assignment_annotator].append(annotation_slice)
+                    annots_by_assignment[assignment_annotator].append(annotation)
                 else:
                     # TODO comparing annotations from another task
                     continue
-            annotations_by_frame[frame] = frame_annots_by_assignment
 
-        # add in reference annotations if testing task
-        if task_type == 'testing':
-            # get all ref from the src item
-            src_item = dl.items.get(item_id=item._src_item)
-            # ref_annots_by_frame = get_annotations_from_frames(src_item.annotations.list())
-            ref_annotations = src_item.annotations.list()
-            num_frames = src_item.metadata['system']['nb_frames']
-            for f in range(num_frames):
-                annotations_by_frame[f]['ref'] = ref_annotations.get_frame(frame_num=f)
-                # annotations_by_frame[frame]['ref'] = annotation_slices
+            # add in reference annotations if testing task
+            if task_type == 'testing':
+                # get all ref from the src item
+                src_item = dl.items.get(item_id=item._src_item)
+                annots_by_assignment['ref'] = src_item.annotations.list()
 
-        # calculate scores
-        all_scores = get_video_scores(annotations_by_frame=annotations_by_frame,
-                                      assignments_by_annotator=assignments_by_annotator,
-                                      task=task,
-                                      item=item,
-                                      score_types=score_types,
-                                      task_type=task_type,
-                                      logger=logger)
-    else:  # image items
-        # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
-        annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
-        for annotation in annotations:
-            # default is "ref"
-            # TODO handle models
-            assignment_id = annotation.metadata['system'].get('assignmentId', 'ref')
-            task_id = annotation.metadata['system'].get('taskId', None)
-            if task_id == task.id:
-                assignment_annotator = assignments_by_id[assignment_id].annotator
-                annots_by_assignment[assignment_annotator].append(annotation)
-            else:
-                # TODO comparing annotations from another task
-                continue
+            # calculate scores
+            all_scores = get_image_scores(annots_by_assignment=annots_by_assignment,
+                                          assignments_by_annotator=assignments_by_annotator,
+                                          task=task,
+                                          item=item,
+                                          score_types=score_types,
+                                          task_type=task_type,
+                                          logger=logger)
 
-        # add in reference annotations if testing task
-        if task_type == 'testing':
-            # get all ref from the src item
-            src_item = dl.items.get(item_id=item._src_item)
-            annots_by_assignment['ref'] = src_item.annotations.list()
+        # calc overall item score as an average of all overall annotation scores
+        item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
 
-        # calculate scores
-        all_scores = get_image_scores(annots_by_assignment=annots_by_assignment,
-                                      assignments_by_annotator=assignments_by_annotator,
-                                      task=task,
-                                      item=item,
-                                      score_types=score_types,
-                                      task_type=task_type,
-                                      logger=logger)
+        item_score = Score(type=ScoreType.ITEM_OVERALL,
+                           value=mean_or_default(arr=item_overall, default=1),
+                           entity_id=item.id,
+                           task_id=task.id,
+                           item_id=item.id,
+                           dataset_id=item.dataset.id)
+        all_scores.append(item_score)
 
-    # calc overall item score as an average of all overall annotation scores
-    item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
+        #############################
+        # upload scores to platform #
+        #############################
+        # clean previous scores before creating new ones
+        logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
+        dl_scores = Scores(client_api=dl.client_api)
+        dl_scores.delete(context={'itemId': item.id,
+                                  'taskId': task.id})
+        dl_scores = dl_scores.create(all_scores)
+        logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
 
-    item_score = Score(type=ScoreType.ITEM_OVERALL,
-                       value=mean_or_default(arr=item_overall, default=1),
-                       entity_id=item.id,
-                       task_id=task.id,
-                       item_id=item.id,
-                       dataset_id=item.dataset.id)
-    all_scores.append(item_score)
+        if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
+            debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
+            logger.debug('Saving scores locally')
 
-    #############################
-    # upload scores to platform #
-    #############################
-    # clean previous scores before creating new ones
-    logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
-    dl_scores = Scores(client_api=dl.client_api)
-    dl_scores.delete(context={'itemId': item.id,
-                              'taskId': task.id})
-    dl_scores = dl_scores.create(all_scores)
-    logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
+            save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
+            os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
+            scores_json = list()
+            for score in all_scores:
+                scores_json.append(score.to_json())
+            with open(save_filepath, 'w', encoding='utf-8') as f:
+                json.dump(scores_json, f, ensure_ascii=False, indent=4)
 
-    if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
-        debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-        logger.debug('Saving scores locally')
-
-        save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
-        os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
-        scores_json = list()
-        for score in all_scores:
-            scores_json.append(score.to_json())
-        with open(save_filepath, 'w', encoding='utf-8') as f:
-            json.dump(scores_json, f, ensure_ascii=False, indent=4)
-
-        logger.debug(f'SAVED score to: {save_filepath}')
+            logger.debug(f'SAVED score to: {save_filepath}')
     return item
 
 
