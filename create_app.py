@@ -10,7 +10,7 @@ PANEL_NAME = 'scoring-and-metrics'
 
 def bump(bump_type):
     print(f'Bumping version')
-    subprocess.check_output(f'bumpversion --{bump_type} --allow-dirty', shell=True)
+    subprocess.check_output(f'bumpversion {bump_type}', shell=True)
     subprocess.check_output('git push --follow-tags', shell=True)
 
 
