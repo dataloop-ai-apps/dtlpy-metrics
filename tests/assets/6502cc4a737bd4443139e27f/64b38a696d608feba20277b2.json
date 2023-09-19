@@ -29,8 +29,8 @@
         "context": {
             "relative": null,
             "userId": "yaya.t@dataloop.ai",
-            "taskId": "6502cc4a737bd4443139e27f",
             "assignmentId": "6502cc4a737bd473ef39e282",
+            "taskId": "6502cc4a737bd4443139e27f",
             "itemId": "64b38a696d608feba20277b2"
         }
     },
@@ -64,119 +64,9 @@
         "context": {
             "relative": null,
             "userId": "daniel.f@dataloop.ai",
-            "taskId": "6502cc4a737bd4443139e27f",
             "assignmentId": "6502cc4a737bd419d039e281",
+            "taskId": "6502cc4a737bd4443139e27f",
             "itemId": "64b38a696d608feba20277b2"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "ice cream",
-        "context": {
-            "relative": "ice cream",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "ice cream",
-        "context": {
-            "relative": "popsicle",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "ice cream",
-        "context": {
-            "relative": "pizza",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 2,
-        "entityId": "ice cream",
-        "context": {
-            "relative": "unlabeled",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "popsicle",
-        "context": {
-            "relative": "ice cream",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "popsicle",
-        "context": {
-            "relative": "popsicle",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "popsicle",
-        "context": {
-            "relative": "pizza",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "pizza",
-        "context": {
-            "relative": "ice cream",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "pizza",
-        "context": {
-            "relative": "popsicle",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "label_confusion",
-        "value": 0,
-        "entityId": "pizza",
-        "context": {
-            "relative": "pizza",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a696d608feba20277b2",
-            "datasetId": "64b012ac0875623c3a83f3c0"
         }
     },
     {

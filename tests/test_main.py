@@ -7,7 +7,7 @@ import os
 
 import dtlpy as dl
 from dtlpymetrics.dtlpy_scores import ScoreType
-from dtlpymetrics.scoring import calculate_task_score, calculate_confusion_matrix_item
+from dtlpymetrics import calculate_task_score
 
 logger = logging.getLogger()
 
@@ -31,9 +31,9 @@ class TestRunner(unittest.TestCase):
         self.test_dump_path = os.path.join(os.getcwd(), 'assets', now)
         os.environ['SCORES_DEBUG_PATH'] = self.test_dump_path
 
-    # def tearDown(self) -> None:
-    #     if os.path.isdir(self.test_dump_path):
-    #         shutil.rmtree(self.test_dump_path)
+    def tearDown(self) -> None:
+        if os.path.isdir(self.test_dump_path):
+            shutil.rmtree(self.test_dump_path)
 
     def test_qualification_task(self):
         logger.info(f'Starting qualification testing task with dataset: {self.qualification_task.dataset}')
