@@ -38,7 +38,7 @@ jobs:
           dlp login-m2m --email "${{ vars.BOT_EMAIL_RC }}" --password "${{ secrets.BOT_PASSWORD_RC }}"
           python create_app.py --publish --project "${{ vars.PROJECT_ID_RC }}"
       - name: Publish & Install PROD
-        if: ${{ (inputs.env == 'prod') && contains(fromJson('["orshabtay", "fadiDL"]'), github.actor) }}
+        if: ${{ (inputs.env == 'prod') && contains(fromJson('["orshabtay", "fadiDL", "yayatang"]'), github.actor) }}
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
         run: |
