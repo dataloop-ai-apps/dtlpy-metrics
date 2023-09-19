@@ -1,0 +1,49 @@
+name: Publish & Install
+run-name: Publish Version ${{ github.ref_name }} to ${{ inputs.env }} by @${{ github.actor }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      env:
+        type: choice
+        description: Platform env to publish
+        required: true
+        options:
+          - rc
+          - prod
+
+jobs:
+  publish-and-install:
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/dataloopai/py3.8.node16:1.74.14
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN  }}
+      - name: Install dependencies and build
+        run: |
+          pip3 install dtlpy --upgrade
+      - name: Show GitHub context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+        shell: bash
+      - name: Publish & Install RC
+        if: "inputs.env == 'rc'"
+        run: |
+          dlp api setenv --env ${{ inputs.env }}
+          echo "Publishing to RC"
+          dlp login-m2m --email "${{ vars.BOT_EMAIL_RC }}" --password "${{ secrets.BOT_PASSWORD_RC }}"
+          python create_app.py --publish --project "${{ vars.PROJECT_ID_RC }}"
+      - name: Publish & Install PROD
+        if: ${{ (inputs.env == 'prod') && contains(fromJson('["orshabtay", "fadiDL"]'), github.actor) }}
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+        run: |
+          dlp api setenv --env ${{ inputs.env }}
+          echo "Publishing to PROD"
+          dlp login-m2m --email "${{ vars.BOT_EMAIL_PROD }}" --password "${{ secrets.BOT_PASSWORD_PROD }}"
+          python create_app.py --publish --project "${{ vars.PROJECT_ID_PROD }}"
+          
