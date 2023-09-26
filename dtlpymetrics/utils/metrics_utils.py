@@ -374,8 +374,11 @@ class Matchers:
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
         """
-
-        from shapely import Polygon
+        import shapely
+        if shapely.__version__.split('.')[0] < 2:
+            from shapely.geometry import Polygon
+        else:
+            from shapely import Polygon
 
         if len(pts1) == 2:
             # regular box annotation (2 pts)
