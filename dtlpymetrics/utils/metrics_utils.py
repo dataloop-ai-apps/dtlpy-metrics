@@ -260,10 +260,10 @@ class Results:
             'n_annotations_unmatched_set_two': unmatched_set_two,
             'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
             'n_annotations_matched_total': matched_set_one,
-            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (
-                                                                                            matched_set_one + unmatched_set_two) != 0 else 0,
-            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (
-                                                                                         matched_set_one + unmatched_set_one) != 0 else 0
+            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if
+            (matched_set_one + unmatched_set_two) != 0 else 0,
+            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if
+            (matched_set_one + unmatched_set_one) != 0 else 0
         }
 
 
@@ -375,7 +375,7 @@ class Matchers:
         :return: `float` how Intersection over Union of tho shapes
         """
         import shapely
-        if shapely.__version__.split('.')[0] < 2:
+        if int(shapely.__version__.split('.')[0]) < 2:
             from shapely.geometry import Polygon
         else:
             from shapely import Polygon
