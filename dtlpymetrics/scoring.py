@@ -260,6 +260,7 @@ def create_model_score(dataset: dl.Dataset = None,
     :return:
     """
 
+    # TODO use export to download the zip and take the annotation from there
     if dataset is None:
         raise KeyError('No dataset provided, please provide a dataset.')
     if model is None:
@@ -288,29 +289,30 @@ def create_model_score(dataset: dl.Dataset = None,
     # Create list of item annotation lists #
     ########################################
     pbar = tqdm(items_list)
+    pbar.set_description(f'Loading annotations from items... ')
     for item in pbar:
-        pbar.set_description(f'Loading annotations from items... ')
         item_annots_1 = []
         item_annots_2 = []
         for annotation in item.annotations.list():
             if annotation.metadata.get('user', {}).get('model') is None:
                 item_annots_1.append(annotation)
-            elif annotation.metadata['user']['model']['name'] == model.name:
+            elif annotation.metadata.get('user', {}).get('model', {}).get('name', '') == model.name:
                 item_annots_2.append(annotation)
         annot_set_1.append(item_annots_1)
         annot_set_2.append(item_annots_2)
+        pbar.update()
 
     #########################################################
     # Compare annotations and return concatenated dataframe #
     #########################################################
     all_results = pd.DataFrame()
-    for i in range(len(items_list)):
+    for i_item in range(len(items_list)):
         # compare annotations for each item
-        if len(annot_set_1[i]) == 0 and len(annot_set_2[i]) == 0:
+        if len(annot_set_1[i_item]) == 0 and len(annot_set_2[i_item]) == 0:
             continue
         else:
-            results = measure_annotations(annotations_set_one=annot_set_1[i],
-                                          annotations_set_two=annot_set_2[i],
+            results = measure_annotations(annotations_set_one=annot_set_1[i_item],
+                                          annotations_set_two=annot_set_2[i_item],
                                           match_threshold=match_threshold,
                                           # default 0.01 to get all possible matches
                                           ignore_labels=ignore_labels,
@@ -320,7 +322,7 @@ def create_model_score(dataset: dl.Dataset = None,
                     results_df = results[compare_type].to_df()
                 except KeyError:
                     continue
-                results_df['item_id'] = [items_list[i].id] * results_df.shape[0]
+                results_df['item_id'] = [items_list[i_item].id] * results_df.shape[0]
                 results_df['annotation_type'] = [compare_type] * results_df.shape[0]
                 all_results = pd.concat([all_results, results_df],
                                         ignore_index=True)
