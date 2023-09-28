@@ -366,19 +366,17 @@ class Matchers:
             first_annotation = [a for a in first_set if a.id == first_annotation_id][0]
             second_annotation = [a for a in second_set if a.id == second_annotation_id][0]
             geometry_score = df.iloc[row_index, col_index]
-            labels_score = None
-            attribute_score = None
-            scores = list()
-            scores.append(geometry_score)
+            match_scores = list()
+            match_scores.append(geometry_score)
+            attribute_score = Matchers.match_attributes(attributes1=first_annotation.attributes,
+                                                        attributes2=second_annotation.attributes)
+            labels_score = Matchers.match_labels(label1=first_annotation.label,
+                                                 label2=second_annotation.label)
             if ignore_attributes is False:
-                attribute_score = Matchers.match_attributes(attributes1=first_annotation.attributes,
-                                                            attributes2=second_annotation.attributes)
-                scores.append(attribute_score)
+                match_scores.append(attribute_score)
             if ignore_labels is False:
-                labels_score = Matchers.match_labels(label1=first_annotation.label,
-                                                     label2=second_annotation.label)
-                scores.append(labels_score)
-            annotation_score = statistics.mean(scores)
+                match_scores.append(labels_score)
+            annotation_score = statistics.mean(match_scores)
             matches.add(Match(first_annotation_id=first_annotation_id,
                               first_annotation_label=first_annotation.label,
                               first_annotation_confidence=
