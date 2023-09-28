@@ -259,7 +259,9 @@ class Results:
             'n_annotations_unmatched_set_one': unmatched_set_one,
             'n_annotations_unmatched_set_two': unmatched_set_two,
             'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
-            'n_annotations_matched_total': matched_set_one,
+            'n_annotations_matched_set_one': matched_set_one,
+            'n_annotations_matched_set_two': matched_set_two,
+            'n_annotations_matched_total': matched_set_one + matched_set_two,
             'precision': matched_set_one / (matched_set_one + unmatched_set_two) if
             (matched_set_one + unmatched_set_two) != 0 else 0,
             'recall': matched_set_one / (matched_set_one + unmatched_set_one) if
@@ -607,22 +609,23 @@ class Matchers:
 
             # TODO use ignores for final score
             annotation_score = (geometry_score + attribute_score + labels_score) / 3
-            matches.add(match=Match(first_annotation_id=None,
-                                    first_annotation_creator=None,
-                                    first_annotation_label=None,
-                                    first_annotation_confidence=None,
-                                    second_annotation_id=second_annotation_id,
-                                    second_annotation_creator=second_annotation.creator,
-                                    second_annotation_label=second_annotation.label,
-                                    second_annotation_confidence=
-                                    second_annotation.metadata.get('user', dict()).get('model', dict()).get(
-                                        'confidence', 1),
-                                    geometry_score=geometry_score,  # TODO: check these scores should be sent
-                                    annotation_score=annotation_score,
-                                    label_score=labels_score,
-                                    attributes_score=attribute_score,
-                                    item_id=second_annotation.item.id
-                                    ))
+            matches.add(match=Match(
+                first_annotation_id=first_annotation_id,
+                first_annotation_creator=first_annotation.creator,
+                first_annotation_label=first_annotation.label,
+                first_annotation_confidence=
+                first_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence', 1),
+                second_annotation_id=second_annotation_id,
+                second_annotation_creator=second_annotation.creator,
+                second_annotation_label=second_annotation.label,
+                second_annotation_confidence=
+                second_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence', 1),
+                geometry_score=geometry_score,  # TODO: check these scores should be sent
+                annotation_score=annotation_score,
+                label_score=labels_score,
+                attributes_score=attribute_score,
+                item_id=second_annotation.item.id
+            ))
             df.drop(index=second_annotation_id, inplace=True)
             df.drop(columns=first_annotation_id, inplace=True)
         # add un-matched
