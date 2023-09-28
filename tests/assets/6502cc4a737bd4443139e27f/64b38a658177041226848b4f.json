@@ -27,7 +27,7 @@
         "value": 0,
         "entityId": "6503042fefd726ace566221d",
         "context": {
-            "relative": null,
+            "relative": "6503042fefd726252a66222e",
             "userId": "yaya.t@dataloop.ai",
             "assignmentId": "6502cc4a737bd473ef39e282",
             "taskId": "6502cc4a737bd4443139e27f",
@@ -62,7 +62,7 @@
         "value": 0,
         "entityId": "6503042fefd726252a66222e",
         "context": {
-            "relative": null,
+            "relative": "6503042fefd726ace566221d",
             "userId": "daniel.f@dataloop.ai",
             "assignmentId": "6502cc4a737bd419d039e281",
             "taskId": "6502cc4a737bd4443139e27f",
