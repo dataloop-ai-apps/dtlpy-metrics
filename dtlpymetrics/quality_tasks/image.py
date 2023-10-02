@@ -56,58 +56,24 @@ def get_image_scores(annots_by_assignment: dict,
                                                          ignore_labels=True,
                                                          match_threshold=0.01,
                                                          score_types=score_types)
-
-            # update scores with context
-            updated_scores = []
             for score in pairwise_scores:
-                updated_score = add_score_context(score=score,
-                                                  user_id=assignment_annotator_j,
-                                                  task_id=task.id,
-                                                  assignment_id=assignments_by_annotator[assignment_annotator_j].id,
-                                                  item_id=item.id)
-                updated_scores.append(updated_score)
-
-            raw_annotation_scores = [score for score in updated_scores if score.type != ScoreType.LABEL_CONFUSION]
-            confusion_scores = [score for score in updated_scores if score.type == ScoreType.LABEL_CONFUSION]
-
-            # calc general label confusion for the entire annotation collection/item
-            for score in confusion_scores:
-                if score.entity_id not in confusion_by_label:
-                    confusion_by_label[score.entity_id] = dict()
-                if score.relative not in confusion_by_label[score.entity_id]:
-                    confusion_by_label[score.entity_id][score.relative] = 0
-                confusion_by_label[score.entity_id][score.relative] += score.value
-
-            # calc overall annotation
-            user_annotation_overalls = list()
-            for annotation in annot_collection_2:  # go over all annotations from the "test" set
-                single_annotation_scores = mean_or_default(arr=[score.value
-                                                                for score in raw_annotation_scores
-                                                                if score.entity_id == annotation.id],
-                                                           default=1)
-                # ANNOTATION_OVERALL
-                user_annotation_overalls.append(single_annotation_scores)
-                annotation_overall = Score(type=ScoreType.ANNOTATION_OVERALL,
-                                           value=single_annotation_scores,
-                                           entity_id=annotation.id,
-                                           task_id=task.id,
-                                           item_id=item.id,
-                                           user_id=assignment_annotator_j,
-                                           dataset_id=item.dataset.id)
-                all_scores.append(annotation_overall)
-
-            # calc user confusion
-            user_confusion_score = Score(type=ScoreType.USER_CONFUSION,
-                                         value=mean_or_default(arr=user_annotation_overalls,
-                                                               default=1),
-                                         entity_id=assignment_annotator_j,
-                                         user_id=assignment_annotator_j,
-                                         relative=assignment_annotator_i,  # this can be "ref"
-                                         task_id=task.id,
-                                         item_id=item.id,
-                                         dataset_id=item.dataset.id)
-            all_scores.append(user_confusion_score)
-            all_scores.extend(raw_annotation_scores)
+                if score.type == ScoreType.USER_CONFUSION:
+                    updated_score = add_score_context(
+                        score=score,
+                        user_id=assignment_annotator_j,
+                        task_id=task.id,
+                        entity_id=assignment_annotator_j,
+                        relative=assignment_annotator_i,
+                        assignment_id=assignments_by_annotator[assignment_annotator_j].id,
+                        item_id=item.id)
+                else:
+                    updated_score = add_score_context(
+                        score=score,
+                        user_id=assignment_annotator_j,
+                        task_id=task.id,
+                        assignment_id=assignments_by_annotator[assignment_annotator_j].id,
+                        item_id=item.id)
+                all_scores.append(updated_score)
 
     return all_scores
 

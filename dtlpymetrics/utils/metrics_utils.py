@@ -64,6 +64,8 @@ def measure_annotations(
 
     if compare_types is None:
         compare_types = all_compare_types
+    if not isinstance(compare_types, list):
+        compare_types = [compare_types]
     final_results = dict()
     all_scores = list()
     true_positives = 0
@@ -192,6 +194,9 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
     #########################
     logger.info(f'Creating scores for types: {score_types}')
     annotation_scores = []
+    ###############################################
+    # collect all scores for existing annotations #
+    ###############################################
     for i, row in all_results.iterrows():
         for score_type in score_types:
             if row['second_id'] is None:
@@ -202,7 +207,26 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
                                 entity_id=row['second_id'],
                                 relative=row['first_id'])
             annotation_scores.append(annot_score)
-
+    #############################
+    # create annotation overall #
+    #############################
+    overall_scores = list()
+    for annotation in annot_collection_2:  # go over all annotations from the "test" set
+        single_annotation_scores = mean_or_default(arr=[score.value
+                                                        for score in annotation_scores
+                                                        if score.entity_id == annotation.id],
+                                                   default=1)
+        # ANNOTATION_OVERALL
+        overall_scores.append(Score(type=ScoreType.ANNOTATION_OVERALL,
+                                    value=single_annotation_scores,
+                                    entity_id=annotation.id))
+    annotation_scores.extend(overall_scores)
+    ##############################################
+    # create user confusion from ALL annotations #
+    ##############################################
+    annotation_scores.append(Score(type=ScoreType.USER_CONFUSION,
+                                   value=mean_or_default(arr=all_results.get('annotation_score', list()),
+                                                         default=1)))
     ##############################################
     # create label confusion scores for this set #
     ##############################################
@@ -624,7 +648,7 @@ class Matchers:
                 annotation_score=annotation_score,
                 label_score=labels_score,
                 attributes_score=attribute_score,
-                item_id=second_annotation.item.id
+                item_id=second_annotation.item_id
             ))
             df.drop(index=second_annotation_id, inplace=True)
             df.drop(columns=first_annotation_id, inplace=True)
@@ -641,7 +665,7 @@ class Matchers:
                                     second_annotation_confidence=
                                     second_annotation.metadata.get('user', dict()).get('model', dict()).get(
                                         'confidence', 1),
-                                    item_id=second_annotation.item.id
+                                    item_id=second_annotation.item_id
                                     ))
         for first_id in df.columns:
             first_annotation = [a for a in first_set if a.id == first_id][0]
@@ -655,7 +679,7 @@ class Matchers:
                                     second_annotation_creator=None,
                                     second_annotation_label=None,
                                     second_annotation_confidence=None,
-                                    item_id=first_annotation.item.id
+                                    item_id=first_annotation.item_id
                                     ))
 
         return matches

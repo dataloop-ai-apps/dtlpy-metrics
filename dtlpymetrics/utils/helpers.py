@@ -18,15 +18,15 @@ def check_if_video(item: dl.Item):
 
 
 def add_score_context(score: Score,
-                      annotation_id=None,
                       relative=None,
                       user_id=None,
+                      entity_id=None,
                       assignment_id=None,
                       task_id=None,
                       item_id=None,
                       dataset_id=None):
-    if annotation_id is not None:
-        score.entity_id = annotation_id
+    if entity_id is not None:
+        score.entity_id = entity_id
     if user_id is not None:
         score.user_id = user_id
     if relative is not None:

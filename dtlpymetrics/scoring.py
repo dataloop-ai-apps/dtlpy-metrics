@@ -1,10 +1,12 @@
 import logging
-import os
+import pathlib
 import json
+import tqdm
+import os
+
 import dtlpy as dl
 import pandas as pd
-from tqdm import tqdm
-from typing import List
+
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics import get_image_scores, get_video_scores
 from dtlpymetrics.utils import check_if_video, plot_matrix, measure_annotations, all_compare_types, mean_or_default
@@ -262,13 +264,11 @@ def create_model_score(dataset: dl.Dataset = None,
 
     # TODO use export to download the zip and take the annotation from there
     if dataset is None:
-        raise KeyError('No dataset provided, please provide a dataset.')
+        raise ValueError('No dataset provided, please provide a dataset.')
     if model is None:
-        raise KeyError('No model provided, please provide a model.')
-    if filters is None:
-        items_list = list(dataset.items.list().all())
-    else:
-        items_list = list(dataset.items.list(filters=filters).all())
+        raise ValueError('No model provided, please provide a model.')
+    if model.name is None:
+        raise ValueError('No model name found for the second set of annotations, please provide model name.')
     if compare_types is None:
         compare_types = all_compare_types
     if not isinstance(compare_types, list):
@@ -276,43 +276,62 @@ def create_model_score(dataset: dl.Dataset = None,
             raise ValueError(
                 f'Annotation type {compare_types} does not match model output type {model.output_type}')
         compare_types = [compare_types]
-
-    annot_set_1 = []
-    annot_set_2 = []
-
-    if model.name is None:
-        raise KeyError('No model name found for the second set of annotations, please provide model name.')
-    if not items_list:
+    logger.info('Downloading dataset annotations...')
+    json_path = dataset.download_annotations(filters=filters,
+                                             annotation_options=[dl.VIEW_ANNOTATION_OPTIONS_JSON])
+    item_json_files = list(pathlib.Path(json_path).rglob('*.json'))
+    if len(item_json_files) == 0:
         raise KeyError('No items found in the dataset, please check the dataset and filters.')
 
     ########################################
     # Create list of item annotation lists #
     ########################################
-    pbar = tqdm(items_list)
+    annotation_sets_by_item = dict()
+    n_gt_annotations = 0
+    n_md_annotations = 0
+    pbar = tqdm.tqdm(item_json_files)
     pbar.set_description(f'Loading annotations from items... ')
-    for item in pbar:
+    for item_file in pbar:
         item_annots_1 = []
         item_annots_2 = []
-        for annotation in item.annotations.list():
+        with open(item_file, 'r') as f:
+            data = json.load(f)
+        item = dl.Item.from_json(_json=data,
+                                 client_api=dataset._client_api,
+                                 dataset=dataset)
+        item_id = data['id']
+        collection: dl.AnnotationCollection = dl.AnnotationCollection.from_json(_json=data['annotations'],
+                                                                                item=item)
+        for annotation in collection:
             if annotation.metadata.get('user', {}).get('model') is None:
+                # GT annotation (no model in metadata)
                 item_annots_1.append(annotation)
             elif annotation.metadata.get('user', {}).get('model', {}).get('name', '') == model.name:
+                # annotation came from the evaluated model
                 item_annots_2.append(annotation)
-        annot_set_1.append(item_annots_1)
-        annot_set_2.append(item_annots_2)
+        annotation_sets_by_item[item_id] = {'gt': item_annots_1,
+                                            'model': item_annots_2}
+        n_gt_annotations += len(item_annots_1)
+        n_md_annotations += len(item_annots_2)
         pbar.update()
 
+    logger.info(f'Found {len(annotation_sets_by_item)} GT item.')
+    logger.info(f'Found {n_gt_annotations} GT annotations.')
+    logger.info(f'Found {n_md_annotations} mode annotations.')
     #########################################################
     # Compare annotations and return concatenated dataframe #
     #########################################################
     all_results = pd.DataFrame()
-    for i_item in range(len(items_list)):
+    for item_id, annotation_sets in annotation_sets_by_item.items():
         # compare annotations for each item
-        if len(annot_set_1[i_item]) == 0 and len(annot_set_2[i_item]) == 0:
+        set_1_item_annotations = annotation_sets['gt']
+        set_2_item_annotations = annotation_sets['model']
+        if len(set_1_item_annotations) == 0 and len(set_2_item_annotations) == 0:
+            # both are empty - no annotations at all
             continue
         else:
-            results = measure_annotations(annotations_set_one=annot_set_1[i_item],
-                                          annotations_set_two=annot_set_2[i_item],
+            results = measure_annotations(annotations_set_one=set_1_item_annotations,
+                                          annotations_set_two=set_2_item_annotations,
                                           match_threshold=match_threshold,
                                           # default 0.01 to get all possible matches
                                           ignore_labels=ignore_labels,
@@ -322,7 +341,7 @@ def create_model_score(dataset: dl.Dataset = None,
                     results_df = results[compare_type].to_df()
                 except KeyError:
                     continue
-                results_df['item_id'] = [items_list[i_item].id] * results_df.shape[0]
+                results_df['item_id'] = [item_id] * results_df.shape[0]
                 results_df['annotation_type'] = [compare_type] * results_df.shape[0]
                 all_results = pd.concat([all_results, results_df],
                                         ignore_index=True)
