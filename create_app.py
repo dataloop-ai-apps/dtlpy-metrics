@@ -12,6 +12,11 @@ def bump(bump_type):
     print(f'Bumping version')
     subprocess.check_output(f'bumpversion {bump_type}', shell=True)
     subprocess.check_output('git push --follow-tags', shell=True)
+    # tag latest
+    subprocess.check_output('git tag --delete latest', shell=True)
+    subprocess.check_output('git push --delete origin latest', shell=True)
+    subprocess.check_output('git tag latest', shell=True)
+    subprocess.check_output('git push origin --tags', shell=True)
 
 
 def publish_and_install(project_id):
