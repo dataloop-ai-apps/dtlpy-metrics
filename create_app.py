@@ -40,17 +40,18 @@ def publish_and_install(project_id):
         dpk = project.dpks.publish()
         print(f'published successfully! dpk name: {dpk.name}, version: {dpk.version}, dpk id: {dpk.id}')
 
-        # try:
-        #     app = project.apps.get(app_name=dpk.name)
-        #     print(f'already installed, updating...')
-        #     app.dpk_version = dpk.version
-        #     app.update()
-        #     print(f'update done. app id: {app.id}')
-        # except dl.exceptions.NotFound:
-        #     print(f'installing ..')
-        #
-        #     app = project.apps.install(dpk=dpk, app_name=dpk.name)
-        #     print(f'installed! app id: {app.id}')
+        filters = dl.Filters(resource='apps')
+        filters.add(field='dpkName', values=dpk.name)
+        apps = dl.apps.list(filters=filters)
+        print(f'Found {apps.items_count} apps for the DPK. Updating...')
+        for app in apps.all():
+            try:
+                print(app.name, app.project.name)
+                if app.dpk_version != dpk.version:
+                    app.dpk_version = dpk.version
+                    app.update()
+            except Exception:
+                print(f'Failed updating for app {app.id}')
 
         print(f'Done!')
 

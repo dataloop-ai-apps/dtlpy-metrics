@@ -278,7 +278,8 @@ def create_model_score(dataset: dl.Dataset = None,
         compare_types = [compare_types]
     logger.info('Downloading dataset annotations...')
     json_path = dataset.download_annotations(filters=filters,
-                                             annotation_options=[dl.VIEW_ANNOTATION_OPTIONS_JSON])
+                                             annotation_options=[dl.VIEW_ANNOTATION_OPTIONS_JSON],
+                                             overwrite=True)
     item_json_files = list(pathlib.Path(json_path).rglob('*.json'))
     if len(item_json_files) == 0:
         raise KeyError('No items found in the dataset, please check the dataset and filters.')

@@ -136,7 +136,7 @@ In this example item, the ground truth has 3 for each cat and dog class. The ass
 ## Python installation
 
 ```shell
-pip install git+https://github.com/dataloop-ai-apps/dtlpy-metrics
+pip install dtlpymetrics
 ```
 
 ## Functions
