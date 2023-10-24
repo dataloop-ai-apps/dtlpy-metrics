@@ -1,10 +1,14 @@
 import logging
 import uuid
+import statistics
+import dtlpy as dl
 import numpy as np
 import pandas as pd
-from typing import Union
 
 from dtlpy import entities
+from typing import Union, List
+
+from dtlpymetrics.dtlpy_scores import Score, ScoreType
 
 logger = logging.getLogger(name='scoring-and-metrics')
 
@@ -13,6 +17,11 @@ all_compare_types = [entities.AnnotationType.BOX,
                      entities.AnnotationType.POLYGON,
                      entities.AnnotationType.POINT,
                      entities.AnnotationType.SEGMENTATION]
+
+results_columns = {'annotation_iou': 'geometry_score',
+                   'annotation_label': 'label_score',
+                   'annotation_attribute': 'attribute_score',
+                   'annotation_overall': 'annotation_score'}
 
 
 def mean_or_nan(arr):
@@ -55,6 +64,8 @@ def measure_annotations(
 
     if compare_types is None:
         compare_types = all_compare_types
+    if not isinstance(compare_types, list):
+        compare_types = [compare_types]
     final_results = dict()
     all_scores = list()
     true_positives = 0
@@ -131,6 +142,114 @@ def measure_annotations(
     return final_results
 
 
+def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection, List[dl.Annotation]],
+                               annot_collection_2: Union[dl.AnnotationCollection, List[dl.Annotation]],
+                               ignore_labels=False,
+                               include_confusion=True,
+                               match_threshold=0.5,
+                               compare_types=None,
+                               score_types=None) -> List[Score]:
+    """
+    Creates Scores from comparing two annotation lists.
+
+    The first annotation collection is considered the reference, and the second collection is the set for comparing.
+    If we switch the order of the annotation collections, the scores remain the same but the user id context changes.
+
+    :param annot_collection_1: dl.AnnotationCollection or list of annotations
+    :param annot_collection_2: dl.AnnotationCollection or list of annotations
+    :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label classification
+    :param include_confusion: bool, True means label confusion scores will be calculated
+    :param match_threshold: float, threshold for considering two annotations a "match"
+    :param compare_types: dl.AnnotationType entity or string for the annotation types to be compared
+    :param score_types: dl.ScoreType entity or string for the score types to be calculated (e.g. "annotation_iou")
+    :return: list of Score entities
+    """
+    if score_types is None:
+        score_types = [ScoreType.ANNOTATION_LABEL, ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_ATTRIBUTE]
+    if compare_types is None:
+        compare_types = all_compare_types
+    if not isinstance(score_types, list):
+        score_types = [score_types]
+
+    #######################
+    # compare annotations #
+    #######################
+    results = measure_annotations(
+        annotations_set_one=annot_collection_1,
+        annotations_set_two=annot_collection_2,
+        compare_types=compare_types,
+        ignore_labels=ignore_labels,
+        match_threshold=match_threshold)
+
+    all_results = pd.DataFrame()
+    for compare_type in compare_types:
+        try:
+            results_df = results[compare_type].to_df()
+            all_results = pd.concat([all_results, results_df])
+        except KeyError:
+            continue
+
+    #########################
+    # create score entities #
+    #########################
+    logger.info(f'Creating scores for types: {score_types}')
+    annotation_scores = []
+    ###############################################
+    # collect all scores for existing annotations #
+    ###############################################
+    for i, row in all_results.iterrows():
+        for score_type in score_types:
+            if row['second_id'] is None:
+                continue
+
+            annot_score = Score(type=score_type,
+                                value=row[results_columns[score_type.value.lower()]],
+                                entity_id=row['second_id'],
+                                relative=row['first_id'])
+            annotation_scores.append(annot_score)
+    #############################
+    # create annotation overall #
+    #############################
+    overall_scores = list()
+    for annotation in annot_collection_2:  # go over all annotations from the "test" set
+        single_annotation_scores = mean_or_default(arr=[score.value
+                                                        for score in annotation_scores
+                                                        if score.entity_id == annotation.id],
+                                                   default=1)
+        # ANNOTATION_OVERALL
+        overall_scores.append(Score(type=ScoreType.ANNOTATION_OVERALL,
+                                    value=single_annotation_scores,
+                                    entity_id=annotation.id))
+    annotation_scores.extend(overall_scores)
+    ##############################################
+    # create user confusion from ALL annotations #
+    ##############################################
+    annotation_scores.append(Score(type=ScoreType.USER_CONFUSION,
+                                   value=mean_or_default(arr=all_results.get('annotation_score', list()),
+                                                         default=1)))
+    ##############################################
+    # create label confusion scores for this set #
+    ##############################################
+    if include_confusion is True:
+        if all_results.shape[0] > 0:
+
+            label_confusion_set = all_results[['first_label', 'second_label']]
+            label_confusion_set = label_confusion_set.fillna('unlabeled')
+
+            label_confusion_summary = label_confusion_set.groupby(
+                ['first_label', 'second_label']).size().reset_index(
+                name='counts')
+            # print(label_confusion_summary)  # debug
+            for i, row in label_confusion_summary.iterrows():
+                confusion_score = Score(type=ScoreType.LABEL_CONFUSION,
+                                        value=row['counts'],
+                                        entity_id=row['second_label'],  # assignee label
+                                        relative=row['first_label'])  # ground truth label
+                annotation_scores.append(confusion_score)
+
+    return annotation_scores
+
+
 class Results:
     def __init__(self, matches, annotation_type):
         self.matches = matches
@@ -164,11 +283,13 @@ class Results:
             'n_annotations_unmatched_set_one': unmatched_set_one,
             'n_annotations_unmatched_set_two': unmatched_set_two,
             'n_annotations_unmatched_total': unmatched_set_one + unmatched_set_two,
-            'n_annotations_matched_total': matched_set_one,
-            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if (
-                                                                                            matched_set_one + unmatched_set_two) != 0 else 0,
-            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if (
-                                                                                         matched_set_one + unmatched_set_one) != 0 else 0
+            'n_annotations_matched_set_one': matched_set_one,
+            'n_annotations_matched_set_two': matched_set_two,
+            'n_annotations_matched_total': matched_set_one + matched_set_two,
+            'precision': matched_set_one / (matched_set_one + unmatched_set_two) if
+            (matched_set_one + unmatched_set_two) != 0 else 0,
+            'recall': matched_set_one / (matched_set_one + unmatched_set_one) if
+            (matched_set_one + unmatched_set_one) != 0 else 0
         }
 
 
@@ -279,8 +400,11 @@ class Matchers:
         :param pts2: ann.geo coordinates
         :return: `float` how Intersection over Union of tho shapes
         """
-
-        from shapely import Polygon
+        import shapely
+        if int(shapely.__version__.split('.')[0]) < 2:
+            from shapely.geometry import Polygon
+        else:
+            from shapely import Polygon
 
         if len(pts1) == 2:
             # regular box annotation (2 pts)
@@ -502,29 +626,34 @@ class Matchers:
             first_annotation = [a for a in first_set if a.id == first_annotation_id][0]
             second_annotation = [a for a in second_set if a.id == second_annotation_id][0]
             geometry_score = df.iloc[row_index, col_index]
-            labels_score = Matchers.match_labels(label1=first_annotation.label,
-                                                 label2=second_annotation.label)
+            match_scores = list()
+            match_scores.append(geometry_score)
             attribute_score = Matchers.match_attributes(attributes1=first_annotation.attributes,
                                                         attributes2=second_annotation.attributes)
-
-            # TODO use ignores for final score
-            annotation_score = (geometry_score + attribute_score + labels_score) / 3
-            matches.add(match=Match(first_annotation_id=None,
-                                    first_annotation_creator=None,
-                                    first_annotation_label=None,
-                                    first_annotation_confidence=None,
-                                    second_annotation_id=second_annotation_id,
-                                    second_annotation_creator=second_annotation.creator,
-                                    second_annotation_label=second_annotation.label,
-                                    second_annotation_confidence=
-                                    second_annotation.metadata.get('user', dict()).get('model', dict()).get(
-                                        'confidence', 1),
-                                    geometry_score=geometry_score,  # TODO: check these scores should be sent
-                                    annotation_score=annotation_score,
-                                    label_score=labels_score,
-                                    attributes_score=attribute_score,
-                                    item_id=second_annotation.item.id
-                                    ))
+            labels_score = Matchers.match_labels(label1=first_annotation.label,
+                                                 label2=second_annotation.label)
+            if ignore_attributes is False:
+                match_scores.append(attribute_score)
+            if ignore_labels is False:
+                match_scores.append(labels_score)
+            annotation_score = statistics.mean(match_scores)
+            matches.add(match=Match(
+                first_annotation_id=first_annotation_id,
+                first_annotation_creator=first_annotation.creator,
+                first_annotation_label=first_annotation.label,
+                first_annotation_confidence=
+                first_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence', 1),
+                second_annotation_id=second_annotation_id,
+                second_annotation_creator=second_annotation.creator,
+                second_annotation_label=second_annotation.label,
+                second_annotation_confidence=
+                second_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence', 1),
+                geometry_score=geometry_score,  # TODO: check these scores should be sent
+                annotation_score=annotation_score,
+                label_score=labels_score,
+                attributes_score=attribute_score,
+                item_id=second_annotation.item_id
+            ))
             df.drop(index=second_annotation_id, inplace=True)
             df.drop(columns=first_annotation_id, inplace=True)
         # add un-matched
@@ -540,7 +669,7 @@ class Matchers:
                                     second_annotation_confidence=
                                     second_annotation.metadata.get('user', dict()).get('model', dict()).get(
                                         'confidence', 1),
-                                    item_id=second_annotation.item.id
+                                    item_id=second_annotation.item_id
                                     ))
         for first_id in df.columns:
             first_annotation = [a for a in first_set if a.id == first_id][0]
@@ -554,7 +683,7 @@ class Matchers:
                                     second_annotation_creator=None,
                                     second_annotation_label=None,
                                     second_annotation_confidence=None,
-                                    item_id=first_annotation.item.id
+                                    item_id=first_annotation.item_id
                                     ))
 
         return matches

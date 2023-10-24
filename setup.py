@@ -9,7 +9,7 @@
 
 from setuptools import setup, find_packages
 
-with open('README.md') as f:
+with open('README.md', encoding="utf8") as f:
     readme = f.read()
 
 with open('requirements.txt') as f:
@@ -25,7 +25,7 @@ setup(name='dtlpymetrics',
           'Programming Language :: Python :: 3.8',
           'Programming Language :: Python :: 3.9',
       ],
-      version='1.0.73',
+      version='1.0.95',
       description='Scoring and metrics app',
       author='Dataloop Team',
       author_email='yaya.t@dataloop.ai',

@@ -7,28 +7,29 @@ import os
 
 import dtlpy as dl
 from dtlpymetrics.dtlpy_scores import ScoreType
-from dtlpymetrics.scoring import calculate_task_score, calculate_confusion_matrix_item
+from dtlpymetrics import calculate_task_score
 
 logger = logging.getLogger()
 
+PATH = os.path.dirname(os.path.abspath(__file__))
 
 class TestRunner(unittest.TestCase):
     def setUp(self):
         dl.setenv("rc")
-        # self.project = dl.projects.get(project_name='Quality Task Scores Testing')
         self.project = dl.projects.get(project_id='1c5f0cae-f2f8-48da-9429-9de875721759')  # Quality Task Scores Testing
 
         self.qualification_task = self.project.tasks.get(task_name='qualification testing task')  # c92
         self.honeypot_task = self.project.tasks.get(task_name='honeypot testing task')  # 7f7
         self.consensus_task_classification = self.project.tasks.get(
-            task_name='consensus testing task - classification')  # b47
+            # task_name='consensus testing task - classification')  # b47
+            task_name='consensus testing task - classification 2.0 (Score-task-5)')  # 27f
         self.consensus_task_bbox = self.project.tasks.get(task_name='consensus testing task - bbox')  # 855
-        self.label_confusion_task = self.project.tasks.get(task_name='qualification testing - confusion matrix')  # e14
+        # self.label_confusion_task = self.project.tasks.get(task_name='qualification testing - confusion matrix')  # e14
 
         logger.info('[SETUP] - done getting entities')
-        now = datetime.datetime.now().isoformat(sep='.', timespec='seconds').replace(':', '.').replace('-', '.')
-        self.assets_path = os.path.join(os.getcwd(), 'assets')  # './tests/assets'
-        self.test_dump_path = os.path.join(os.getcwd(), 'assets', now)
+        now = datetime.datetime.now().isoformat(sep='.', timespec='minutes').replace('.', '_').replace(':', '.')
+        self.assets_path = os.path.join(PATH, 'assets')
+        self.test_dump_path = os.path.join(PATH, 'assets', now)
         os.environ['SCORES_DEBUG_PATH'] = self.test_dump_path
 
     def tearDown(self) -> None:
@@ -66,7 +67,6 @@ class TestRunner(unittest.TestCase):
                 test_scores = json.load(f)
             self.assertListEqual(test_scores, ref_scores)
 
-    #
     def test_consensus_tasks(self):
         logger.info(f'consensus testing task dataset: {self.consensus_task_classification.dataset}')
         ###########################
@@ -76,19 +76,28 @@ class TestRunner(unittest.TestCase):
         self.consensus_task_classification = calculate_task_score(task=self.consensus_task_classification,
                                                                   score_types=[ScoreType.ANNOTATION_LABEL])
 
-        filters = dl.Filters()
-        filters.add(field='hidden', values=False)
-        consensus_class_items = self.consensus_task_classification.get_items(filters=filters,
-                                                                             get_consensus_items=True).all()
+        consensus_assignment = self.consensus_task_classification.metadata['system']['consensusAssignmentId']
+        consensus_class_items = self.consensus_task_classification.get_items(get_consensus_items=True).all()
+
+        num_consensus = 0
         for item in consensus_class_items:
-            logger.info(f'Comparing calculated scores with reference scores for item: {item.id}')
-            with open(os.path.join(self.assets_path, self.consensus_task_classification.id, f'{item.id}.json'),
-                      'r') as f:
-                ref_scores = json.load(f)
-            with open(os.path.join(self.test_dump_path, self.consensus_task_classification.id, f'{item.id}.json'),
-                      'r') as f:
-                test_scores = json.load(f)
-            self.assertListEqual(test_scores, ref_scores)
+            orig_consensus = False
+            for ref_obj in item.metadata['system']['refs']:
+                if ref_obj['id'] == consensus_assignment:
+                    orig_consensus = True
+                    break
+            if orig_consensus is True:
+                num_consensus += 1
+                logger.info(f'Comparing calculated scores with reference scores for item: {item.id}')
+                with open(os.path.join(self.assets_path, self.consensus_task_classification.id, f'{item.id}.json'),
+                          'r') as f:
+                    ref_scores = json.load(f)
+                with open(os.path.join(self.test_dump_path, self.consensus_task_classification.id, f'{item.id}.json'),
+                          'r') as f:
+                    test_scores = json.load(f)
+                self.assertListEqual(test_scores, ref_scores)
+        logger.info(f'Compared scores for {num_consensus} consensus classification items')
+        print(f'Compared scores for {num_consensus} consensus classification items')
 
         #################
         # for bbox task #
@@ -97,17 +106,26 @@ class TestRunner(unittest.TestCase):
         self.consensus_task_bbox = calculate_task_score(task=self.consensus_task_bbox,
                                                         score_types=[ScoreType.ANNOTATION_LABEL,
                                                                      ScoreType.ANNOTATION_IOU])
-        filters = dl.Filters()
-        filters.add(field='hidden', values=False)
-        consensus_bbox_items = self.consensus_task_bbox.get_items(filters=filters,
-                                                                  get_consensus_items=True)
-        for item in consensus_bbox_items.all():
-            logger.info(f'Comparing calculated scores with reference scores for item: {item.id}')
-            with open(os.path.join(self.assets_path, self.consensus_task_bbox.id, f'{item.id}.json'), 'r') as f:
-                ref_scores = json.load(f)
-            with open(os.path.join(self.test_dump_path, self.consensus_task_bbox.id, f'{item.id}.json'), 'r') as f:
-                test_scores = json.load(f)
-            self.assertListEqual(test_scores, ref_scores)
+        consensus_assignment = self.consensus_task_bbox.metadata['system']['consensusAssignmentId']
+        consensus_bbox_items = self.consensus_task_bbox.get_items(get_consensus_items=True).all()
+
+        num_consensus = 0
+        for item in consensus_bbox_items:
+            orig_consensus = False
+            for ref_obj in item.metadata['system']['refs']:
+                if ref_obj['id'] == consensus_assignment:
+                    orig_consensus = True
+                    break
+            if orig_consensus is True:
+                num_consensus += 1
+                logger.info(f'Comparing calculated scores with reference scores for item: {item.id}')
+                with open(os.path.join(self.assets_path, self.consensus_task_bbox.id, f'{item.id}.json'), 'r') as f:
+                    ref_scores = json.load(f)
+                with open(os.path.join(self.test_dump_path, self.consensus_task_bbox.id, f'{item.id}.json'), 'r') as f:
+                    test_scores = json.load(f)
+                self.assertListEqual(test_scores, ref_scores)
+        logger.info(f'Compared scores for {num_consensus} consensus items')
+        print(f'Compared scores for {num_consensus} consensus bbox items')
 
     # def test_confusion_matrix(self):
     #     self.label_confusion_task = calculate_task_score(task=self.label_confusion_task,

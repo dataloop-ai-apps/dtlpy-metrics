@@ -1,0 +1,82 @@
+[
+    {
+        "type": "annotation_overall",
+        "value": 1.0,
+        "entityId": "65030439efd726009066223f",
+        "context": {
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a696d608feba20277b2",
+            "userId": "yaya.t@dataloop.ai",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "user_confusion",
+        "value": 1.0,
+        "entityId": "yaya.t@dataloop.ai",
+        "context": {
+            "userId": "yaya.t@dataloop.ai",
+            "relative": "daniel.f@dataloop.ai",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a696d608feba20277b2",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "annotation_label",
+        "value": 1,
+        "entityId": "65030439efd726009066223f",
+        "context": {
+            "relative": "6503043aefd7269306662250",
+            "userId": "yaya.t@dataloop.ai",
+            "assignmentId": "6502cc4a737bd473ef39e282",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a696d608feba20277b2"
+        }
+    },
+    {
+        "type": "annotation_overall",
+        "value": 1.0,
+        "entityId": "6503043aefd7269306662250",
+        "context": {
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a696d608feba20277b2",
+            "userId": "daniel.f@dataloop.ai",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "user_confusion",
+        "value": 1.0,
+        "entityId": "daniel.f@dataloop.ai",
+        "context": {
+            "userId": "daniel.f@dataloop.ai",
+            "relative": "yaya.t@dataloop.ai",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a696d608feba20277b2",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    },
+    {
+        "type": "annotation_label",
+        "value": 1,
+        "entityId": "6503043aefd7269306662250",
+        "context": {
+            "relative": "65030439efd726009066223f",
+            "userId": "daniel.f@dataloop.ai",
+            "assignmentId": "6502cc4a737bd419d039e281",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a696d608feba20277b2"
+        }
+    },
+    {
+        "type": "item_overall",
+        "value": 1.0,
+        "entityId": "64b38a696d608feba20277b2",
+        "context": {
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a696d608feba20277b2",
+            "datasetId": "64b012ac0875623c3a83f3c0"
+        }
+    }
+]

@@ -1,0 +1,43 @@
+name: Bump and Git Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      bumptype:
+        type: choice
+        description: Choose bump version type
+        required: true
+        options:
+          - patch
+          - minor
+  pull_request:
+    types: [ closed ]
+
+
+permissions: write-all
+
+concurrency:
+  group: "version-bump"
+  cancel-in-progress: false
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/dataloopai/py3.8.node16:1.81.4
+      options: --user 1001
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN  }}
+
+      - name: Setup Git User
+        run: |
+          git config --global user.name "GitHub Action"
+          git config --global user.email "github-action@users.noreply.github.com"
+          git config --global --add safe.directory /__w/dtlpy-metrics
+
+      - name: Build and Push
+        run: |
+          python create_app.py --tag --bump-type "${{ inputs.bumptype || 'patch' }}"

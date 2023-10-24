@@ -1,7 +1,9 @@
 dtlpy
 fastapi
 uvicorn
-shapely >= 2.0.0
+shapely
 opencv-python
 matplotlib
 seaborn
+pandas
+tqdm
