@@ -8,7 +8,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-
 prec_rec = dl.AppModule(name='Scoring and metrics function',
                         description='Functions for calculating scores between annotations.'
                         )
@@ -324,31 +323,28 @@ def n_point_interpolated_curve(recall: list, precision: list, confidence: list, 
     rho_interpol = []  # the interpolated precision values for each interval range
     recall_valid = []
     conf_valid = []
-    confidence_min = confidence_all[list(precision_all).index(min(precision_all))]
 
     for recall_interval in recall_intervals:
-        larger_recall = np.argwhere(recall_all[:] >= recall_interval)
+        larger_recall = np.argwhere(recall_all[:] >= recall_interval).squeeze()
         precision_max = 0
-
+        confidence_min = 0
         if larger_recall.size != 0:
-            precision_max = max(precision_all[larger_recall.min():])
+            precision_max = max([precision_all[i] for i in larger_recall])
             # print(f'precis max: {precision_max}, up to recall interval {recall_interval}')  # DEBUG
-            conf_valid.append(confidence_all[list(precision_all).index(precision_max)])
-        else:
-            conf_valid.append(confidence_min)
-
+            confidence_min = confidence_all[list(precision_all).index(precision_max)]
+        conf_valid.append(confidence_min)
         recall_valid.append(recall_interval)
         rho_interpol.append(precision_max)
 
     avg_precis = sum(rho_interpol) / n_points
 
     # make points plot-ready
-    recall_points = np.concatenate([[recall_valid[0]], recall_valid, [0]])  # 1 to 0
-    precision_points = np.concatenate([[rho_interpol[0]], rho_interpol, [rho_interpol[0]]])  # 0 to 1
-    confidence_points = np.concatenate([[conf_valid[0]], conf_valid, [conf_valid[0]]])  # conf min to max
+    recall_points = np.concatenate([[recall_valid[0]], recall_valid, [recall_valid[-1]]])  # 1 to 0
+    precision_points = np.concatenate([[rho_interpol[0]], rho_interpol, [rho_interpol[-1]]])  # 0 to 1
+    confidence_points = np.concatenate([[conf_valid[0]], conf_valid, [conf_valid[-1]]])  # conf min to max
 
     cc = []
-    for i in range(len(recall_points)):
+    for i in range(1, len(recall_points)):
         point_1 = (recall_points[i], precision_points[i - 1], confidence_points[i - 1])
         point_2 = (recall_points[i], precision_points[i], confidence_points[i])
         if point_1 not in cc:
