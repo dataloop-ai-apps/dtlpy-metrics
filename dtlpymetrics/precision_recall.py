@@ -1,7 +1,7 @@
-import logging
-import os
 import datetime
-from typing import List
+import logging
+import json
+import os
 
 import dtlpy as dl
 import numpy as np
@@ -19,6 +19,7 @@ def calc_precision_recall(dataset_id: str,
                           model_id: str,
                           iou_threshold=0.01,
                           method_type=None,
+                          each_label=True,
                           n_points=None) -> pd.DataFrame:
     """
     Plot precision recall curve for model predictions, for a given metric threshold
@@ -27,6 +28,7 @@ def calc_precision_recall(dataset_id: str,
     :param model_id: str model ID
     :param iou_threshold: float Threshold for accepting matched annotations as a true positive
     :param method_type: str method for calculating precision and recall. Options are: every_point and n_point_interpolated
+    :param each_label: bool calculate precision recall for each one of the labels
     :param n_points: int number of points to interpolate in case of n point interpolation
     :return: dataframe with all the points to plot for the dataset and individual labels
     """
@@ -108,7 +110,7 @@ def calc_precision_recall(dataset_id: str,
 
     dataset_points['iou_threshold'] = [iou_threshold] * len(dataset_plot_precision)
     dataset_points['data'] = ['dataset'] * len(dataset_plot_precision)
-    dataset_points['label_name'] = ['NA'] * len(dataset_plot_precision)
+    dataset_points['label_name'] = ['_NA'] * len(dataset_plot_precision)
     dataset_points['precision'] = dataset_plot_precision
     dataset_points['recall'] = dataset_plot_recall
     dataset_points['confidence'] = dataset_plot_confidence
@@ -119,59 +121,59 @@ def calc_precision_recall(dataset_id: str,
     ##########################################
     # calculate label-level precision/recall #
     ##########################################
-    all_labels = pd.DataFrame(columns=dataset_df.columns)
-
-    label_points = {key: {} for key in dataset_points}
-
-    for label_name in list(set(label_names)):
-        label_detections = detections.loc[
-            (detections.first_label == label_name) | (detections.second_label == label_name)].copy()
-        if label_detections.shape[0] == 0:
-            label_plot_precision = [0]
-            label_plot_recall = [0]
-            label_plot_confidence = [0]
-        else:
-            label_detections.sort_values('second_confidence', inplace=True, ascending=False, ignore_index=True)
-
-            label_fps = np.cumsum(label_detections['false_positives'])
-            label_tps = np.cumsum(label_detections['true_positives'])
-            label_recall = label_tps / num_gts
-            label_precision = np.divide(label_tps, (label_fps + label_tps))
-
-            if method_type == 'every_point':
-                [_,
-                 label_plot_precision,
-                 label_plot_recall,
-                 label_plot_confidence] = \
-                    every_point_curve(recall=list(label_recall),
-                                      precision=list(label_precision),
-                                      confidence=list(label_detections['second_confidence']))
+    if each_label is True:
+        all_labels = pd.DataFrame(columns=dataset_df.columns)
+        label_points = {key: {} for key in dataset_points}
+        for label_name in list(set(label_names)):
+            label_detections = detections.loc[
+                (detections.first_label == label_name) | (detections.second_label == label_name)].copy()
+            if label_detections.shape[0] == 0:
+                label_plot_precision = [0]
+                label_plot_recall = [0]
+                label_plot_confidence = [0]
             else:
-                [_,
-                 label_plot_precision,
-                 label_plot_recall,
-                 label_plot_confidence] = \
-                    n_point_interpolated_curve(recall=list(label_recall),
-                                               precision=list(label_precision),
-                                               confidence=list(label_detections['second_confidence']),
-                                               n_points=n_points)
+                label_detections.sort_values('second_confidence', inplace=True, ascending=False, ignore_index=True)
 
-        label_points['iou_threshold'] = [iou_threshold] * len(label_plot_precision)
-        label_points['data'] = ['label'] * len(label_plot_precision)
-        label_points['label_name'] = [label_name] * len(label_plot_precision)
-        label_points['precision'] = label_plot_precision
-        label_points['recall'] = label_plot_recall
-        label_points['confidence'] = label_plot_confidence
-        label_points['dataset_name'] = [dataset.name] * len(label_plot_precision)
+                label_fps = np.cumsum(label_detections['false_positives'])
+                label_tps = np.cumsum(label_detections['true_positives'])
+                label_recall = label_tps / num_gts
+                label_precision = np.divide(label_tps, (label_fps + label_tps))
 
-        label_df = pd.DataFrame(label_points).drop_duplicates()
-        all_labels = pd.concat([all_labels, label_df])
+                if method_type == 'every_point':
+                    [_,
+                     label_plot_precision,
+                     label_plot_recall,
+                     label_plot_confidence] = \
+                        every_point_curve(recall=list(label_recall),
+                                          precision=list(label_precision),
+                                          confidence=list(label_detections['second_confidence']))
+                else:
+                    [_,
+                     label_plot_precision,
+                     label_plot_recall,
+                     label_plot_confidence] = \
+                        n_point_interpolated_curve(recall=list(label_recall),
+                                                   precision=list(label_precision),
+                                                   confidence=list(label_detections['second_confidence']),
+                                                   n_points=n_points)
 
-    ####################
-    # combine all data #
-    ####################
-    logger.info('Saving precision recall plot data')
-    plot_points = pd.concat([dataset_df, all_labels])
+            label_points['iou_threshold'] = [iou_threshold] * len(label_plot_precision)
+            label_points['data'] = ['label'] * len(label_plot_precision)
+            label_points['label_name'] = [label_name] * len(label_plot_precision)
+            label_points['precision'] = label_plot_precision
+            label_points['recall'] = label_plot_recall
+            label_points['confidence'] = label_plot_confidence
+            label_points['dataset_name'] = [dataset.name] * len(label_plot_precision)
+
+            label_df = pd.DataFrame(label_points).drop_duplicates()
+            all_labels = pd.concat([all_labels, label_df])
+        ####################
+        # combine all data #
+        ####################
+        plot_points = pd.concat([dataset_df, all_labels])
+    else:
+        plot_points = dataset_df
+    logger.info('Done')
     # plot_points.to_csv(os.path.join(os.getcwd(), 'plot_points.csv'), index=False)     # DEBUG
 
     return plot_points
@@ -325,7 +327,7 @@ def n_point_interpolated_curve(recall: list, precision: list, confidence: list, 
     conf_valid = []
 
     for recall_interval in recall_intervals:
-        larger_recall = np.argwhere(recall_all[:] >= recall_interval).squeeze()
+        larger_recall = np.argwhere(recall_all[:] >= recall_interval).squeeze(axis=1)
         precision_max = 0
         confidence_min = 0
         if larger_recall.size != 0:
@@ -465,3 +467,28 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     model_fn_df.to_csv(os.path.join(os.getcwd(), f'{model.name}_false_negatives.csv'))
 
     return model_fn_df
+
+
+def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
+    figures = dict()
+    for iou_th in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
+        df = calc_precision_recall(model_id=model.id,
+                                   dataset_id=dataset.id,
+                                   method_type='n_point_interpolation',
+                                   n_points=201,
+                                   iou_threshold=iou_th)
+        dataset_points = df[df['label_name'] == '_NA']
+        # TODO plot each label separately
+        recall = dataset_points['recall']
+        precision = dataset_points['precision']
+        confidence = dataset_points['confidence']
+        figures[iou_th] = {'recall': recall.to_list(),
+                           'precision': precision.to_list(),
+                           'confidence': confidence.to_list(),
+                           }
+    filepath = os.path.join(os.getcwd(), '.dataloop', f'{model.id}-interpolated.json')
+    with open(filepath, 'w') as f:
+        json.dump(figures, f)
+    item = dataset.items.upload(local_path=filepath,
+                                remote_path=f'/.modelscores',
+                                overwrite=True)

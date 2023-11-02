@@ -9,7 +9,8 @@ import pandas as pd
 
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics import get_image_scores, get_video_scores
-from dtlpymetrics.utils import check_if_video, plot_matrix, measure_annotations, all_compare_types, mean_or_default
+from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default
+from dtlpymetrics.precision_recall import calc_and_upload_interpolation
 
 dl.use_attributes_2()
 
@@ -364,4 +365,7 @@ def create_model_score(dataset: dl.Dataset = None,
                                 remote_path=f'/.modelscores',
                                 overwrite=True)
     logger.info(f'Successfully created model scores and saved as item {item.id}.')
+
+    # This is a workaround for uploading interpolated precision-recall for 10 iou levels
+    calc_and_upload_interpolation(model=model, dataset=dataset)
     return model
