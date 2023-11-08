@@ -1,6 +1,5 @@
-import logging
 import uuid
-import statistics
+import logging
 import dtlpy as dl
 import numpy as np
 import pandas as pd
@@ -299,7 +298,10 @@ class Match:
                  second_annotation_id, second_annotation_creator, second_annotation_label, second_annotation_confidence,
                  item_id,
                  # defaults
-                 annotation_score=0, attributes_score=0, geometry_score=0, label_score=0):
+                 annotation_score: float = 0.,
+                 attributes_score: float = 0.,
+                 geometry_score: float = 0.,
+                 label_score: float = 0.):
         """
         Save a match between two annotations with all relevant scores
 
@@ -569,7 +571,8 @@ class Matchers:
                       match_type,
                       match_threshold: float,
                       ignore_attributes=False,
-                      ignore_labels=False):
+                      ignore_labels=False,
+                      ignore_geometry=False):
         """
         Finds all matches between two sets of annotations
         :param matches: Matches object to populate
@@ -578,9 +581,12 @@ class Matchers:
         :param match_type: type of annotation to match (e.g. box, semantic, etc.)
         :param match_threshold: threshold for including a match
         :param ignore_attributes: ignore attribute score for final annotation score
-        :param ignore_labels: ignore label when comparing - measure only geometry
+        :param ignore_labels: ignore label when comparing - take also wrong label as a match
+        :param ignore_geometry: ignore geometry when comparing - for classification
         :return:
         """
+        if ignore_geometry is True and ignore_labels is True and ignore_attributes is True:
+            raise ValueError('Cant compare annotation with all ignore flags set to True, must choose at least one')
         annotation_type_to_func = {
             entities.AnnotationType.BOX: Matchers.calculate_iou_box,
             entities.AnnotationType.CLASSIFICATION: Matchers.calculate_iou_classification,
@@ -626,29 +632,30 @@ class Matchers:
             first_annotation = [a for a in first_set if a.id == first_annotation_id][0]
             second_annotation = [a for a in second_set if a.id == second_annotation_id][0]
             geometry_score = df.iloc[row_index, col_index]
-            match_scores = list()
-            match_scores.append(geometry_score)
             attribute_score = Matchers.match_attributes(attributes1=first_annotation.attributes,
                                                         attributes2=second_annotation.attributes)
             labels_score = Matchers.match_labels(label1=first_annotation.label,
                                                  label2=second_annotation.label)
+            match_scores = list()
+            if ignore_geometry is False:
+                match_scores.append(geometry_score)
             if ignore_attributes is False:
                 match_scores.append(attribute_score)
             if ignore_labels is False:
                 match_scores.append(labels_score)
-            annotation_score = statistics.mean(match_scores)
+            annotation_score = float(np.mean(match_scores))
             matches.add(match=Match(
                 first_annotation_id=first_annotation_id,
                 first_annotation_creator=first_annotation.creator,
                 first_annotation_label=first_annotation.label,
-                first_annotation_confidence=
-                first_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence', 1),
+                first_annotation_confidence=first_annotation.metadata.get('user', dict()).get('model', dict()).get(
+                    'confidence', 1),
                 second_annotation_id=second_annotation_id,
                 second_annotation_creator=second_annotation.creator,
                 second_annotation_label=second_annotation.label,
-                second_annotation_confidence=
-                second_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence', 1),
-                geometry_score=geometry_score,  # TODO: check these scores should be sent
+                second_annotation_confidence=second_annotation.metadata.get('user', dict()).get('model', dict()).get(
+                    'confidence', 1),
+                geometry_score=geometry_score,
                 annotation_score=annotation_score,
                 label_score=labels_score,
                 attributes_score=attribute_score,
@@ -673,17 +680,17 @@ class Matchers:
                                     ))
         for first_id in df.columns:
             first_annotation = [a for a in first_set if a.id == first_id][0]
-            matches.add(match=Match(first_annotation_id=first_id,
-                                    first_annotation_creator=first_annotation.creator,
-                                    first_annotation_label=first_annotation.label,
-                                    first_annotation_confidence=
-                                    first_annotation.metadata.get('user', dict()).get('model', dict()).get('confidence',
-                                                                                                           1),
-                                    second_annotation_id=None,
-                                    second_annotation_creator=None,
-                                    second_annotation_label=None,
-                                    second_annotation_confidence=None,
-                                    item_id=first_annotation.item_id
-                                    ))
+            matches.add(match=Match(
+                first_annotation_id=first_id,
+                first_annotation_creator=first_annotation.creator,
+                first_annotation_label=first_annotation.label,
+                first_annotation_confidence=first_annotation.metadata.get('user', dict()).get('model', dict()).get(
+                    'confidence', 1),
+                second_annotation_id=None,
+                second_annotation_creator=None,
+                second_annotation_label=None,
+                second_annotation_confidence=None,
+                item_id=first_annotation.item_id
+            ))
 
         return matches

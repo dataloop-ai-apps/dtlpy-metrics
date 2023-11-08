@@ -46,7 +46,7 @@ def publish_and_install(project_id):
         print(f'Found {apps.items_count} apps for the DPK. Updating...')
         for app in apps.all():
             try:
-                print(app.name, app.project.name)
+                print(app.name, app.project.name, app.dpk_version)
                 if app.dpk_version != dpk.version:
                     app.dpk_version = dpk.version
                     app.update()
