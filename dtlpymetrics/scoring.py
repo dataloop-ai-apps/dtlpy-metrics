@@ -113,12 +113,24 @@ def create_task_item_score(item: dl.Item = None,
             run_fxn = True
 
     if run_fxn is True:
+        # get only assignments that had a consensus for this item:
+        filters = dl.Filters(use_defaults=False)
+        filters.add('spec.parentDatasetItemId', item.id)
+        filters.add('dir', '/.consensus/*')
+        ass_pages = item.dataset.items.list(filters=filters)
+        consensus_assignments = list()
+        for ass_item in ass_pages.all():
+            refs = ass_item.metadata['system']['refs']
+            for ref in refs:
+                if ref.get('type') == 'assignment':
+                    consensus_assignments.append(ref['id'])
         # create lookup dictionaries getting assignments by id or annotator
         assignments_by_id = {}
         assignments_by_annotator = {}
         for assignment in assignments:
-            assignments_by_id[assignment.id] = assignment
-            assignments_by_annotator[assignment.annotator] = assignment
+            if assignment.id in consensus_assignments:
+                assignments_by_id[assignment.id] = assignment
+                assignments_by_annotator[assignment.annotator] = assignment
 
         # if no assignments are associated with this item
         if len(assignments_by_id) == 0:
@@ -129,7 +141,7 @@ def create_task_item_score(item: dl.Item = None,
         # sort annotations and calculate scores #
         #########################################
         annotations = item.annotations.list()
-        annotators_list = [assignment.annotator for assignment in assignments]
+        annotators_list = [assignment.annotator for assignment in assignments_by_id.values()]
         logger.info(f'Starting scoring for assignments: {annotators_list}')
 
         is_video = check_if_video(item=item)
@@ -143,7 +155,7 @@ def create_task_item_score(item: dl.Item = None,
 
             # within each frame, sort all annotation slices to their corresponding assignment/annotator
             for frame, annotation_slices in all_annotation_slices.items():
-                frame_annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
+                frame_annots_by_assignment = {assignment.annotator: [] for assignment in assignments_by_id.values()}
                 for annotation_slice in annotation_slices:
                     # TODO compare annotations between models
                     # default is "ref", if no assignment ID is found
@@ -178,7 +190,7 @@ def create_task_item_score(item: dl.Item = None,
                                           logger=logger)
         else:  # image items
             # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
-            annots_by_assignment = {assignment.annotator: [] for assignment in assignments}
+            annots_by_assignment = {assignment.annotator: [] for assignment in assignments_by_id.values()}
             for annotation in annotations:
                 # default is "ref"
                 # TODO handle models
