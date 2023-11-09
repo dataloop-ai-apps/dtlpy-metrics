@@ -43,7 +43,7 @@ Scoring is currently supported for quality tasks with the following annotation t
 
 During scoring, the following scores will be created for each annotation:
 
-- `raw_annotation_scores` -  e.g. geometry, label, attribute
+- `raw_annotation_scores` -  for each annotation comparison we have `geometry`, `label` and `attribute` matching scores
 - `annotation_overall` - the mean of each annotation’s raw scores
 - `user_confusion_score` - the mean of every annotation overall score, relative to ref or another assignee
 - `item_confusion_score` - the count of the number of label pairs associated with the assignee’s label, relative to the reference’s label
@@ -51,23 +51,24 @@ During scoring, the following scores will be created for each annotation:
 
 **1) Raw annotation scores:** 
 
-There are three types of scores for annotations: geometry (such as IOU), label, and attribute. These scores can be determined by the user, and the default is to include all three scores, and the default value is 1 (which can be modified).
+There are three types of scores for annotations: `annotation_iou`, `annotation_label` and `annotation_attribute`.  
+These scores can be determined by the user, and the default is to include all three scores, and the default value is 1 (which can be modified).
 
 **2) Annotation overall**
 
-This is the mean value for all raw annotation scores per annotation. 
+For `annotation_overall` score we calculate the mean value for all raw annotation scores per annotation. 
 
 **3) User confusion score**
 
-The value of this score represents the mean annotation score a given assignee has, relative to raw scores when comparing it to another set of annotations (either the reference or another assignee). 
+The `user_confusion` score represents the mean annotation score a given assignee has, relative to raw scores when comparing it to another set of annotations (either the reference or another assignee). 
 
-**4) Item confusion score**
+**4) Label confusion score**
 
-The value of this score represents the count for a label annotated by a given assignee, relative to label each label class in the other set of annotations (either reference or another assignee).
+The `label_confusion` score represents the count for a label annotated by a given assignee, relative to label each label class in the other set of annotations (either reference or another assignee).
 
 **5) Item overall score**
 
-This is the mean value of all annotations associated with an item, averaging the mean overall annotation score.
+The `item_overall` score is the mean value of all annotations associated with an item, averaging the mean overall annotation score.
 
 Any calculated and uploaded scores will replace any previous scores for all items of a given task.
 
