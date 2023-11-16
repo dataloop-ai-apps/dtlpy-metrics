@@ -233,14 +233,14 @@ def create_task_item_score(item: dl.Item = None,
         # upload scores to platform #
         #############################
         # clean previous scores before creating new ones
-        logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
-        dl_scores = Scores(client_api=dl.client_api)
-        dl_scores.delete(context={'itemId': item.id,
-                                  'taskId': task.id})
-        dl_scores = dl_scores.create(all_scores)
-        logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
-
-        if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
+        if os.environ.get('SCORES_DEBUG_PATH', None) is None:
+            logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
+            dl_scores = Scores(client_api=dl.client_api)
+            dl_scores.delete(context={'itemId': item.id,
+                                      'taskId': task.id})
+            dl_scores = dl_scores.create(all_scores)
+            logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
+        else:
             debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
             logger.debug('Saving scores locally')
 

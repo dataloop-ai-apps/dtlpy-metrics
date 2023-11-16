@@ -53,7 +53,7 @@ def get_image_scores(annots_by_assignment: dict,
             # score types that can be returned: ANNOTATION_IOU, ANNOTATION_LABEL, ANNOTATION_ATTRIBUTE
             pairwise_scores = calculate_annotation_score(annot_collection_1=annot_collection_1,
                                                          annot_collection_2=annot_collection_2,
-                                                         ignore_labels=True,
+                                                         ignore_labels=False,
                                                          match_threshold=0.01,
                                                          score_types=score_types)
             for score in pairwise_scores:
