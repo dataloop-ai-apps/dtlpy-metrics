@@ -113,17 +113,20 @@ def create_task_item_score(item: dl.Item = None,
             run_fxn = True
 
     if run_fxn is True:
-        # get only assignments that had a consensus for this item:
-        filters = dl.Filters(use_defaults=False)
-        filters.add('spec.parentDatasetItemId', item.id)
-        filters.add('dir', '/.consensus/*')
-        ass_pages = item.dataset.items.list(filters=filters)
-        consensus_assignments = list()
-        for ass_item in ass_pages.all():
-            refs = ass_item.metadata['system']['refs']
-            for ref in refs:
-                if ref.get('type') == 'assignment':
-                    consensus_assignments.append(ref['id'])
+        if task_type == 'consensus':
+            # get only assignments that had a consensus for this item:
+            filters = dl.Filters(use_defaults=False)
+            filters.add('spec.parentDatasetItemId', item.id)
+            filters.add('dir', '/.consensus/*')
+            ass_pages = item.dataset.items.list(filters=filters)
+            consensus_assignments = list()
+            for ass_item in ass_pages.all():
+                refs = ass_item.metadata['system']['refs']
+                for ref in refs:
+                    if ref.get('type') == 'assignment':
+                        consensus_assignments.append(ref['id'])
+        else:
+            consensus_assignments = [ass.id for ass in assignments]
         # create lookup dictionaries getting assignments by id or annotator
         assignments_by_id = {}
         assignments_by_annotator = {}

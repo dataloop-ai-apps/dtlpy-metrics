@@ -470,6 +470,9 @@ class Matchers:
         # from shapely import Polygon
         import cv2
 
+        if pts1.shape[0] == 0 or pts2.shape[0] == 0:
+            # one of the polygons has not points
+            return 0
         # # using shapley
         # poly_1 = Polygon(pts1)
         # poly_2 = Polygon(pts2)
