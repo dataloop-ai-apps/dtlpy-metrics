@@ -15,7 +15,7 @@
     "gitUrl": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
     "gitTag": "1.0.101"
   },
-  "scope": "system",
+  "scope": "public",
   "components": {
     "pipelineNodes": [
       {
