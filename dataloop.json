@@ -19,6 +19,7 @@
   "components": {
     "pipelineNodes": [
       {
+        "name": "create_task_item_score"
         "invoke": {
           "type": "function",
           "namespace": "scoring_functions.create_task_item_score"
