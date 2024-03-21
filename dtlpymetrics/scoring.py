@@ -245,7 +245,7 @@ def create_task_item_score(item: dl.Item = None,
             dl_scores = dl_scores.create(all_scores)
             logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
         else:
-            logger.debug(f'Saving scores locally, {debug_path}')
+            logger.info(f'Saving scores locally, {debug_path}')
 
             save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
             os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
@@ -255,7 +255,7 @@ def create_task_item_score(item: dl.Item = None,
             with open(save_filepath, 'w', encoding='utf-8') as f:
                 json.dump(scores_json, f, ensure_ascii=False, indent=4)
 
-            logger.debug(f'SAVED score to: {save_filepath}')
+            logger.info(f'SAVED score to: {save_filepath}')
     return item
 
 
