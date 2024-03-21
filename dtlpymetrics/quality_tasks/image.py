@@ -1,5 +1,7 @@
 import logging
 import dtlpy as dl
+import numpy as np
+
 from dtlpymetrics.dtlpy_scores import Score, ScoreType
 from dtlpymetrics.utils import mean_or_default, calculate_annotation_score, add_score_context
 
@@ -54,6 +56,8 @@ def get_image_scores(annots_by_assignment: dict,
             pairwise_scores = calculate_annotation_score(annot_collection_1=annot_collection_1,
                                                          annot_collection_2=annot_collection_2,
                                                          ignore_labels=False,
+                                                         ignore_attributes=True,
+                                                         ignore_geometry=True,
                                                          match_threshold=0.01,
                                                          score_types=score_types)
             for score in pairwise_scores:
@@ -74,7 +78,32 @@ def get_image_scores(annots_by_assignment: dict,
                         assignment_id=assignments_by_annotator[assignment_annotator_j].id,
                         item_id=item.id)
                 all_scores.append(updated_score)
+    # mean over all ANNOTATION_OVERALL for each annotation id
 
+    annotation_overalls = list()
+    for i_score, score in reversed(list(enumerate(all_scores))):
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            annotation_overalls.append(score)
+            all_scores.pop(i_score)
+
+    unique_annotation_ids = np.unique([score.entity_id for score in annotation_overalls])
+    for annotation_id in unique_annotation_ids:
+        overalls = [score for score in annotation_overalls if score.entity_id == annotation_id]
+        # this is a matching score between annotations to make it a probability we will add the current self match as 1
+        # for instance, if we had [A,A,B], and the current is A, the overall probability is 2/3
+        overalls_values = [s.value for s in overalls]
+        overalls_values.append(1)  # the match to the current annotation, this will it the probability
+        user_id = overalls[0].user_id
+        assignment_id = overalls[0].assignment_id
+        # add joint overall (single one for each annotation
+        all_scores.append(Score(type=ScoreType.ANNOTATION_OVERALL,
+                                value=mean_or_default(arr=overalls_values, default=0),
+                                entity_id=annotation_id,
+                                user_id=user_id,
+                                task_id=task.id,
+                                assignment_id=assignment_id,
+                                item_id=item.id
+                                ))
     return all_scores
 
 

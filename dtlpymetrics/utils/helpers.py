@@ -73,9 +73,9 @@ def calculate_confusion_matrix_item(item: dl.Item,
             conf_matrix.loc[score.entity_id, score.relative] = score.value
 
     conf_matrix.fillna(0, inplace=True)
-    conf_matrix.rename(columns={None: 'unlabeled'}, inplace=True)
-    conf_matrix.rename(index={None: 'unlabeled'}, inplace=True)
-    label_names = ['unlabeled' if label is None else label for label in label_names]
+    conf_matrix.rename(columns={None: 'unmatched'}, inplace=True)
+    conf_matrix.rename(index={None: 'unmatched'}, inplace=True)
+    label_names = ['unmatched' if label is None else label for label in label_names]
 
     if save_plot is True:
         if os.environ.get('SCORES_DEBUG_PATH', None) is not None:

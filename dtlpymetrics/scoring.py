@@ -220,7 +220,7 @@ def create_task_item_score(item: dl.Item = None,
                                           score_types=score_types,
                                           task_type=task_type,
                                           logger=logger)
-
+        # get
         # calc overall item score as an average of all overall annotation scores
         item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
 
@@ -236,7 +236,8 @@ def create_task_item_score(item: dl.Item = None,
         # upload scores to platform #
         #############################
         # clean previous scores before creating new ones
-        if os.environ.get('SCORES_DEBUG_PATH', None) is None:
+        debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
+        if debug_path is None:
             logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
             dl_scores = Scores(client_api=dl.client_api)
             dl_scores.delete(context={'itemId': item.id,
@@ -244,8 +245,7 @@ def create_task_item_score(item: dl.Item = None,
             dl_scores = dl_scores.create(all_scores)
             logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
         else:
-            debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-            logger.debug('Saving scores locally')
+            logger.debug(f'Saving scores locally, {debug_path}')
 
             save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
             os.makedirs(os.path.dirname(save_filepath), exist_ok=True)

@@ -43,6 +43,8 @@ def measure_annotations(
         match_threshold=0.5,
         ignore_labels=False,
         ignore_attributes=False,
+        ignore_geometry=False,
+        match_wrong_labels=True,
         compare_types=None):
     """
     Compares list (or collections) of annotations
@@ -56,6 +58,8 @@ def measure_annotations(
     this will always be True
     :param ignore_attributes: ignore attribute score for final annotation score. if annotation type is classification,
     this will always be True
+    :param ignore_geometry: only for classification
+    :param match_wrong_labels:
     :param compare_types: list of type to compare. enum dl.AnnotationType
 
     Returns a dictionary of all the compare data
@@ -91,13 +95,14 @@ def measure_annotations(
                                              a.type == compare_type and not a.metadata.get('system', dict()).get(
                                                  'system', False)]
         # create 2d dataframe with annotation id as names and set all to -1 -> not calculated
-        if ignore_labels is True:
+        if match_wrong_labels is True:
             matches = Matchers.general_match(matches=matches,
                                              first_set=annotation_subset_one,
                                              second_set=annotation_subset_two,
                                              match_type=compare_type,
                                              match_threshold=match_threshold,
                                              ignore_labels=ignore_labels,
+                                             ignore_geometry=ignore_geometry,
                                              ignore_attributes=ignore_attributes)
         else:
             unique_labels = np.unique([a.label for a in annotation_subset_one] +
@@ -111,8 +116,9 @@ def measure_annotations(
                                                      second_set=second_set,
                                                      match_type=compare_type,
                                                      match_threshold=match_threshold,
-                                                     ignore_labels=True,
-                                                     ignore_attributes=True
+                                                     ignore_labels=ignore_labels,
+                                                     ignore_attributes=ignore_attributes,
+                                                     ignore_geometry=True
                                                      )
                 else:
                     matches = Matchers.general_match(matches=matches,
@@ -121,6 +127,7 @@ def measure_annotations(
                                                      match_type=compare_type,
                                                      match_threshold=match_threshold,
                                                      ignore_labels=ignore_labels,
+                                                     ignore_geometry=ignore_geometry,
                                                      ignore_attributes=ignore_attributes
                                                      )
 
@@ -143,7 +150,10 @@ def measure_annotations(
 
 def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection, List[dl.Annotation]],
                                annot_collection_2: Union[dl.AnnotationCollection, List[dl.Annotation]],
-                               ignore_labels=False,
+                               ignore_labels=False,  # for mean annotation calculation
+                               ignore_geometry=False,  # for mean annotation calculation
+                               ignore_attributes=False,  # for mean annotation calculation
+                               match_wrong_labels=True,
                                include_confusion=True,
                                match_threshold=0.5,
                                compare_types=None,
@@ -156,7 +166,13 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
 
     :param annot_collection_1: dl.AnnotationCollection or list of annotations
     :param annot_collection_2: dl.AnnotationCollection or list of annotations
+
     :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label classification
+    :param ignore_geometry: bool, ignore iou score in mean. for classification
+    :param ignore_attributes: bool, ignore attribute score in mean
+
+    :param match_wrong_labels: bool, ignore attribute score in mean
+
     :param include_confusion: bool, True means label confusion scores will be calculated
     :param match_threshold: float, threshold for considering two annotations a "match"
     :param compare_types: dl.AnnotationType entity or string for the annotation types to be compared
@@ -178,6 +194,9 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
         annotations_set_two=annot_collection_2,
         compare_types=compare_types,
         ignore_labels=ignore_labels,
+        ignore_geometry=ignore_geometry,
+        match_wrong_labels=match_wrong_labels,
+        ignore_attributes=ignore_attributes,
         match_threshold=match_threshold)
 
     all_results = pd.DataFrame()
@@ -197,29 +216,19 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
     # collect all scores for existing annotations #
     ###############################################
     for i, row in all_results.iterrows():
+        if row['second_id'] is None:
+            continue
+        # add annotation overall
+        annotation_scores.append(Score(type=ScoreType.ANNOTATION_OVERALL,
+                                       value=row['annotation_score'],
+                                       entity_id=row['second_id']))
+        # add other types
         for score_type in score_types:
-            if row['second_id'] is None:
-                continue
-
             annot_score = Score(type=score_type,
                                 value=row[results_columns[score_type.value.lower()]],
                                 entity_id=row['second_id'],
                                 relative=row['first_id'])
             annotation_scores.append(annot_score)
-    #############################
-    # create annotation overall #
-    #############################
-    overall_scores = list()
-    for annotation in annot_collection_2:  # go over all annotations from the "test" set
-        single_annotation_scores = mean_or_default(arr=[score.value
-                                                        for score in annotation_scores
-                                                        if score.entity_id == annotation.id],
-                                                   default=1)
-        # ANNOTATION_OVERALL
-        overall_scores.append(Score(type=ScoreType.ANNOTATION_OVERALL,
-                                    value=single_annotation_scores,
-                                    entity_id=annotation.id))
-    annotation_scores.extend(overall_scores)
     ##############################################
     # create user confusion from ALL annotations #
     ##############################################
@@ -233,7 +242,7 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
         if all_results.shape[0] > 0:
 
             label_confusion_set = all_results[['first_label', 'second_label']]
-            label_confusion_set = label_confusion_set.fillna('unlabeled')
+            label_confusion_set = label_confusion_set.fillna('unmatched')
 
             label_confusion_summary = label_confusion_set.groupby(
                 ['first_label', 'second_label']).size().reset_index(
