@@ -1,9 +1,6 @@
 dtlpy
-fastapi
-uvicorn
 shapely
 opencv-python
 matplotlib
-seaborn
 pandas
 tqdm

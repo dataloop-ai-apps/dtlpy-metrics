@@ -79,7 +79,6 @@ def get_image_scores(annots_by_assignment: dict,
                         item_id=item.id)
                 all_scores.append(updated_score)
     # mean over all ANNOTATION_OVERALL for each annotation id
-
     annotation_overalls = list()
     for i_score, score in reversed(list(enumerate(all_scores))):
         if score.type == ScoreType.ANNOTATION_OVERALL:

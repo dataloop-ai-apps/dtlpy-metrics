@@ -19,7 +19,7 @@ def bump(bump_type):
     subprocess.check_output('git push origin --tags', shell=True)
 
 
-def publish_and_install(project_id):
+def publish_and_install(project):
     success = True
     env = dl.environment()
     with open('dataloop.json') as f:
@@ -28,14 +28,8 @@ def publish_and_install(project_id):
     app_version = manifest['version']
     user = os.environ.get('GITHUB_ACTOR', dl.info()['user_email'])
     try:
-        if project_id is None:
-            raise ValueError("Must input project_id to publish and install")
         print(f'Deploying to env : {dl.environment()}')
-
-        project = dl.projects.get(project_id=project_id)  # DataloopApps
-
         print(f'publishing to project: {project.name}')
-
         # publish dpk to app store
         dpk = project.dpks.publish()
         print(f'published successfully! dpk name: {dpk.name}, version: {dpk.version}, dpk id: {dpk.id}')
@@ -48,6 +42,7 @@ def publish_and_install(project_id):
             try:
                 print(app.name, app.project.name, app.dpk_version)
                 if app.dpk_version != dpk.version:
+                    print('updating')
                     app.dpk_version = dpk.version
                     app.update()
             except Exception:
@@ -85,20 +80,10 @@ def publish_and_install(project_id):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Build, Bump, Publish and Install')
-    parser.add_argument('--tag', action='store_true', help='Create a version git tag')
-    parser.add_argument('--publish', action='store_true', help='Publish DPK and install app')
-
-    parser.add_argument('--project', help='Project to publish and install to')
-    parser.add_argument('--bump-type', default='patch', help='Bump version type: "patch"/"prerelease"/"minor"/"major"')
-    args = parser.parse_args()
-
-    if args.tag is True:
-        # bump and push the new tag
-        bump(bump_type=args.bump_type)
-
-    if args.publish is True:
-        publish_and_install(project_id=args.project)
+    # bump(bump_type='patch')
+    dl.setenv('rc')
+    project = dl.projects.get('')
+    publish_and_install(project_id=project.id)
 
     print(
         r"""\
