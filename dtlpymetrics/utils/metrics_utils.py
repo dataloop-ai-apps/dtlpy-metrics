@@ -616,7 +616,8 @@ class Matchers:
                     try:
                         config = {'height': annotation_one._item.height if annotation_one._item is not None else 500,
                                   'width': annotation_one._item.width if annotation_one._item is not None else 500}
-                        df[annotation_one.id][annotation_two.id] = annotation_type_to_func[match_type](
+                        # df.loc[row, col]
+                        df.loc[annotation_two.id, annotation_one.id] = annotation_type_to_func[match_type](
                             annotation_one.geo,
                             annotation_two.geo,
                             config)

@@ -31,7 +31,6 @@ def get_image_scores(annots_by_assignment: dict,
     # calculate scores #
     ####################
     labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
-    confusion_by_label = {l: {m: 0 for m in labels} for l in labels}
 
     # compare between each assignment and create Score entities
     all_scores = list()
@@ -78,6 +77,29 @@ def get_image_scores(annots_by_assignment: dict,
                         assignment_id=assignments_by_annotator[assignment_annotator_j].id,
                         item_id=item.id)
                 all_scores.append(updated_score)
+    # accumulate label confusion for all compares
+    confusion_scores = list()
+    for i_score, score in reversed(list(enumerate(all_scores))):
+        if score.type == ScoreType.LABEL_CONFUSION:
+            confusion_scores.append(score)
+            all_scores.pop(i_score)
+    confusion_dict = dict()
+    for score in confusion_scores:
+        if score.entity_id not in confusion_dict:
+            confusion_dict[score.entity_id] = dict()
+        if score.relative not in confusion_dict[score.entity_id]:
+            confusion_dict[score.entity_id][score.relative] = 0
+        confusion_dict[score.entity_id][score.relative] += 1
+    for entity_id, v in confusion_dict.items():
+        for relative, count in v.items():
+            all_scores.append(Score(type=ScoreType.LABEL_CONFUSION,
+                                    value=count,
+                                    entity_id=entity_id,  # assignee label
+                                    relative=relative,
+                                    task_id=task.id,
+                                    item_id=item.id
+                                    ))
+
     # mean over all ANNOTATION_OVERALL for each annotation id
     annotation_overalls = list()
     for i_score, score in reversed(list(enumerate(all_scores))):
