@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import pathlib
 import json
@@ -339,29 +340,36 @@ def create_model_score(dataset: dl.Dataset = None,
     # Compare annotations and return concatenated dataframe #
     #########################################################
     all_results = pd.DataFrame()
+    pbar = tqdm.tqdm(total=len(annotation_sets_by_item), desc=f'Calculating metrics...')
+    pool = ThreadPoolExecutor(max_workers=32)
+
+    def calc_single(w_item_id, w_annotation_sets):
+        try:
+            set_1_item_annotations = w_annotation_sets['gt']
+            set_2_item_annotations = w_annotation_sets['model']
+            if not (len(set_1_item_annotations) == 0 and len(set_2_item_annotations) == 0):
+                results = measure_annotations(annotations_set_one=set_1_item_annotations,
+                                              annotations_set_two=set_2_item_annotations,
+                                              match_threshold=match_threshold,
+                                              # default 0.01 to get all possible matches
+                                              ignore_labels=ignore_labels,
+                                              compare_types=compare_types)
+                for compare_type in compare_types:
+                    try:
+                        results_df = results[compare_type].to_df()
+                    except KeyError:
+                        continue
+                    results_df['item_id'] = [w_item_id] * results_df.shape[0]
+                    results_df['annotation_type'] = [compare_type] * results_df.shape[0]
+                    all_results[w_item_id] = results_df
+        finally:
+            pbar.update()
+
+    all_results = dict()
     for item_id, annotation_sets in annotation_sets_by_item.items():
-        # compare annotations for each item
-        set_1_item_annotations = annotation_sets['gt']
-        set_2_item_annotations = annotation_sets['model']
-        if len(set_1_item_annotations) == 0 and len(set_2_item_annotations) == 0:
-            # both are empty - no annotations at all
-            continue
-        else:
-            results = measure_annotations(annotations_set_one=set_1_item_annotations,
-                                          annotations_set_two=set_2_item_annotations,
-                                          match_threshold=match_threshold,
-                                          # default 0.01 to get all possible matches
-                                          ignore_labels=ignore_labels,
-                                          compare_types=compare_types)
-            for compare_type in compare_types:
-                try:
-                    results_df = results[compare_type].to_df()
-                except KeyError:
-                    continue
-                results_df['item_id'] = [item_id] * results_df.shape[0]
-                results_df['annotation_type'] = [compare_type] * results_df.shape[0]
-                all_results = pd.concat([all_results, results_df],
-                                        ignore_index=True)
+        pool.submit(calc_single, w_item_id=item_id, w_annotation_sets=annotation_sets)
+    pool.shutdown()
+    all_results = pd.concat(list(all_results.values()), ignore_index=True)
 
     ###############################################
     # Save results to csv for IOU/label/attribute #

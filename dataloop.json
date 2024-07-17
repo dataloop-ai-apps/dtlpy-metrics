@@ -54,7 +54,7 @@
                 "name": "item"
               }
             ],
-            "displayIcon": "analytics",
+            "displayIcon": "icon-dl-analytics",
             "displayName": "Create Score for Task Item"
           }
         ]
