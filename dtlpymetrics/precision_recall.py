@@ -136,7 +136,8 @@ def calc_precision_recall(dataset_id: str,
 
                 label_fps = np.cumsum(label_detections['false_positives'])
                 label_tps = np.cumsum(label_detections['true_positives'])
-                label_recall = label_tps / num_gts
+                num_gts_label = sum(scores.first_label == label_name)
+                label_recall = label_tps / num_gts_label
                 label_precision = np.divide(label_tps, (label_fps + label_tps))
 
                 if method_type == 'every_point':
