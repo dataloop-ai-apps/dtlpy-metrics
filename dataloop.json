@@ -4,7 +4,12 @@
   "name": "scoring-and-metrics",
   "displayName": "Scoring and metrics app",
   "description": "Calculate scores for items and annotations, such as in tasks with consensus.",
-  "categories": [],
+  "attributes": {
+    "Provider": "Dataloop",
+    "Category": "Application",
+    "Media Type": ["Image"],
+    "Application Type": ["Pipeline Node"]
+  },
   "source": {
     "type": "git",
     "repo": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
