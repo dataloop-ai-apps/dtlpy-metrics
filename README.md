@@ -11,14 +11,14 @@ The components of this app are:
 1. Functions to calculate scores for quality tasks and model predictions.
 2. Custom nodes that can be added to pipelines to calculate scores when a task's quality items are completed.
 
-Also check [this notebook](docs/metrics.ipynb) for more information
+Also see [this notebook](docs/metrics.ipynb) for more information
 
 ## Quality Flows
 To understand more about each of these tasks, refer to the main Dataloop documentation linked:
 
-1. [Qualification tasks](https://dataloop.ai/docs/qualification-honeypot)
-2. [Honeypot tasks](https://dataloop.ai/docs/qualification-honeypot#honeypot)
-3. [Consensus tasks](https://dataloop.ai/docs/consensus)
+1. [Qualification tasks](https://docs.dataloop.ai/docs/en/qualification-honeypot)
+2. [Honeypot tasks](https://docs.dataloop.ai/docs/en/qualification-honeypot#honeypot)
+3. [Consensus tasks](https://docs.dataloop.ai/docs/consensus)
 
 
 In general, an annotator will receive an assignment to complete their annotation task. For a given item in a consensus task, 
