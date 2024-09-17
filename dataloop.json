@@ -62,7 +62,7 @@
                 "type": "boolean",
                 "default": false
               },
-              "widget": "dl-switch"
+              "widget": "dl-checkbox"
             },
             {
               "name": "consensus_fail_keep_all",
@@ -72,7 +72,7 @@
                 "type": "boolean",
                 "default": true
               },
-              "widget": "dl-switch"
+              "widget": "dl-checkbox"
             }
           ]
         },

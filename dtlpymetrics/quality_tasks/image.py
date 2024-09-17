@@ -17,12 +17,12 @@ def get_image_scores(annots_by_assignment: dict,
     Calculate scores for an image item
 
     @type task: object
-    @param annots_by_assignment:
-    @param assignments_by_annotator:
-    @param task:
-    @param item:
-    @param score_types:
-    @param task_type:
+    @param annots_by_assignment: dict
+    @param assignments_by_annotator: dict
+    @param task: dl.Task
+    @param item: dl.Item
+    @param score_types: list
+    @param task_type: str
     @param logger:
 
     @return:
