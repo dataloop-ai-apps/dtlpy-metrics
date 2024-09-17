@@ -55,45 +55,24 @@
               "widget": "dl-slider"
             },
             {
-                "name": "consensus_pass_keep_all",
-                "title": "On consensus pass:",
-                "description": "If consensus is reached, the default is to keep all annotations",
-                "props": {
-                    "type": "boolean",
-                    "default": true,
-                  "options": [
-                    {
-                      "label": "Keep all",
-                      "value": true
-                    },
-                    {
-                      "label": "Keep best",
-                      "value": false
-                    }
-                  ]
-                },
-                "widget": "dl-radio"
+              "name": "consensus_pass_keep_all",
+              "title": "On consensus pass, keep all annotations",
+              "description": "If consensus is reached, the default is to keep all annotations",
+              "props": {
+                "type": "boolean",
+                "default": true
+              },
+              "widget": "dl-switch"
             },
-
             {
-                "name": "consensus_fail_keep_all",
-                "title": "On consensus fail:",
-                "description": "If consensus fails, the default is to keep all annotations",
-                "props": {
-                    "type": "boolean",
-                    "default": true,
-                  "options": [
-                    {
-                      "label": "Keep all",
-                      "value": true
-                    },
-                    {
-                      "label": "Delete all",
-                      "value": false
-                    }
-                  ]
-                },
-                "widget": "dl-radio"
+              "name": "consensus_fail_keep_all",
+              "title": "On consensus fail, keep all annotations",
+              "description": "If consensus fails, the default is to keep all annotations",
+              "props": {
+                "type": "boolean",
+                "default": true
+              },
+              "widget": "dl-switch"
             }
           ]
         },
