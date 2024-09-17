@@ -55,13 +55,45 @@
               "widget": "dl-slider"
             },
             {
-                "name": "consensus_fail_anns",
-                "title": "Consensus Failed Annotations",
+                "name": "consensus_pass_keep_all",
+                "title": "On consensus pass:",
+                "description": "If consensus is reached, the default is to keep all annotations",
                 "props": {
                     "type": "boolean",
-                    "default": false
+                    "default": true,
+                  "options": [
+                    {
+                      "label": "Keep all",
+                      "value": true
+                    },
+                    {
+                      "label": "Keep best",
+                      "value": false
+                    }
+                  ]
                 },
-                "widget": "dl-checkbox"
+                "widget": "dl-radio"
+            },
+
+            {
+                "name": "consensus_fail_keep_all",
+                "title": "On consensus fail:",
+                "description": "If consensus fails, the default is to keep all annotations",
+                "props": {
+                    "type": "boolean",
+                    "default": true,
+                  "options": [
+                    {
+                      "label": "Keep all",
+                      "value": true
+                    },
+                    {
+                      "label": "Delete all",
+                      "value": false
+                    }
+                  ]
+                },
+                "widget": "dl-radio"
             }
           ]
         },
