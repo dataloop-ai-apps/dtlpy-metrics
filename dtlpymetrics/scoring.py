@@ -16,14 +16,14 @@ from dtlpymetrics.precision_recall import calc_and_upload_interpolation
 dl.use_attributes_2()
 
 scorer = dl.AppModule(name='Scoring and metrics function',
-                      description='Functions for calculating scores between annotations.'
+                      description='Functions for calculating scores when comparing between annotations.'
                       )
 logger = logging.getLogger('scoring-and-metrics')
 
 scores_debug = True
 
 
-@scorer.add_function(display_name='Calculate task scores for quality tasks')
+@scorer.add_function(display_name='Calculate scores for items in quality tasks')
 def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
     """
     Calculate scores for all items in a quality task, based on the item scores from each assignment.
@@ -69,6 +69,7 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
 def create_task_item_score(item: dl.Item = None,
                            task: dl.Task = None,
                            context: dl.Context = None,
+                           progress: dl.Progress = None,
                            score_types=None) -> dl.Item:
     """
     Create scores for items in a task.
@@ -233,6 +234,14 @@ def create_task_item_score(item: dl.Item = None,
                            dataset_id=item.dataset.id)
         all_scores.append(item_score)
 
+        # 0.5 is the default item score threshold for agreement
+        threshold = context.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        if progress is not None:  # TODO check if this is the right way to do this
+            if item_score > threshold:
+                progress.update(action='consensus passed')
+            else:
+                progress.update(action='consensus failed')
+
         #############################
         # upload scores to platform #
         #############################
@@ -392,3 +401,11 @@ def create_model_score(dataset: dl.Dataset = None,
     # This is a workaround for uploading interpolated precision-recall for 10 iou levels
     calc_and_upload_interpolation(model=model, dataset=dataset)
     return model
+
+# @scorer.add_function(display_name='Update consensus actions based on agreement threshold')
+# def decide_item_agreement(item_score=None,
+#                           context: dl.Context = None,
+#                           progress: dl.Progress = None):
+#     """
+#     Update consensus actions based on agreement threshold
+#     """
