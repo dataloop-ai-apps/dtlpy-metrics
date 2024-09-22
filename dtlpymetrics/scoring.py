@@ -57,7 +57,7 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
             elif item_task_dict.get('metadata', None) is None:
                 continue
             elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
-                create_task_item_score(item=item, task=task, agree_threshold=score_types)
+                create_task_item_score(item=item, task=task, score_types=score_types)
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
                 continue
