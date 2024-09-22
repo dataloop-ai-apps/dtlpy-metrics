@@ -70,7 +70,7 @@ def create_task_item_score(item: dl.Item = None,
                            task: dl.Task = None,
                            context: dl.Context = None,
                            progress: dl.Progress = None,
-                           agree_threshold = 0.5,
+                           agree_threshold=None,
                            score_types=None) -> dl.Item:
     """
     Create scores for items in a task.
@@ -84,7 +84,6 @@ def create_task_item_score(item: dl.Item = None,
     :param progress: dl.Progress entity to update progress (optional)
     :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
     :return: item
-    @param score_types:
     """
     ####################################
     # collect assignments for grouping #
@@ -194,7 +193,7 @@ def create_task_item_score(item: dl.Item = None,
                                           assignments_by_annotator=assignments_by_annotator,
                                           task=task,
                                           item=item,
-                                          score_types=agree_threshold,
+                                          score_types=score_types,
                                           task_type=task_type,
                                           logger=logger)
         else:  # image items
@@ -223,7 +222,7 @@ def create_task_item_score(item: dl.Item = None,
                                           assignments_by_annotator=assignments_by_annotator,
                                           task=task,
                                           item=item,
-                                          score_types=agree_threshold,
+                                          score_types=score_types,
                                           task_type=task_type,
                                           logger=logger)
         # get
@@ -416,3 +415,9 @@ def create_model_score(dataset: dl.Dataset = None,
 #     """
 #     Update consensus actions based on agreement threshold
 #     """
+
+if __name__ == '__main__':
+    task_id = '66ed3e7bb0a489dd13f3085a'
+
+    task = dl.tasks.get(task_id=task_id)
+    calculate_task_score(task=task)
