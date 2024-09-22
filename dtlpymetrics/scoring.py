@@ -70,7 +70,7 @@ def create_task_item_score(item: dl.Item = None,
                            task: dl.Task = None,
                            context: dl.Context = None,
                            progress: dl.Progress = None,
-                           agree_threshold=None,
+                           agree_threshold:float = None,
                            score_types=None) -> dl.Item:
     """
     Create scores for items in a task.
@@ -80,7 +80,7 @@ def create_task_item_score(item: dl.Item = None,
     :param item: dl.Item entity (optional)
     :param task: dl.Task entity (optional)
     :param context: dl.Context entity that includes references to associated entities (optional)
-    :param agree_threshold: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
+    :param agree_threshold: float threshold for agreement (optional)
     :param progress: dl.Progress entity to update progress (optional)
     :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
     :return: item
@@ -240,10 +240,12 @@ def create_task_item_score(item: dl.Item = None,
         # 0.5 is the default item score threshold for agreement
         if context is not None:
             node = context.node  # TODO will this create an error if called outside of pipelines?
-            threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+            agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        elif agree_threshold is None:
+            agree_threshold = 0.5
 
         if progress is not None:  # TODO check if this is the right way to do this
-            if item_score > threshold:
+            if item_score.value > agree_threshold:
                 progress.update(action='consensus passed')
             else:
                 progress.update(action='consensus failed')
@@ -417,7 +419,9 @@ def create_model_score(dataset: dl.Dataset = None,
 #     """
 
 if __name__ == '__main__':
-    task_id = '66ed3e7bb0a489dd13f3085a'
+    task_id = '66ed3e7bb0a489dd13f3085a'  # Consensus Task (task test consensus done)
+    task = dl.tasks.get(task_id=task_id)  # f_r_1428.jpg
+    item_id = '66ed3d304b41e2352f4de528'
+    item = dl.items.get(item_id=item_id)
+    create_task_item_score(item=item, task=task)
 
-    task = dl.tasks.get(task_id=task_id)
-    calculate_task_score(task=task)
