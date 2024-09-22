@@ -57,7 +57,7 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
             elif item_task_dict.get('metadata', None) is None:
                 continue
             elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
-                create_task_item_score(item=item, task=task, score_types=score_types)
+                create_task_item_score(item=item, task=task, agree_threshold=score_types)
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
                 continue
@@ -70,6 +70,7 @@ def create_task_item_score(item: dl.Item = None,
                            task: dl.Task = None,
                            context: dl.Context = None,
                            progress: dl.Progress = None,
+                           agree_threshold = 0.5,
                            score_types=None) -> dl.Item:
     """
     Create scores for items in a task.
@@ -79,8 +80,11 @@ def create_task_item_score(item: dl.Item = None,
     :param item: dl.Item entity (optional)
     :param task: dl.Task entity (optional)
     :param context: dl.Context entity that includes references to associated entities (optional)
+    :param agree_threshold: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
+    :param progress: dl.Progress entity to update progress (optional)
     :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
     :return: item
+    @param score_types:
     """
     ####################################
     # collect assignments for grouping #
@@ -190,7 +194,7 @@ def create_task_item_score(item: dl.Item = None,
                                           assignments_by_annotator=assignments_by_annotator,
                                           task=task,
                                           item=item,
-                                          score_types=score_types,
+                                          score_types=agree_threshold,
                                           task_type=task_type,
                                           logger=logger)
         else:  # image items
@@ -219,7 +223,7 @@ def create_task_item_score(item: dl.Item = None,
                                           assignments_by_annotator=assignments_by_annotator,
                                           task=task,
                                           item=item,
-                                          score_types=score_types,
+                                          score_types=agree_threshold,
                                           task_type=task_type,
                                           logger=logger)
         # get
@@ -235,7 +239,10 @@ def create_task_item_score(item: dl.Item = None,
         all_scores.append(item_score)
 
         # 0.5 is the default item score threshold for agreement
-        threshold = context.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        if context is not None:
+            node = context.node  # TODO will this create an error if called outside of pipelines?
+            threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+
         if progress is not None:  # TODO check if this is the right way to do this
             if item_score > threshold:
                 progress.update(action='consensus passed')
