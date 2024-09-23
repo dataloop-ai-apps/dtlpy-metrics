@@ -130,3 +130,20 @@ def plot_matrix(item_title, filename, matrix_to_plot, axis_labels):
     plt.close()
 
     return filename
+
+
+def cleanup_annots(scores, scores_to_keep):
+    """
+    Clean up annotations based on consensus threshold
+
+    @return:
+    """
+    # TODO should this be a general function for removing annotations, or is this consensus specific?
+
+    # here we dont worry about the consensus threshold bc if the choice to keep all annotations is in scoring.py
+
+    # if keep best = true, find the best annotations (by annotator) for the item
+    # delete the rest
+    # else delete all annotations
+
+    return

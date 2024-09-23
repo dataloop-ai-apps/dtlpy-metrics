@@ -52,9 +52,6 @@
       *
 
 * `get_video_scores`
-* `calculate_task_score`
-* `create_task_item_score`
-* `create_model_score`
 * `check_if_video`
 * `plot_matrix`
 * `add_score_context`

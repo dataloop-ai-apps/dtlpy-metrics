@@ -138,12 +138,12 @@ def get_video_scores(annotations_by_frame: dict,
     """
     Generate scores for a video item
 
+    @param annotations_by_frame:
+    @param assignments_by_annotator:
     @param task:
     @param item:
     @param score_types:
     @param task_type:
-    @param annotations_by_frame:
-    @param assignments_by_annotator:
     @param logger:
     @return:
     """

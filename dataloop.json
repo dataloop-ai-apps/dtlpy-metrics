@@ -25,11 +25,27 @@
     "pipelineNodes": [
       {
         "name": "create_task_item_score",
-        "displayName": "Create Task Score",
-        "description": "Calculate the score for each item within a task",
+        "displayName": "Create Score for Task Item",
+        "description": "Calculate the score for each item with in a task (consensus, qualification, honeypot)",
         "invoke": {
           "type": "function",
           "namespace": "scoring_functions.create_task_item_score"
+        },
+        "categories": [
+          "data"
+        ],
+        "configuration": {
+          "fields": []
+        },
+        "scope": "node"
+      },
+      {
+        "name": "consensus_agreement",
+        "displayName": "Consensus Task Annotator Agreement",
+        "description": "Process consensus items based on annotator agreement threshold.",
+        "invoke": {
+          "type": "function",
+          "namespace": "scoring_functions.consensus_agreement"
         },
         "categories": [
           "data"
@@ -55,7 +71,7 @@
               "widget": "dl-slider"
             },
             {
-              "name": "consensus_pass_keep_all",
+              "name": "consensus_pass_keep_best",
               "title": "On consensus pass, keep only best",
               "props": {
                 "subtitle": "If consensus is reached, the default is to keep only the best. Check the box to keep all annotations.",
@@ -101,6 +117,24 @@
             "output": [
               {
                 "type": "Item",
+                "name": "item"
+              }
+            ],
+            "displayIcon": "icon-dl-analytics",
+            "displayName": "Create Score for Task Item"
+          },
+          {
+            "name": "consensus_agreement",
+            "description": "Process consensus task items based on annotator agreement threshold.",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
                 "name": "item",
                 "actions": [
                   "consensus passed",
@@ -109,7 +143,7 @@
               }
             ],
             "displayIcon": "icon-dl-analytics",
-            "displayName": "Create Score for Task Item"
+            "displayName": "Consensus Task Annotator Agreement"
           }
         ]
       }

@@ -10,8 +10,9 @@ import pandas as pd
 
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics import get_image_scores, get_video_scores
-from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default
+from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, cleanup_annots
 from dtlpymetrics.precision_recall import calc_and_upload_interpolation
+from dtlpymetrics.consensus import calc_annotator_agreement, get_best_annotator_scores
 
 dl.use_attributes_2()
 
@@ -69,9 +70,8 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
 def create_task_item_score(item: dl.Item = None,
                            task: dl.Task = None,
                            context: dl.Context = None,
-                           progress: dl.Progress = None,
-                           agree_threshold:float = None,
-                           score_types=None) -> dl.Item:
+                           score_types=None,
+                           upload=True) -> dl.Item:
     """
     Create scores for items in a task.
 
@@ -80,9 +80,8 @@ def create_task_item_score(item: dl.Item = None,
     :param item: dl.Item entity (optional)
     :param task: dl.Task entity (optional)
     :param context: dl.Context entity that includes references to associated entities (optional)
-    :param agree_threshold: float threshold for agreement (optional)
-    :param progress: dl.Progress entity to update progress (optional)
     :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
+    :param upload: bool, default True means scores will be uploaded to the platform (optional)
     :return: item
     """
     ####################################
@@ -237,25 +236,17 @@ def create_task_item_score(item: dl.Item = None,
                            dataset_id=item.dataset.id)
         all_scores.append(item_score)
 
-        # 0.5 is the default item score threshold for agreement
-        if context is not None:
-            node = context.node  # TODO will this create an error if called outside of pipelines?
-            agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
-        elif agree_threshold is None:
-            agree_threshold = 0.5
-
-        if progress is not None:  # TODO check if this is the right way to do this
-            if item_score.value > agree_threshold:
-                progress.update(action='consensus passed')
-            else:
-                progress.update(action='consensus failed')
-
         #############################
         # upload scores to platform #
         #############################
-        # clean previous scores before creating new ones
         debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-        if debug_path is None:
+        if debug_path is not None:
+            upload = False
+            save_dir = debug_path
+        else:
+            save_dir = os.path.join(os.getcwd(), '.dataloop')
+
+        if upload is True:
             logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
             dl_scores = Scores(client_api=dl.client_api)
             dl_scores.delete(context={'itemId': item.id,
@@ -263,9 +254,8 @@ def create_task_item_score(item: dl.Item = None,
             dl_scores = dl_scores.create(all_scores)
             logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
         else:
-            logger.info(f'Saving scores locally, {debug_path}')
-
-            save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
+            logger.info(f'Saving scores locally, {save_dir}')
+            save_filepath = os.path.join(save_dir, task.id, f'{item.id}.json')
             os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
             scores_json = list()
             for score in all_scores:
@@ -275,6 +265,55 @@ def create_task_item_score(item: dl.Item = None,
 
             logger.info(f'SAVED score to: {save_filepath}')
     return item
+
+
+@scorer.add_function(
+    display_name='Consensus annotator agreement function for handling items after consensus task completion')
+def consensus_agreement(task: dl.Task,
+                        item: dl.Item,
+                        context: dl.Context = None,
+                        progress: dl.Progress = None,
+                        agree_threshold: float = None):
+    keep_only_best = False
+    fail_keep_all = True
+
+    if context is not None:
+        node = context.node
+        # 0.5 is the default item score threshold for agreement
+        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        keep_only_best = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', keep_only_best)
+        fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', fail_keep_all)
+    elif agree_threshold is None:
+        agree_threshold = 0.5
+    else:
+        if agree_threshold < 0 or agree_threshold > 1:
+            raise ValueError('Agreement threshold must be between 0 and 1.')
+
+    # get scores
+    create_task_item_score(item=item, task=task, upload=False)
+    saved_filepath = os.path.join(os.getcwd(), '.dataloop', task.id, f'{item.id}.json')
+    with open(saved_filepath, 'r') as f:
+        all_scores = json.load(f)
+
+    # see if annotators agree
+    agreement_score = calc_annotator_agreement(all_scores)  # TODO fix this to calculate annotator scores
+
+    # determine action
+    if progress is not None:
+        if agreement_score >= agree_threshold:
+            progress.update(action='consensus passed')
+            logger.info(f'Consensus passed for item {item.id}')
+            if keep_only_best is True:
+                # get the best score
+                scores_to_keep = get_best_annotator_scores()
+                cleanup_annots(scores=all_scores,
+                               scores_to_keep=scores_to_keep)
+        else:
+            progress.update(action='consensus failed')
+            logger.info(f'Consensus failed for item {item.id}')
+            if fail_keep_all is False:
+                cleanup_annots(scores=all_scores,
+                               scores_to_keep=None)
 
 
 @scorer.add_function(display_name='Create scores for model predictions on a dataset per annotation')
@@ -409,19 +448,3 @@ def create_model_score(dataset: dl.Dataset = None,
     # This is a workaround for uploading interpolated precision-recall for 10 iou levels
     calc_and_upload_interpolation(model=model, dataset=dataset)
     return model
-
-# @scorer.add_function(display_name='Update consensus actions based on agreement threshold')
-# def decide_item_agreement(item_score=None,
-#                           context: dl.Context = None,
-#                           progress: dl.Progress = None):
-#     """
-#     Update consensus actions based on agreement threshold
-#     """
-
-if __name__ == '__main__':
-    task_id = '66ed3e7bb0a489dd13f3085a'  # Consensus Task (task test consensus done)
-    task = dl.tasks.get(task_id=task_id)  # f_r_1428.jpg
-    item_id = '66ed3d304b41e2352f4de528'
-    item = dl.items.get(item_id=item_id)
-    create_task_item_score(item=item, task=task)
-
