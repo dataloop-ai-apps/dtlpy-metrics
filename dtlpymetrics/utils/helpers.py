@@ -147,3 +147,9 @@ def cleanup_annots(scores, scores_to_keep):
     # else delete all annotations
 
     return
+
+
+def get_asg_by_annottr(task):
+    # TODO get function from scoring.py
+
+    pass

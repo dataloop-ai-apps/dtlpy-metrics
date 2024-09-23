@@ -1,10 +1,16 @@
 import dtlpy as dl
+from dtlpymetrics.dtlpy_scores import Score, ScoreType
 
 
-def calc_annotator_agreement(scores):
-    agree_score = 0
-
-    return agree_score
+def get_annotator_agreement(scores, threshold):
+    # check all user confusion scores aka agreement are above threshold
+    for score in scores:
+        if score.type == ScoreType.USER_CONFUSION:
+            if score.value >= threshold:
+                continue
+            else:
+                return False
+    return True
 
 
 def get_best_annotator_scores(assignments_by_annotator, scores):

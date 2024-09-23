@@ -10,9 +10,10 @@ import pandas as pd
 
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics import get_image_scores, get_video_scores
-from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, cleanup_annots
+from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, cleanup_annots, \
+    get_asg_by_annottr
 from dtlpymetrics.precision_recall import calc_and_upload_interpolation
-from dtlpymetrics.consensus import calc_annotator_agreement, get_best_annotator_scores
+from dtlpymetrics.consensus import get_annotator_agreement, get_best_annotator_scores
 
 dl.use_attributes_2()
 
@@ -296,16 +297,18 @@ def consensus_agreement(task: dl.Task,
         all_scores = json.load(f)
 
     # see if annotators agree
-    agreement_score = calc_annotator_agreement(all_scores)  # TODO fix this to calculate annotator scores
+    agreement = get_annotator_agreement(scores=all_scores, threshold=agree_threshold)
 
     # determine action
     if progress is not None:
-        if agreement_score >= agree_threshold:
+        if agreement is True:
             progress.update(action='consensus passed')
             logger.info(f'Consensus passed for item {item.id}')
             if keep_only_best is True:
                 # get the best score
-                scores_to_keep = get_best_annotator_scores()
+                assignments_by_annotator = get_asg_by_annottr(task=task)
+                scores_to_keep = get_best_annotator_scores(assignments_by_annotator=assignments_by_annotator,
+                                                           scores=all_scores)
                 cleanup_annots(scores=all_scores,
                                scores_to_keep=scores_to_keep)
         else:
