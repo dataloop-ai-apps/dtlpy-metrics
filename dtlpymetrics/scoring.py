@@ -26,7 +26,7 @@ scores_debug = True
 
 
 @scorer.add_function(display_name='Calculate scores for items in quality tasks')
-def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
+def calculate_task_score(task: dl.Task, score_types=None, **kwargs) -> dl.Task:
     """
     Calculate scores for all items in a quality task, based on the item scores from each assignment.
 
@@ -306,28 +306,21 @@ def consensus_agreement(task: dl.Task,
             progress.update(action='consensus passed')
             logger.info(f'Consensus passed for item {item.id}')
             if keep_only_best is True:
-                # get the best score
-                scores_by_annotator = dict()
-
-                for score in all_scores:
-                    if score.type == ScoreType.ANNOTATION_OVERALL:
-                        if scores_by_annotator.get(score.context.get('assignmentId')) is None:
-                            scores_by_annotator[score.context.get('assignmentId')] = [score.value]
-                        else:
-                            scores_by_annotator[score.context.get('assignmentId')].append(score.value)
-
+                scores_by_annotator = get_scores_by_annotator(scores=all_scores)
                 annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
                 best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)]
-                annots_to_keep = annot_scores[best_annotator]
+                annots_to_keep = [score.entity_id for score in all_scores if (score.context.get('assignmentId') == best_annotator) and (score.type == ScoreType.ANNOTATION_OVERALL)]
 
                 cleanup_annots_by_score(scores=all_scores,
-                                        annots_to_keep=annots_to_keep)
+                                        annots_to_keep=annots_to_keep,
+                                        logger=logger)
         else:
             progress.update(action='consensus failed')
             logger.info(f'Consensus failed for item {item.id}')
             if fail_keep_all is False:
                 cleanup_annots_by_score(scores=all_scores,
-                                        annots_to_keep=None)
+                                        annots_to_keep=None,
+                                        logger=logger)
 
     return agreement
 
@@ -476,4 +469,4 @@ if __name__ == '__main__':
 
     progress = dl.Progress()
     consensus_agreement(task=task, item=item, progress=progress, keep_only_best=True, fail_keep_all=True,
-                        agree_threshold=0.3)
+                        agree_threshold=0.0)

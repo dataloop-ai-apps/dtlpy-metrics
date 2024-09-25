@@ -46,7 +46,7 @@ class Score(entities.DlEntity):
 
     @classmethod
     def from_json(cls, _json: dict):
-        return cls(**_json)
+        return cls(_json)
 
     # @property
     # def entity_id(self):

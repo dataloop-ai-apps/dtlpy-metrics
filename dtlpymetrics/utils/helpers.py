@@ -1,4 +1,5 @@
 import os
+import logging
 import dtlpy as dl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -52,7 +53,7 @@ def calculate_confusion_matrix_item(item: dl.Item,
     """
     scores_dl = []
     for score in scores:
-        scores_dl.append(Score.from_json(score))
+        scores_dl.append(score)
 
     # ###############################
     # # create table of comparisons #
@@ -132,7 +133,7 @@ def plot_matrix(item_title, filename, matrix_to_plot, axis_labels):
     return filename
 
 
-def cleanup_annots_by_score(scores, annots_to_keep=None):
+def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger = None):
     """
     Clean up annotations based on a list of scores to keep.
 
@@ -141,13 +142,15 @@ def cleanup_annots_by_score(scores, annots_to_keep=None):
 
     annotations_to_delete = []
     for score in scores:
-        # TODO entityId is a bug somewhere
         if score.type == ScoreType.ANNOTATION_OVERALL:
-            if score.entityId in annots_to_keep:
+            if score.entity_id in annots_to_keep:
                 pass
             else:
-                if score.entityId not in annotations_to_delete:
-                    annotations_to_delete.append(score.entityId)
+                if score.entity_id not in annotations_to_delete:
+                    annotations_to_delete.append(score.entity_id)
+
+    if logger is not None:
+        logger.info(f'Deleting annotations: {annotations_to_delete}')
 
     for annot_id in annotations_to_delete:
         annot = dl.annotations.get(annotation_id=annot_id)
@@ -159,8 +162,16 @@ def cleanup_annots_by_score(scores, annots_to_keep=None):
 def get_scores_by_annotator(scores):
     """
     Function to return a dic with annotator name as key and assignment entity as value
-    @param task:
+    @param scores:
     @return:
     """
+    scores_by_annotator = dict()
 
-    return
+    for score in scores:
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            if scores_by_annotator.get(score.context.get('assignmentId')) is None:
+                scores_by_annotator[score.context.get('assignmentId')] = [score.value]
+            else:
+                scores_by_annotator[score.context.get('assignmentId')].append(score.value)
+
+    return scores_by_annotator

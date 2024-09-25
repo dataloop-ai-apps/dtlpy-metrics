@@ -24,7 +24,7 @@ class TestRunner(unittest.TestCase):
             # task_name='consensus testing task - classification')  # b47
             task_name='consensus testing task - classification 2.0 (Score-task-5)')  # 27f
         self.consensus_task_bbox = self.project.tasks.get(task_name='consensus testing task - bbox')  # 855
-        # self.label_confusion_task = self.project.tasks.get(task_name='qualification testing - confusion matrix')  # e14
+        # self.label_confusion_task = self.project.tasks.get(task_name='qualification testing - confusion matrix') # e14
 
         logger.info('[SETUP] - done getting entities')
         now = datetime.datetime.now().isoformat(sep='.', timespec='minutes').replace('.', '_').replace(':', '.')
