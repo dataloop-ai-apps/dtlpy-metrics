@@ -132,24 +132,35 @@ def plot_matrix(item_title, filename, matrix_to_plot, axis_labels):
     return filename
 
 
-def cleanup_annots(scores, scores_to_keep):
+def cleanup_annots_by_score(scores, annots_to_keep=None):
     """
-    Clean up annotations based on consensus threshold
+    Clean up annotations based on a list of scores to keep.
 
     @return:
     """
-    # TODO should this be a general function for removing annotations, or is this consensus specific?
 
-    # here we dont worry about the consensus threshold bc if the choice to keep all annotations is in scoring.py
+    annotations_to_delete = []
+    for score in scores:
+        # TODO entityId is a bug somewhere
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            if score.entityId in annots_to_keep:
+                pass
+            else:
+                if score.entityId not in annotations_to_delete:
+                    annotations_to_delete.append(score.entityId)
 
-    # if keep best = true, find the best annotations (by annotator) for the item
-    # delete the rest
-    # else delete all annotations
+    for annot_id in annotations_to_delete:
+        annot = dl.annotations.get(annotation_id=annot_id)
+        annot.delete()
 
     return
 
 
-def get_asg_by_annottr(task):
-    # TODO get function from scoring.py
+def get_scores_by_annotator(scores):
+    """
+    Function to return a dic with annotator name as key and assignment entity as value
+    @param task:
+    @return:
+    """
 
-    pass
+    return

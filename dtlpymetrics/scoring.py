@@ -10,10 +10,10 @@ import pandas as pd
 
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics import get_image_scores, get_video_scores
-from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, cleanup_annots, \
-    get_asg_by_annottr
+from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, \
+    cleanup_annots_by_score, get_scores_by_annotator
 from dtlpymetrics.precision_recall import calc_and_upload_interpolation
-from dtlpymetrics.consensus import get_annotator_agreement, get_best_annotator_scores
+from dtlpymetrics.consensus import get_annotator_agreement, get_best_annotator_by_score
 
 dl.use_attributes_2()
 
@@ -143,7 +143,8 @@ def create_task_item_score(item: dl.Item = None,
         # if no assignments are associated with this item
         if len(assignments_by_id) == 0:
             raise ValueError(
-                f'No assignments found for task {task.id} and item {item.id}. Please check that task was properly configured and completed.')
+                f'No assignments found for task {task.id} and item {item.id}. Please check that the task was properly '
+                f'configured and completed.')
 
         #########################################
         # sort annotations and calculate scores #
@@ -274,27 +275,27 @@ def consensus_agreement(task: dl.Task,
                         item: dl.Item,
                         context: dl.Context = None,
                         progress: dl.Progress = None,
-                        agree_threshold: float = None):
-    keep_only_best = False
-    fail_keep_all = True
-
+                        agree_threshold: float = None,
+                        keep_only_best: bool = False,
+                        fail_keep_all: bool = True) -> bool:
+    agreement_default = 0.5
     if context is not None:
         node = context.node
-        # 0.5 is the default item score threshold for agreement
-        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', agreement_default)
         keep_only_best = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', keep_only_best)
         fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', fail_keep_all)
     elif agree_threshold is None:
-        agree_threshold = 0.5
+        agree_threshold = agreement_default
     else:
         if agree_threshold < 0 or agree_threshold > 1:
             raise ValueError('Agreement threshold must be between 0 and 1.')
 
-    # get scores
+    # get scores and convert
     create_task_item_score(item=item, task=task, upload=False)
     saved_filepath = os.path.join(os.getcwd(), '.dataloop', task.id, f'{item.id}.json')
     with open(saved_filepath, 'r') as f:
-        all_scores = json.load(f)
+        scores_json = json.load(f)
+    all_scores = [Score.from_json(_json=s) for s in scores_json]
 
     # see if annotators agree
     agreement = get_annotator_agreement(scores=all_scores, threshold=agree_threshold)
@@ -306,17 +307,29 @@ def consensus_agreement(task: dl.Task,
             logger.info(f'Consensus passed for item {item.id}')
             if keep_only_best is True:
                 # get the best score
-                assignments_by_annotator = get_asg_by_annottr(task=task)
-                scores_to_keep = get_best_annotator_scores(assignments_by_annotator=assignments_by_annotator,
-                                                           scores=all_scores)
-                cleanup_annots(scores=all_scores,
-                               scores_to_keep=scores_to_keep)
+                scores_by_annotator = dict()
+
+                for score in all_scores:
+                    if score.type == ScoreType.ANNOTATION_OVERALL:
+                        if scores_by_annotator.get(score.context.get('assignmentId')) is None:
+                            scores_by_annotator[score.context.get('assignmentId')] = [score.value]
+                        else:
+                            scores_by_annotator[score.context.get('assignmentId')].append(score.value)
+
+                annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
+                best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)]
+                annots_to_keep = annot_scores[best_annotator]
+
+                cleanup_annots_by_score(scores=all_scores,
+                                        annots_to_keep=annots_to_keep)
         else:
             progress.update(action='consensus failed')
             logger.info(f'Consensus failed for item {item.id}')
             if fail_keep_all is False:
-                cleanup_annots(scores=all_scores,
-                               scores_to_keep=None)
+                cleanup_annots_by_score(scores=all_scores,
+                                        annots_to_keep=None)
+
+    return agreement
 
 
 @scorer.add_function(display_name='Create scores for model predictions on a dataset per annotation')
@@ -451,3 +464,16 @@ def create_model_score(dataset: dl.Dataset = None,
     # This is a workaround for uploading interpolated precision-recall for 10 iou levels
     calc_and_upload_interpolation(model=model, dataset=dataset)
     return model
+
+
+if __name__ == '__main__':
+    task_id = '66eabb8f395d461ee2545c28'  # Consensus Task (consensus test), with Roni
+    item_id = '64b38a658177041226848b4f'
+
+    task = dl.tasks.get(task_id=task_id)
+    item = dl.items.get(item_id=item_id)
+    # create_task_item_score(item=item, task=task, upload=False)
+
+    progress = dl.Progress()
+    consensus_agreement(task=task, item=item, progress=progress, keep_only_best=True, fail_keep_all=True,
+                        agree_threshold=0.3)

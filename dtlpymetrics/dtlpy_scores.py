@@ -48,6 +48,14 @@ class Score(entities.DlEntity):
     def from_json(cls, _json: dict):
         return cls(**_json)
 
+    # @property
+    # def entity_id(self):
+    #     if self.entity_id is not None:
+    #         return self.entity_id
+    #     else:
+    #         if self.entityId is not None:
+    #             return self.entityId
+
 
 class Scores:
     URL = '/scores'

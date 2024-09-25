@@ -13,18 +13,25 @@ def get_annotator_agreement(scores, threshold):
     return True
 
 
-def get_best_annotator_scores(assignments_by_annotator, scores):
+def get_best_annotator_by_score(scores):
     """
     Get the best annotator scores for a given item
 
     @return:
     """
-    # TODO get best annotator scores
-    a_score = dl.Score()
-    best_scores = []
+    # get all annotation scores by annotator
+    # figure out who the best annotator is
+    # return only their scores
+    scores_by_annotator = dict()
 
-    # iterate through scores
-    # group scores by annotator
-    # find annotator score?
+    for score in scores:
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            if scores_by_annotator.get(score.context.get('assignmentId')) is None:
+                scores_by_annotator[score.context.get('assignmentId')] = [score.value]
+            else:
+                scores_by_annotator[score.context.get('assignmentId')].append(score.value)
 
-    return best_scores
+    annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
+    best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)]
+
+    return best_annotator
