@@ -13,7 +13,7 @@ from dtlpymetrics import get_image_scores, get_video_scores
 from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, \
     cleanup_annots_by_score, get_scores_by_annotator
 from dtlpymetrics.precision_recall import calc_and_upload_interpolation
-from dtlpymetrics.consensus import get_annotator_agreement, get_best_annotator_by_score
+from dtlpymetrics.consensus import get_annotator_agreement
 
 dl.use_attributes_2()
 
@@ -273,22 +273,15 @@ def create_task_item_score(item: dl.Item = None,
     display_name='Consensus annotator agreement function for handling items after consensus task completion')
 def consensus_agreement(task: dl.Task,
                         item: dl.Item,
-                        context: dl.Context = None,
-                        progress: dl.Progress = None,
-                        agree_threshold: float = None,
-                        keep_only_best: bool = False,
-                        fail_keep_all: bool = True) -> bool:
-    agreement_default = 0.5
+                        context: dl.Context,
+                        progress: dl.Progress = None) -> bool:
     if context is not None:
         node = context.node
-        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', agreement_default)
-        keep_only_best = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', keep_only_best)
-        fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', fail_keep_all)
-    elif agree_threshold is None:
-        agree_threshold = agreement_default
+        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        keep_only_best = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', False)
+        fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', True)
     else:
-        if agree_threshold < 0 or agree_threshold > 1:
-            raise ValueError('Agreement threshold must be between 0 and 1.')
+        raise ValueError('Context cannot be none.')
 
     # get scores and convert
     create_task_item_score(item=item, task=task, upload=False)
@@ -457,16 +450,3 @@ def create_model_score(dataset: dl.Dataset = None,
     # This is a workaround for uploading interpolated precision-recall for 10 iou levels
     calc_and_upload_interpolation(model=model, dataset=dataset)
     return model
-
-
-if __name__ == '__main__':
-    task_id = '66eabb8f395d461ee2545c28'  # Consensus Task (consensus test), with Roni
-    item_id = '64b38a658177041226848b4f'
-
-    task = dl.tasks.get(task_id=task_id)
-    item = dl.items.get(item_id=item_id)
-    # create_task_item_score(item=item, task=task, upload=False)
-
-    progress = dl.Progress()
-    consensus_agreement(task=task, item=item, progress=progress, keep_only_best=True, fail_keep_all=True,
-                        agree_threshold=0.0)

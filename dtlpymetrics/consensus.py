@@ -3,14 +3,20 @@ from dtlpymetrics.dtlpy_scores import Score, ScoreType
 
 
 def get_annotator_agreement(scores, threshold):
-    # check all user confusion scores aka agreement are above threshold
-    for score in scores:
-        if score.type == ScoreType.USER_CONFUSION:
-            if score.value >= threshold:
-                continue
-            else:
-                return False
-    return True
+    # # calculate agreement based on whether each pair agrees
+    # for score in scores:
+    #     if score.type == ScoreType.USER_CONFUSION:
+    #         if score.value >= threshold:
+    #             continue
+    #         else:
+    #             return False
+
+    # calculate agreement based on the average agreement across all annotators
+    user_scores = [score for score in scores if score.type == ScoreType.USER_CONFUSION]
+    if sum(user_scores) / len(user_scores) >= threshold:
+        return True
+    else:
+        return False
 
 
 def get_best_annotator_by_score(scores):

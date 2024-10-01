@@ -152,9 +152,8 @@ def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger 
     if logger is not None:
         logger.info(f'Deleting annotations: {annotations_to_delete}')
 
-    for annot_id in annotations_to_delete:
-        annot = dl.annotations.get(annotation_id=annot_id)
-        annot.delete()
+    filters = dl.Filters(field='id', values=annotations_to_delete, operator=dl.FILTERS_OPERATIONS_IN)
+    dl.annotations.delete(filters=filters)
 
     return
 
