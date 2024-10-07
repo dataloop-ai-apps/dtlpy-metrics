@@ -13,7 +13,7 @@ from dtlpymetrics import get_image_scores, get_video_scores
 from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, \
     cleanup_annots_by_score, get_scores_by_annotator
 from dtlpymetrics.precision_recall import calc_and_upload_interpolation
-from dtlpymetrics.consensus import get_annotator_agreement
+from dtlpymetrics.consensus import check_annotator_agreement
 
 dl.use_attributes_2()
 
@@ -283,17 +283,16 @@ def consensus_agreement(task: dl.Task,
     else:
         raise ValueError('Context cannot be none.')
 
-    # get scores and convert
+    # get scores and convert to dl.Score
     create_task_item_score(item=item, task=task, upload=False)
     saved_filepath = os.path.join(os.getcwd(), '.dataloop', task.id, f'{item.id}.json')
     with open(saved_filepath, 'r') as f:
         scores_json = json.load(f)
     all_scores = [Score.from_json(_json=s) for s in scores_json]
 
-    # see if annotators agree
-    agreement = get_annotator_agreement(scores=all_scores, threshold=agree_threshold)
+    agreement = check_annotator_agreement(scores=all_scores, threshold=agree_threshold)
 
-    # determine action
+    # determine node output action
     if progress is not None:
         if agreement is True:
             progress.update(action='consensus passed')
