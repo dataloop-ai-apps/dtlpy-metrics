@@ -4,7 +4,7 @@ from dtlpymetrics.dtlpy_scores import Score, ScoreType
 
 def check_annotator_agreement(scores, threshold):
     # calculate agreement based on the average agreement across all annotators
-    user_scores = [score for score in scores if score.type == ScoreType.USER_CONFUSION]
+    user_scores = [score.value for score in scores if score.type == ScoreType.USER_CONFUSION]
     if sum(user_scores) / len(user_scores) >= threshold:
         return True
     else:

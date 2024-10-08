@@ -101,9 +101,6 @@
         "entryPoint": "dtlpymetrics/scoring.py",
         "className": "scorer",
         "initInputs": [],
-        "versions": {
-          "dtlpy": "1.80.4"
-        },
         "functions": [
           {
             "name": "create_task_item_score",
