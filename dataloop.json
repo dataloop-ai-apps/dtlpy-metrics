@@ -10,11 +10,6 @@
     "Media Type": ["Image"],
     "Application Type": ["Pipeline Node"]
   },
-  "source": {
-    "type": "git",
-    "repo": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
-    "tag": "main"
-  },
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
