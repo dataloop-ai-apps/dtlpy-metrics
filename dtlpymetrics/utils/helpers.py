@@ -1,4 +1,5 @@
 import os
+import logging
 import dtlpy as dl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -130,3 +131,46 @@ def plot_matrix(item_title, filename, matrix_to_plot, axis_labels):
     plt.close()
 
     return filename
+
+
+def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger = None):
+    """
+    Clean up annotations based on a list of scores to keep.
+
+    @return:
+    """
+
+    annotations_to_delete = []
+    for score in scores:
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            if score.entity_id in annots_to_keep:
+                pass
+            else:
+                if score.entity_id not in annotations_to_delete:
+                    annotations_to_delete.append(score.entity_id)
+
+    if logger is not None:
+        logger.info(f'Deleting annotations: {annotations_to_delete}')
+
+    filters = dl.Filters(field='id', values=annotations_to_delete, operator=dl.FILTERS_OPERATIONS_IN)
+    dl.annotations.delete(filters=filters)
+
+    return
+
+
+def get_scores_by_annotator(scores):
+    """
+    Function to return a dic with annotator name as key and assignment entity as value
+    @param scores:
+    @return:
+    """
+    scores_by_annotator = dict()
+
+    for score in scores:
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            if scores_by_annotator.get(score.context.get('assignmentId')) is None:
+                scores_by_annotator[score.context.get('assignmentId')] = [score.value]
+            else:
+                scores_by_annotator[score.context.get('assignmentId')].append(score.value)
+
+    return scores_by_annotator
