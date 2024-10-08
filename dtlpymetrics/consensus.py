@@ -1,5 +1,49 @@
 import dtlpy as dl
+import logging
 from dtlpymetrics.dtlpy_scores import Score, ScoreType
+
+def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger = None):
+    """
+    Clean up annotations based on a list of scores to keep.
+
+    @return:
+    """
+
+    annotations_to_delete = []
+    for score in scores:
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            if score.entity_id in annots_to_keep:
+                pass
+            else:
+                if score.entity_id not in annotations_to_delete:
+                    annotations_to_delete.append(score.entity_id)
+
+    if logger is not None:
+        logger.info(f'Deleting annotations: {annotations_to_delete}')
+
+    filters = dl.Filters(field='id', values=annotations_to_delete, operator=dl.FILTERS_OPERATIONS_IN)
+    dl.annotations.delete(filters=filters)
+
+    return
+
+
+def get_scores_by_annotator(scores):
+    """
+    Function to return a dic with annotator name as key and assignment entity as value
+    @param scores:
+    @return:
+    """
+    scores_by_annotator = dict()
+
+    for score in scores:
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            if scores_by_annotator.get(score.context.get('assignmentId')) is None:
+                scores_by_annotator[score.context.get('assignmentId')] = [score.value]
+            else:
+                scores_by_annotator[score.context.get('assignmentId')].append(score.value)
+
+    return scores_by_annotator
+
 
 
 def check_annotator_agreement(scores, threshold):
@@ -41,3 +85,4 @@ def get_best_annotator_by_score(scores):
     best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)]
 
     return best_annotator
+
