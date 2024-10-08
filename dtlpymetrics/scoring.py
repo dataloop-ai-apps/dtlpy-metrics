@@ -10,11 +10,9 @@ import pandas as pd
 
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics import get_image_scores, get_video_scores
-from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default
+from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, cleanup_annots_by_score, get_scores_by_annotator
 from dtlpymetrics.consensus import check_annotator_agreement
 from dtlpymetrics.precision_recall import calc_and_upload_interpolation
-
-from .consensus import cleanup_annots_by_score, get_scores_by_annotator
 
 dl.use_attributes_2()
 
