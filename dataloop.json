@@ -146,7 +146,7 @@
         "moduleName": "scoring_functions",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/cpu/scoring:0.3.0",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.4.0",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
