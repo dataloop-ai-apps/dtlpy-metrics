@@ -274,7 +274,7 @@ def consensus_agreement(task: dl.Task = None,
                         item: dl.Item = None,
                         context: dl.Context = None,
                         progress: dl.Progress = None,
-                        **kwargs) -> bool:
+                        **kwargs) -> dl.Item:
     if item is None:
         raise KeyError('No item provided, please provide an item.')
     if task is None:
@@ -322,7 +322,7 @@ def consensus_agreement(task: dl.Task = None,
                                         annots_to_keep=None,
                                         logger=logger)
 
-    return agreement
+    return item
 
 
 @scorer.add_function(display_name='Create scores for model predictions on a dataset per annotation')
