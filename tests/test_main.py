@@ -23,7 +23,8 @@ class TestRunner(unittest.TestCase):
         self.honeypot_task = self.project.tasks.get(task_name='honeypot testing task')  # 7f7
         self.consensus_task_classification = self.project.tasks.get(
             # task_name='consensus testing task - classification')  # b47
-            task_name='consensus testing task - classification 2.0 (Score-task-5)')  # 27f
+            # task_name='consensus testing task - classification 2.0 (Score-task-5)')  # 27f
+            task_name='scoring test - consensus classification (TEST consensus classification)')  # a29
         self.consensus_task_bbox = self.project.tasks.get(task_name='consensus testing task - bbox')  # 855
         # self.label_confusion_task = self.project.tasks.get(task_name='qualification testing - confusion matrix') # e14
 

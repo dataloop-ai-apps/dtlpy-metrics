@@ -270,10 +270,19 @@ def create_task_item_score(item: dl.Item = None,
 
 @scorer.add_function(
     display_name='Consensus annotator agreement function for handling items after consensus task completion')
-def consensus_agreement(task: dl.Task,
-                        item: dl.Item,
-                        context: dl.Context,
-                        progress: dl.Progress = None) -> bool:
+def consensus_agreement(task: dl.Task = None,
+                        item: dl.Item = None,
+                        context: dl.Context = None,
+                        progress: dl.Progress = None,
+                        **kwargs) -> bool:
+    if item is None:
+        raise KeyError('No item provided, please provide an item.')
+    if task is None:
+        if context is None:
+            raise ValueError('Must provide either task or context.')
+        else:
+            task = context.task
+
     if context is not None:
         node = context.node
         agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
@@ -318,6 +327,7 @@ def consensus_agreement(task: dl.Task,
 
 @scorer.add_function(display_name='Create scores for model predictions on a dataset per annotation')
 def create_model_score(dataset: dl.Dataset = None,
+
                        model: dl.Model = None,
                        filters: dl.Filters = None,
                        ignore_labels=False,
