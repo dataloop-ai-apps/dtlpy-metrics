@@ -1,28 +1,5 @@
 [
     {
-        "type": "annotation_overall",
-        "value": 0.0,
-        "entityId": "65030444efd72666c066225e",
-        "context": {
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a686d608f3ff90277aa",
-            "userId": "yaya.t@dataloop.ai",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
-        "type": "user_confusion",
-        "value": 0.0,
-        "entityId": "yaya.t@dataloop.ai",
-        "context": {
-            "userId": "yaya.t@dataloop.ai",
-            "relative": "daniel.f@dataloop.ai",
-            "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a686d608f3ff90277aa",
-            "datasetId": "64b012ac0875623c3a83f3c0"
-        }
-    },
-    {
         "type": "annotation_label",
         "value": 0,
         "entityId": "65030444efd72666c066225e",
@@ -35,26 +12,39 @@
         }
     },
     {
-        "type": "annotation_overall",
-        "value": 0.0,
-        "entityId": "65030444efd726bc1066226c",
+        "type": "annotation_iou",
+        "value": 1.0,
+        "entityId": "65030444efd72666c066225e",
         "context": {
+            "relative": "65030444efd726bc1066226c",
+            "userId": "yaya.t@dataloop.ai",
+            "assignmentId": "6502cc4a737bd473ef39e282",
             "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a686d608f3ff90277aa",
-            "userId": "daniel.f@dataloop.ai",
-            "datasetId": "64b012ac0875623c3a83f3c0"
+            "itemId": "64b38a686d608f3ff90277aa"
+        }
+    },
+    {
+        "type": "annotation_attribute",
+        "value": 1,
+        "entityId": "65030444efd72666c066225e",
+        "context": {
+            "relative": "65030444efd726bc1066226c",
+            "userId": "yaya.t@dataloop.ai",
+            "assignmentId": "6502cc4a737bd473ef39e282",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a686d608f3ff90277aa"
         }
     },
     {
         "type": "user_confusion",
         "value": 0.0,
-        "entityId": "daniel.f@dataloop.ai",
+        "entityId": "yaya.t@dataloop.ai",
         "context": {
-            "userId": "daniel.f@dataloop.ai",
-            "relative": "yaya.t@dataloop.ai",
+            "userId": "yaya.t@dataloop.ai",
+            "relative": "daniel.f@dataloop.ai",
+            "assignmentId": "6502cc4a737bd473ef39e282",
             "taskId": "6502cc4a737bd4443139e27f",
-            "itemId": "64b38a686d608f3ff90277aa",
-            "datasetId": "64b012ac0875623c3a83f3c0"
+            "itemId": "64b38a686d608f3ff90277aa"
         }
     },
     {
@@ -70,8 +60,86 @@
         }
     },
     {
-        "type": "item_overall",
+        "type": "annotation_iou",
+        "value": 1.0,
+        "entityId": "65030444efd726bc1066226c",
+        "context": {
+            "relative": "65030444efd72666c066225e",
+            "userId": "daniel.f@dataloop.ai",
+            "assignmentId": "6502cc4a737bd419d039e281",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a686d608f3ff90277aa"
+        }
+    },
+    {
+        "type": "annotation_attribute",
+        "value": 1,
+        "entityId": "65030444efd726bc1066226c",
+        "context": {
+            "relative": "65030444efd72666c066225e",
+            "userId": "daniel.f@dataloop.ai",
+            "assignmentId": "6502cc4a737bd419d039e281",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a686d608f3ff90277aa"
+        }
+    },
+    {
+        "type": "user_confusion",
         "value": 0.0,
+        "entityId": "daniel.f@dataloop.ai",
+        "context": {
+            "userId": "daniel.f@dataloop.ai",
+            "relative": "yaya.t@dataloop.ai",
+            "assignmentId": "6502cc4a737bd419d039e281",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a686d608f3ff90277aa"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 1,
+        "entityId": "pizza",
+        "context": {
+            "relative": "popsicle",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a686d608f3ff90277aa"
+        }
+    },
+    {
+        "type": "label_confusion",
+        "value": 1,
+        "entityId": "popsicle",
+        "context": {
+            "relative": "pizza",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "itemId": "64b38a686d608f3ff90277aa"
+        }
+    },
+    {
+        "type": "annotation_overall",
+        "value": 0.5,
+        "entityId": "65030444efd72666c066225e",
+        "context": {
+            "userId": "yaya.t@dataloop.ai",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "assignmentId": "6502cc4a737bd473ef39e282",
+            "itemId": "64b38a686d608f3ff90277aa"
+        }
+    },
+    {
+        "type": "annotation_overall",
+        "value": 0.5,
+        "entityId": "65030444efd726bc1066226c",
+        "context": {
+            "userId": "daniel.f@dataloop.ai",
+            "taskId": "6502cc4a737bd4443139e27f",
+            "assignmentId": "6502cc4a737bd419d039e281",
+            "itemId": "64b38a686d608f3ff90277aa"
+        }
+    },
+    {
+        "type": "item_overall",
+        "value": 0.5,
         "entityId": "64b38a686d608f3ff90277aa",
         "context": {
             "taskId": "6502cc4a737bd4443139e27f",
