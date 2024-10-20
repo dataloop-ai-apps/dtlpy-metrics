@@ -193,7 +193,7 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     :param dataset_name: name of dataset to plot in legend
     :param label_names: list of label names to plot
     :param local_path: path to save plot
-    :return:
+    :return: directory path where plots are saved
     """
     if local_path is None:
         root_dir = os.getcwd().split('dtlpymetrics')[0]
@@ -376,7 +376,7 @@ def calc_confusion_matrix(dataset_id: str,
     :param model_id: str ID of model
     :param metric: name of the metric for comparing
     :param show_unmatched: display extra column showing which GT annotations were not matched
-    :return:
+    :return: DataFrame with confusion matrix
     """
     if metric.lower() == 'iou':
         metric = 'geometry_score'
@@ -428,7 +428,7 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     and returns a dataframe with the properties of all the false negatives.
     :param model: Model entity
     :param dataset: Dataset where the model was evaluated
-    :return:
+    :return: DataFrame with all the false negatives
     """
     file_name = f'{model.id}.csv'
     local_path = os.path.join(os.getcwd(), '.dataloop', file_name)
@@ -470,6 +470,13 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
 
 
 def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
+    """
+    Calculate precision recall for a model and dataset, and upload the interpolated points to the dataset
+
+    :param model: dl.Model
+    :param dataset: dl.Dataset
+    :return: None
+    """
     figures = dict()
     for iou_th in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
         df = calc_precision_recall(model_id=model.id,

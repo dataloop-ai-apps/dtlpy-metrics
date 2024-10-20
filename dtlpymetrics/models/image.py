@@ -31,7 +31,8 @@ def calculate_model_item_score(model_scores: pd.DataFrame):
     """
     Calculate scores for each item that a model predicts on
 
-    @return:
+    :param model_scores: DataFrame of model scores
+    :return:
     """
 
     pass

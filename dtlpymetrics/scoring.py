@@ -10,21 +10,23 @@ import pandas as pd
 
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics import get_image_scores, get_video_scores
-from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default
+from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, \
+    cleanup_annots_by_score, get_scores_by_annotator
+from dtlpymetrics.consensus import check_annotator_agreement
 from dtlpymetrics.precision_recall import calc_and_upload_interpolation
 
 dl.use_attributes_2()
 
 scorer = dl.AppModule(name='Scoring and metrics function',
-                      description='Functions for calculating scores between annotations.'
+                      description='Functions for calculating scores when comparing between annotations.'
                       )
 logger = logging.getLogger('scoring-and-metrics')
 
 scores_debug = True
 
 
-@scorer.add_function(display_name='Calculate task scores for quality tasks')
-def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
+@scorer.add_function(display_name='Calculate scores for items in quality tasks')
+def calculate_task_score(task: dl.Task, score_types=None, **kwargs) -> dl.Task:
     """
     Calculate scores for all items in a quality task, based on the item scores from each assignment.
 
@@ -66,10 +68,11 @@ def calculate_task_score(task: dl.Task, score_types=None) -> dl.Task:
 
 
 @scorer.add_function(display_name='Create scores for image items in a quality task')
-def create_task_item_score(item: dl.Item = None,
-                           task: dl.Task = None,
+def create_task_item_score(item: dl.Item,
+                           task: dl.Task,
                            context: dl.Context = None,
-                           score_types=None) -> dl.Item:
+                           score_types=None,
+                           upload=True) -> dl.Item:
     """
     Create scores for items in a task.
 
@@ -79,13 +82,14 @@ def create_task_item_score(item: dl.Item = None,
     :param task: dl.Task entity (optional)
     :param context: dl.Context entity that includes references to associated entities (optional)
     :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
+    :param upload: bool, default True means scores will be uploaded to the platform (optional)
     :return: item
     """
     ####################################
     # collect assignments for grouping #
     ####################################
     if item is None:
-        raise KeyError('No item provided, please provide an item.')
+        raise ValueError('No item provided, please provide an item.')
     if task is None:
         if context is None:
             raise ValueError('Must provide either task or context.')
@@ -119,15 +123,15 @@ def create_task_item_score(item: dl.Item = None,
             filters = dl.Filters(use_defaults=False)
             filters.add('spec.parentDatasetItemId', item.id)
             filters.add('dir', '/.consensus/*')
-            ass_pages = item.dataset.items.list(filters=filters)
+            asg_pages = item.dataset.items.list(filters=filters)
             consensus_assignments = list()
-            for ass_item in ass_pages.all():
-                refs = ass_item.metadata['system']['refs']
+            for asg_items in asg_pages.all():
+                refs = asg_items.metadata['system']['refs']
                 for ref in refs:
                     if ref.get('type') == 'assignment':
                         consensus_assignments.append(ref['id'])
         else:
-            consensus_assignments = [ass.id for ass in assignments]
+            consensus_assignments = [asg.id for asg in assignments]
         # create lookup dictionaries getting assignments by id or annotator
         assignments_by_id = {}
         assignments_by_annotator = {}
@@ -139,7 +143,8 @@ def create_task_item_score(item: dl.Item = None,
         # if no assignments are associated with this item
         if len(assignments_by_id) == 0:
             raise ValueError(
-                f'No assignments found for task {task.id} and item {item.id}. Please check that task was properly configured and completed.')
+                f'No assignments found for task {task.id} and item {item.id}. Please check that the task was properly '
+                f'configured and completed.')
 
         #########################################
         # sort annotations and calculate scores #
@@ -236,9 +241,14 @@ def create_task_item_score(item: dl.Item = None,
         #############################
         # upload scores to platform #
         #############################
-        # clean previous scores before creating new ones
         debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-        if debug_path is None:
+        if debug_path is not None:
+            upload = False
+            save_dir = debug_path
+        else:
+            save_dir = os.path.join(os.getcwd(), '.dataloop')
+
+        if upload is True:
             logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
             dl_scores = Scores(client_api=dl.client_api)
             dl_scores.delete(context={'itemId': item.id,
@@ -246,9 +256,8 @@ def create_task_item_score(item: dl.Item = None,
             dl_scores = dl_scores.create(all_scores)
             logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
         else:
-            logger.info(f'Saving scores locally, {debug_path}')
-
-            save_filepath = os.path.join(debug_path, task.id, f'{item.id}.json')
+            logger.info(f'Saving scores locally, {save_dir}')
+            save_filepath = os.path.join(save_dir, task.id, f'{item.id}.json')
             os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
             scores_json = list()
             for score in all_scores:
@@ -260,8 +269,77 @@ def create_task_item_score(item: dl.Item = None,
     return item
 
 
+@scorer.add_function(
+    display_name='Consensus annotator agreement function for handling items after consensus task completion')
+def consensus_agreement(item: dl.Item,
+                        context: dl.Context,
+                        task: dl.Task = None,
+                        progress: dl.Progress = None,
+                        **kwargs) -> dl.Item:
+    """
+    Function to determine whether annotators agree on annotations for a given item.
+     
+    :param item: dl.Item
+    :param task: dl.Task (optional)
+    :param context: dl.Context
+    :param progress: dl.Progress
+    :return: dl.Item
+    """
+    if item is None:
+        raise ValueError('No item provided, please provide an item.')
+    if task is None:
+        if context is None:
+            raise ValueError('Must provide either task or context.')
+        else:
+            task = context.task
+
+    if context is not None:
+        node = context.node
+        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        keep_only_best = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', False)
+        fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', True)
+    else:
+        raise ValueError('Context cannot be none.')
+
+    # get scores and convert to dl.Score
+    create_task_item_score(item=item, task=task, upload=False)
+    saved_filepath = os.path.join(os.getcwd(), '.dataloop', task.id, f'{item.id}.json')
+    with open(saved_filepath, 'r') as f:
+        scores_json = json.load(f)
+    all_scores = [Score.from_json(_json=s) for s in scores_json]
+
+    agreement = check_annotator_agreement(scores=all_scores, threshold=agree_threshold)
+
+    # determine node output action
+    if progress is not None:
+        if agreement is True:
+            progress.update(action='consensus passed')
+            logger.info(f'Consensus passed for item {item.id}')
+            if keep_only_best is True:
+                scores_by_annotator = get_scores_by_annotator(scores=all_scores)
+                annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
+                best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)]
+                annots_to_keep = [score.entity_id for score in all_scores if
+                                  (score.context.get('assignmentId') == best_annotator) and (
+                                              score.type == ScoreType.ANNOTATION_OVERALL)]
+
+                cleanup_annots_by_score(scores=all_scores,
+                                        annots_to_keep=annots_to_keep,
+                                        logger=logger)
+        else:
+            progress.update(action='consensus failed')
+            logger.info(f'Consensus failed for item {item.id}')
+            if fail_keep_all is False:
+                cleanup_annots_by_score(scores=all_scores,
+                                        annots_to_keep=None,
+                                        logger=logger)
+
+    return item
+
+
 @scorer.add_function(display_name='Create scores for model predictions on a dataset per annotation')
 def create_model_score(dataset: dl.Dataset = None,
+
                        model: dl.Model = None,
                        filters: dl.Filters = None,
                        ignore_labels=False,
@@ -276,7 +354,7 @@ def create_model_score(dataset: dl.Dataset = None,
     :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label
     :param match_threshold: float, threshold for matching annotations
     :param compare_types: annotation types to compare
-    :return:
+    :return: dl.Model
     """
 
     # TODO use export to download the zip and take the annotation from there

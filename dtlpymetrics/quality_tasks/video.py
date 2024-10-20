@@ -14,15 +14,15 @@ def get_video_scores(annotations_by_frame: dict,
     """
     Generate scores for a video item
 
-    @param annotations_by_frame:
-    @param task:
-    @param item:
-    @param score_types:
-    @param task_type:
-    @param annots_by_assignment:
-    @param assignments_by_annotator:
-    @param logger:
-    @return:
+    :param annotations_by_frame: a dictionary of annotations by frame
+    :param task: dl.Task
+    :param item: dl.Item
+    :param score_types: list of relevant ScoreTypes
+    :param task_type: str, 'testing' or 'consensus'
+    :param annots_by_assignment: dict of annotations by assignment
+    :param assignments_by_annotator: dict of assignments by annotator
+    :param logger: dl.Logger
+    :return: list of Score entities
     """
 
     ####################
