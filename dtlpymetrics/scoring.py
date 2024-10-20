@@ -10,7 +10,8 @@ import pandas as pd
 
 from dtlpymetrics.dtlpy_scores import Score, Scores, ScoreType
 from dtlpymetrics import get_image_scores, get_video_scores
-from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, cleanup_annots_by_score, get_scores_by_annotator
+from dtlpymetrics.utils import check_if_video, measure_annotations, all_compare_types, mean_or_default, \
+    cleanup_annots_by_score, get_scores_by_annotator
 from dtlpymetrics.consensus import check_annotator_agreement
 from dtlpymetrics.precision_recall import calc_and_upload_interpolation
 
@@ -67,8 +68,8 @@ def calculate_task_score(task: dl.Task, score_types=None, **kwargs) -> dl.Task:
 
 
 @scorer.add_function(display_name='Create scores for image items in a quality task')
-def create_task_item_score(item: dl.Item = None,
-                           task: dl.Task = None,
+def create_task_item_score(item: dl.Item,
+                           task: dl.Task,
                            context: dl.Context = None,
                            score_types=None,
                            upload=True) -> dl.Item:
@@ -88,7 +89,7 @@ def create_task_item_score(item: dl.Item = None,
     # collect assignments for grouping #
     ####################################
     if item is None:
-        raise KeyError('No item provided, please provide an item.')
+        raise ValueError('No item provided, please provide an item.')
     if task is None:
         if context is None:
             raise ValueError('Must provide either task or context.')
@@ -270,13 +271,22 @@ def create_task_item_score(item: dl.Item = None,
 
 @scorer.add_function(
     display_name='Consensus annotator agreement function for handling items after consensus task completion')
-def consensus_agreement(task: dl.Task = None,
-                        item: dl.Item = None,
-                        context: dl.Context = None,
+def consensus_agreement(item: dl.Item,
+                        context: dl.Context,
+                        task: dl.Task = None,
                         progress: dl.Progress = None,
                         **kwargs) -> dl.Item:
+    """
+    Function to determine whether annotators agree on annotations for a given item.
+     
+    :param item: dl.Item
+    :param task: dl.Task (optional)
+    :param context: dl.Context
+    :param progress: dl.Progress
+    :return: dl.Item
+    """
     if item is None:
-        raise KeyError('No item provided, please provide an item.')
+        raise ValueError('No item provided, please provide an item.')
     if task is None:
         if context is None:
             raise ValueError('Must provide either task or context.')
@@ -309,7 +319,9 @@ def consensus_agreement(task: dl.Task = None,
                 scores_by_annotator = get_scores_by_annotator(scores=all_scores)
                 annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
                 best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)]
-                annots_to_keep = [score.entity_id for score in all_scores if (score.context.get('assignmentId') == best_annotator) and (score.type == ScoreType.ANNOTATION_OVERALL)]
+                annots_to_keep = [score.entity_id for score in all_scores if
+                                  (score.context.get('assignmentId') == best_annotator) and (
+                                              score.type == ScoreType.ANNOTATION_OVERALL)]
 
                 cleanup_annots_by_score(scores=all_scores,
                                         annots_to_keep=annots_to_keep,
@@ -342,7 +354,7 @@ def create_model_score(dataset: dl.Dataset = None,
     :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label
     :param match_threshold: float, threshold for matching annotations
     :param compare_types: annotation types to compare
-    :return:
+    :return: dl.Model
     """
 
     # TODO use export to download the zip and take the annotation from there
