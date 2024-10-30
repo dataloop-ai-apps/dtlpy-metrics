@@ -6,24 +6,21 @@ import os
 import dtlpy as dl
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-prec_rec = dl.AppModule(name='Scoring and metrics function',
-                        description='Functions for calculating scores between annotations.'
-                        )
+from matplotlib import pyplot as plt
+
 logger = logging.getLogger('scoring-and-metrics')
 
 
-@prec_rec.add_function(display_name='Calculate precision and recall')
 def calc_precision_recall(dataset_id: str,
                           model_id: str,
+                          logger: logging.Logger,
                           iou_threshold=0.01,
                           method_type=None,
                           each_label=True,
                           n_points=None) -> pd.DataFrame:
     """
-    Plot precision recall curve for model predictions, for a given metric threshold
-
+    Internal function for calculating  precision recall values for model predictions, for a given metric threshold.
     :param dataset_id: str dataset ID
     :param model_id: str model ID
     :param iou_threshold: float Threshold for accepting matched annotations as a true positive
@@ -179,7 +176,6 @@ def calc_precision_recall(dataset_id: str,
     return plot_points
 
 
-@prec_rec.add_function(display_name='Plot precision recall graph')
 def plot_precision_recall(plot_points: pd.DataFrame,
                           dataset_name=None,
                           label_names=None,
@@ -197,7 +193,7 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     """
     if local_path is None:
         root_dir = os.getcwd().split('dtlpymetrics')[0]
-        save_dir = os.path.join(root_dir, 'dtlpymetrics', '.dataloop')
+        save_dir = os.path.join(root_dir, 'dtlpymetrics', '../.dataloop')
         if not os.path.exists(os.path.dirname(save_dir)):
             os.makedirs(os.path.dirname(save_dir))
     else:
@@ -268,7 +264,6 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     return save_dir
 
 
-@prec_rec.add_function(display_name='Calculate precision-recall values for every point curve')
 def every_point_curve(recall: list, precision: list, confidence: list):
     """
     Calculate precision-recall curve from a list of precision & recall values
@@ -304,7 +299,6 @@ def every_point_curve(recall: list, precision: list, confidence: list):
             confidence_points[0:len(precision_points)]]
 
 
-@prec_rec.add_function(display_name='Calculate precision-recall values for eleven point curves')
 def n_point_interpolated_curve(recall: list, precision: list, confidence: list, n_points=201):
     """
     Calculate precision-recall curve from a list of precision & recall values, using n-points interpolation
@@ -364,7 +358,6 @@ def n_point_interpolated_curve(recall: list, precision: list, confidence: list, 
             confidence_plot]
 
 
-@prec_rec.add_function(display_name='Create confusion matrix')
 def calc_confusion_matrix(dataset_id: str,
                           model_id: str,
                           metric: str,
@@ -421,7 +414,6 @@ def calc_confusion_matrix(dataset_id: str,
     return conf_matrix
 
 
-@prec_rec.add_function(display_name='Get list of model annotation false negatives from scores csv')
 def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     """
     Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file,
@@ -431,7 +423,7 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     :return: DataFrame with all the false negatives
     """
     file_name = f'{model.id}.csv'
-    local_path = os.path.join(os.getcwd(), '.dataloop', file_name)
+    local_path = os.path.join(os.getcwd(), '../.dataloop', file_name)
     filters = dl.Filters(field='name', values=file_name)
     filters.add(field='hidden', values=True)
     pages = dataset.items.list(filters=filters)
@@ -493,9 +485,19 @@ def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
                            'precision': precision.to_list(),
                            'confidence': confidence.to_list(),
                            }
-    filepath = os.path.join(os.getcwd(), '.dataloop', f'{model.id}-interpolated.json')
+    filepath = os.path.join(os.getcwd(), '../.dataloop', f'{model.id}-interpolated.json')
     with open(filepath, 'w') as f:
         json.dump(figures, f)
     item = dataset.items.upload(local_path=filepath,
                                 remote_path=f'/.modelscores',
                                 overwrite=True)
+
+
+def calculate_model_item_score(model_scores: pd.DataFrame):
+    """
+    Calculate scores for each item that a model predicts on
+
+    @return:
+    """
+
+    pass

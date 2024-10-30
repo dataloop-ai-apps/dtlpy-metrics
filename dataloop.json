@@ -92,8 +92,13 @@
     ],
     "modules": [
       {
+<<<<<<< Updated upstream
         "name": "scoring_functions",
         "entryPoint": "dtlpymetrics/scoring.py",
+=======
+        "name": "scoring_tasks",
+        "entryPoint": "dtlpymetrics/dtlpymetrics.py",
+>>>>>>> Stashed changes
         "className": "scorer",
         "initInputs": [],
         "functions": [
@@ -114,7 +119,11 @@
             ],
             "displayIcon": "icon-dl-analytics",
             "displayName": "Create Score for Task Item"
+<<<<<<< Updated upstream
           },
+=======
+            },
+>>>>>>> Stashed changes
           {
             "name": "consensus_agreement",
             "description": "Process consensus task items based on annotator agreement threshold.",
