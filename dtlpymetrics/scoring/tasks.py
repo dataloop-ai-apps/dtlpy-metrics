@@ -50,7 +50,7 @@ def calc_task_score(task: dl.Task, score_types=None, **kwargs) -> dl.Task:
             elif item_task_dict.get('metadata', None) is None:
                 continue
             elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
-                calc_item_score(item=item, task=task, score_types=score_types)
+                calc_task_item_score(item=item, task=task, score_types=score_types)
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
                 continue
@@ -58,10 +58,10 @@ def calc_task_score(task: dl.Task, score_types=None, **kwargs) -> dl.Task:
     return task
 
 
-def calc_item_score(item: dl.Item,
-                    task: dl.Task,
-                    score_types=None,
-                    upload=True) -> dl.Item:
+def calc_task_item_score(item: dl.Item,
+                         task: dl.Task,
+                         score_types=None,
+                         upload=True) -> dl.Item:
     """
     Create scores for items in a task. This is the main function for creating score entities
 

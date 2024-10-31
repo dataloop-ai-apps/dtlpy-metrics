@@ -129,7 +129,7 @@ def label_confusion_matrix(item: dl.Item,
     return conf_matrix
 
 
-def get_scores_df(dataset: dl.Dataset, model: dl.Model) -> pd.DataFrame:
+def get_model_scores_df(dataset: dl.Dataset, model: dl.Model) -> pd.DataFrame:
     """
     Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file.
     :param dataset: Dataset where the model was evaluated

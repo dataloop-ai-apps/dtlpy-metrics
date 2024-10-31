@@ -12,17 +12,17 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 from matplotlib import pyplot as plt
 
-from ..utils import measure_annotations
+from ..utils import all_compare_types, measure_annotations
 
 logger = logging.getLogger('scoring-and-metrics')
 
 
-def calc_model_score(dataset: dl.Dataset,
-                     model: dl.Model,
-                     filters: dl.Filters,
-                     compare_types,
-                     ignore_labels,
-                     match_threshold=0.01) -> dl.Model:
+def create_model_score(dataset: dl.Dataset,
+                       model: dl.Model,
+                       filters: dl.Filters,
+                       compare_types,
+                       ignore_labels,
+                       match_threshold=0.01) -> dl.Model:
     """
     Creates scores for a set of model predictions compared against ground truth annotations.
 
@@ -31,9 +31,22 @@ def calc_model_score(dataset: dl.Dataset,
     :param filters: DQL Filter for retrieving the test items
     :param compare_types: annotation types to compare
     :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label
-    :param match_threshold: float, threshold for matching annotations
+    :param match_threshold: float, threshold for matching annotations together
     :return: dl.Model
     """
+    if dataset is None:
+        raise ValueError('No dataset provided, please provide a dataset.')
+    if model is None:
+        raise ValueError('No model provided, please provide a model.')
+    if model.name is None:
+        raise ValueError('No model name found for the second set of annotations, please provide model name.')
+    if compare_types is None:
+        compare_types = all_compare_types
+    if not isinstance(compare_types, list):
+        if compare_types not in model.output_type:  # TODO check this validation logic
+            raise ValueError(
+                f'Annotation type {compare_types} does not match model output type {model.output_type}')
+        compare_types = [compare_types]
 
     # TODO use export to download the zip and take the annotation from there
     logger.info('Downloading dataset annotations...')

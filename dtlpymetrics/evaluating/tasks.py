@@ -1,13 +1,78 @@
 import logging
-
-import dtlpy as dl
 import os
 import json
+import dtlpy as dl
+
 from ..dtlpy_scores import ScoreType, Score
-from ..dtlpymetrics import create_task_item_score
+from ..scoring import calc_task_item_score
 from ..utils.dl_helpers import get_scores_by_annotator, cleanup_annots_by_score
 
 logger = logging.getLogger('scoring-and-metrics')
+
+
+def get_consensus_agreement(item: dl.Item,
+                            context: dl.Context,
+                            task: dl.Task = None,
+                            progress: dl.Progress = None,
+                            **kwargs) -> dl.Item:
+    """
+    Determine whether annotators agree on annotations for a given item. Only available in pipelines.
+    :param item: dl.Item
+    :param task: dl.Task (optional)
+    :param context: dl.Context
+    :param progress: dl.Progress
+    :return: dl.Item
+    """
+    if item is None:
+        raise ValueError('No item provided, please provide an item.')
+    if task is None:
+        if context is None:
+            raise ValueError('Must provide either task or context.')
+        else:
+            task = context.task
+
+    if context is not None:
+        node = context.node
+        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        keep_only_best = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', False)
+        fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', True)
+    else:
+        raise ValueError('Context cannot be none.')
+
+    # get scores and convert to dl.Score
+    calc_task_item_score(task=task, item=item, upload=False)
+    saved_filepath = os.path.join(os.getcwd(), '../.dataloop', task.id, f'{item.id}.json')
+    with open(saved_filepath, 'r') as f:
+        scores_json = json.load(f)
+    all_scores = [Score.from_json(_json=s) for s in scores_json]
+
+    agreement = check_annotator_agreement(scores=all_scores, threshold=agree_threshold)
+
+    # determine node output action
+    if progress is not None:
+        if agreement is True:
+            progress.update(action='consensus passed')
+            logger.info(f'Consensus passed for item {item.id}')
+            if keep_only_best is True:
+                scores_by_annotator = get_scores_by_annotator(scores=all_scores)
+                annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
+                best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)]
+                annots_to_keep = [score.entity_id for score in all_scores if
+                                  (score.context.get('assignmentId') == best_annotator) and (
+                                          score.type == ScoreType.ANNOTATION_OVERALL)]
+
+                cleanup_annots_by_score(scores=all_scores,
+                                        annots_to_keep=annots_to_keep,
+                                        logger=logger)
+        else:
+            progress.update(action='consensus failed')
+            logger.info(f'Consensus failed for item {item.id}')
+            if fail_keep_all is False:
+                cleanup_annots_by_score(scores=all_scores,
+                                        annots_to_keep=None,
+                                        logger=logger)
+
+    return item
 
 
 def check_annotator_agreement(scores, threshold):
@@ -43,69 +108,3 @@ def check_unanimous_agreement(scores, threshold=1):
             else:
                 return False
     return True
-
-
-def consensus_agreement(item: dl.Item,
-                        context: dl.Context,
-                        task: dl.Task = None,
-                        progress: dl.Progress = None,
-                        **kwargs) -> dl.Item:
-    """
-    Determine whether annotators agree on annotations for a given item. Only available in pipelines.
-    :param item: dl.Item
-    :param task: dl.Task (optional)
-    :param context: dl.Context
-    :param progress: dl.Progress
-    :return: dl.Item
-    """
-    if item is None:
-        raise ValueError('No item provided, please provide an item.')
-    if task is None:
-        if context is None:
-            raise ValueError('Must provide either task or context.')
-        else:
-            task = context.task
-
-    if context is not None:
-        node = context.node
-        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
-        keep_only_best = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', False)
-        fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', True)
-    else:
-        raise ValueError('Context cannot be none.')
-
-    # get scores and convert to dl.Score
-    create_task_item_score(task=task, item=item, upload=False)
-    saved_filepath = os.path.join(os.getcwd(), '../.dataloop', task.id, f'{item.id}.json')
-    with open(saved_filepath, 'r') as f:
-        scores_json = json.load(f)
-    all_scores = [Score.from_json(_json=s) for s in scores_json]
-
-    agreement = check_annotator_agreement(scores=all_scores, threshold=agree_threshold)
-
-    # determine node output action
-    if progress is not None:
-        if agreement is True:
-            progress.update(action='consensus passed')
-            logger.info(f'Consensus passed for item {item.id}')
-            if keep_only_best is True:
-                scores_by_annotator = get_scores_by_annotator(scores=all_scores)
-                annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
-                best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)]
-                annots_to_keep = [score.entity_id for score in all_scores if
-                                  (score.context.get('assignmentId') == best_annotator) and (
-                                              score.type == ScoreType.ANNOTATION_OVERALL)]
-
-                cleanup_annots_by_score(scores=all_scores,
-                                        annots_to_keep=annots_to_keep,
-                                        logger=logger)
-        else:
-            progress.update(action='consensus failed')
-            logger.info(f'Consensus failed for item {item.id}')
-            if fail_keep_all is False:
-                cleanup_annots_by_score(scores=all_scores,
-                                        annots_to_keep=None,
-                                        logger=logger)
-
-    return item
-

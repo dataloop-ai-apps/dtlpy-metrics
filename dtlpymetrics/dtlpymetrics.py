@@ -1,12 +1,10 @@
-## this is where all the wrapper functions that are exposed to the platform will go
-# we want only one module
 import logging
 
 import dtlpy as dl
 import pandas as pd
 
-from .scoring import calc_item_score, calc_model_score, calc_precision_recall
-from .utils import all_compare_types
+from .scoring import calc_task_item_score, create_model_score, calc_precision_recall
+from .evaluating import get_consensus_agreement
 
 dl.use_attributes_2()
 
@@ -41,20 +39,43 @@ def create_task_item_score(item: dl.Item,
         else:
             task = context.task
 
-    item = calc_item_score(item=item,
-                           task=task,
-                           score_types=score_types,
-                           upload=upload)
+    item = calc_task_item_score(item=item,
+                                task=task,
+                                score_types=score_types,
+                                upload=upload)
+    return item
+
+
+@scorer.add_function(display_name='')
+def consensus_agreement(item: dl.Item,
+                        context: dl.Context,
+                        task: dl.Task = None,
+                        progress: dl.Progress = None,
+                        **kwargs) -> dl.Item:
+    """
+    Calculate consensus agreement for a quality task item. This is a wrapper function for get_consensus_agreement.
+    :param item:
+    :param context:
+    :param task:
+    :param progress:
+    :param kwargs:
+    :return:
+    """
+    item = get_consensus_agreement(item=item,
+                                   context=context,
+                                   task=task,
+                                   progress=progress,
+                                   **kwargs)
     return item
 
 
 @scorer.add_function(display_name='Create scores for model predictions on a dataset per annotation')
-def create_model_score(dataset: dl.Dataset = None,
-                       model: dl.Model = None,
-                       filters: dl.Filters = None,
-                       ignore_labels=False,
-                       match_threshold=0.01,
-                       compare_types=None) -> dl.Model:
+def model_score(dataset: dl.Dataset = None,
+                model: dl.Model = None,
+                filters: dl.Filters = None,
+                ignore_labels=False,
+                match_threshold=0.01,
+                compare_types=None) -> dl.Model:
     """
     Creates scores for a set of model predictions compared against ground truth annotations. This is a wrapper function
     for _create_model_score.
@@ -67,26 +88,12 @@ def create_model_score(dataset: dl.Dataset = None,
     :param compare_types:
     :return:
     """
-    if dataset is None:
-        raise ValueError('No dataset provided, please provide a dataset.')
-    if model is None:
-        raise ValueError('No model provided, please provide a model.')
-    if model.name is None:
-        raise ValueError('No model name found for the second set of annotations, please provide model name.')
-    if compare_types is None:
-        compare_types = all_compare_types
-    if not isinstance(compare_types, list):
-        if compare_types not in model.output_type:  # TODO check this validation logic
-            raise ValueError(
-                f'Annotation type {compare_types} does not match model output type {model.output_type}')
-        compare_types = [compare_types]
-
-    model = calc_model_score(dataset=dataset,
-                             model=model,
-                             filters=filters,
-                             ignore_labels=ignore_labels,
-                             match_threshold=match_threshold,
-                             compare_types=compare_types)
+    model = create_model_score(dataset=dataset,
+                               model=model,
+                               filters=filters,
+                               ignore_labels=ignore_labels,
+                               match_threshold=match_threshold,
+                               compare_types=compare_types)
 
     return model
 
