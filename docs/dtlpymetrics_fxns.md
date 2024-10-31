@@ -1,6 +1,6 @@
 # Functions available in dtlpymetrics:
 
-* `calculate_task_score`
+* `calc_task_score`
     * Description: This function takes calculates scores for the relevant items contained within the task.
     * Input:
         * `task`: the relevant task entity
@@ -25,6 +25,10 @@
     * Output:
         * `item`: the original item entity
 
+* `consensus_agreement`
+  * Description: This function determines the consensus agreement score for a given set of annotators based on an 
+    agreement threshold.
+
 * `create_model_score`
     * Description: This function takes model predictions (i.e. annotations) and calculates the score for each
       prediction.
@@ -36,6 +40,8 @@
         * `match_threshold`: optional float for IOU threshold for matching model predictions to ground truth annotations
         * `compare_types`: optional list for specifying which annotation types are to be compared
 
+* `precision_recall`
+  * Description: This function calculates the precision and recall scores for a given set of annotations.
 
 * `get_model_scores_df`
     * Description: This function generates the pandas dataframe of model scores.
@@ -44,12 +50,6 @@
         * `model`: the model entity that produced the predictions
     * Output:
         * `model_scores_df`: pandas dataframe containing the scores
-
-* `get_image_scores`
-    * Description: This function takes items that are images and calculates the scores.
-    * Input:
-      * `item`: item whose annotations are to be scored
-      *
 
 * `calculate_annotation_score`
     * Description: This function takes annotations and calculates the score for each annotation.
@@ -61,4 +61,3 @@
         * `match_threshold`: optional float for IOU threshold for matching model predictions to ground truth annotations
         * `compare_types`: optional list for specifying which annotation types are to be compared
         * `score_types`: optional list for specifying which scores are to be calculated
-

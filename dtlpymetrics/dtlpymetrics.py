@@ -3,7 +3,7 @@ import logging
 import dtlpy as dl
 import pandas as pd
 
-from .scoring import calc_task_item_score, create_model_score, calc_precision_recall
+from .scoring import calc_task_item_score, calc_precision_recall
 from .evaluating import get_consensus_agreement
 
 dl.use_attributes_2()
@@ -67,35 +67,6 @@ def consensus_agreement(item: dl.Item,
                                    progress=progress,
                                    **kwargs)
     return item
-
-
-@scorer.add_function(display_name='Create scores for model predictions on a dataset per annotation')
-def model_score(dataset: dl.Dataset = None,
-                model: dl.Model = None,
-                filters: dl.Filters = None,
-                ignore_labels=False,
-                match_threshold=0.01,
-                compare_types=None) -> dl.Model:
-    """
-    Creates scores for a set of model predictions compared against ground truth annotations. This is a wrapper function
-    for _create_model_score.
-
-    :param dataset:
-    :param model:
-    :param filters:
-    :param ignore_labels:
-    :param match_threshold:
-    :param compare_types:
-    :return:
-    """
-    model = create_model_score(dataset=dataset,
-                               model=model,
-                               filters=filters,
-                               ignore_labels=ignore_labels,
-                               match_threshold=match_threshold,
-                               compare_types=compare_types)
-
-    return model
 
 
 @scorer.add_function(display_name='Calculate precision recall values for model predictions')
