@@ -20,9 +20,9 @@ logger = logging.getLogger('scoring-and-metrics')
 def create_model_score(dataset: dl.Dataset,
                        model: dl.Model,
                        filters: dl.Filters,
-                       compare_types,
-                       ignore_labels,
-                       match_threshold=0.01) -> dl.Model:
+                       ignore_labels=False,
+                       match_threshold=0.01,
+                       compare_types=None) -> dl.Model:
     """
     Creates scores for a set of model predictions compared against ground truth annotations.
 
