@@ -51,11 +51,6 @@
       * `item`: item whose annotations are to be scored
       *
 
-* `get_video_scores`
-* `check_if_video`
-* `plot_matrix`
-* `add_score_context`
-
 * `calculate_annotation_score`
     * Description: This function takes annotations and calculates the score for each annotation.
     * Input:

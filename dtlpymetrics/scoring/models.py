@@ -2,19 +2,143 @@ import datetime
 import logging
 import json
 import os
+import pathlib
+import tqdm
 
 import dtlpy as dl
 import numpy as np
 import pandas as pd
 
+from concurrent.futures import ThreadPoolExecutor
 from matplotlib import pyplot as plt
+
+from ..utils import measure_annotations
 
 logger = logging.getLogger('scoring-and-metrics')
 
 
+def calc_model_score(dataset: dl.Dataset,
+                     model: dl.Model,
+                     filters: dl.Filters,
+                     compare_types,
+                     ignore_labels,
+                     match_threshold=0.01) -> dl.Model:
+    """
+    Creates scores for a set of model predictions compared against ground truth annotations.
+
+    :param dataset: Dataset associated with the ground truth annotations
+    :param model: Model for evaluating predictions
+    :param filters: DQL Filter for retrieving the test items
+    :param compare_types: annotation types to compare
+    :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label
+    :param match_threshold: float, threshold for matching annotations
+    :return: dl.Model
+    """
+
+    # TODO use export to download the zip and take the annotation from there
+    logger.info('Downloading dataset annotations...')
+    json_path = dataset.download_annotations(filters=filters,
+                                             annotation_options=[dl.VIEW_ANNOTATION_OPTIONS_JSON],
+                                             overwrite=True)
+    item_json_files = list(pathlib.Path(json_path).rglob('*.json'))
+    if len(item_json_files) == 0:
+        raise KeyError('No items found in the dataset, please check the dataset and filters.')
+
+    ########################################
+    # Create list of item annotation lists #
+    ########################################
+    annotation_sets_by_item = dict()
+    n_gt_annotations = 0
+    n_md_annotations = 0
+    pbar = tqdm.tqdm(item_json_files)
+    pbar.set_description(f'Loading annotations from items... ')
+    for item_file in pbar:
+        item_annots_1 = []
+        item_annots_2 = []
+        with open(item_file, 'r') as f:
+            data = json.load(f)
+        item = dl.Item.from_json(_json=data,
+                                 client_api=dataset._client_api,
+                                 dataset=dataset)
+        item_id = data['id']
+        collection: dl.AnnotationCollection = dl.AnnotationCollection.from_json(_json=data['annotations'],
+                                                                                item=item)
+        for annotation in collection:
+            if annotation.metadata.get('user', {}).get('model') is None:
+                # GT annotation (no model in metadata)
+                item_annots_1.append(annotation)
+            elif annotation.metadata.get('user', {}).get('model', {}).get('name', '') == model.name:
+                # annotation came from the evaluated model
+                item_annots_2.append(annotation)
+        annotation_sets_by_item[item_id] = {'gt': item_annots_1,
+                                            'model': item_annots_2}
+        n_gt_annotations += len(item_annots_1)
+        n_md_annotations += len(item_annots_2)
+        pbar.update()
+
+    logger.info(f'Found {len(annotation_sets_by_item)} GT item.')
+    logger.info(f'Found {n_gt_annotations} GT annotations.')
+    logger.info(f'Found {n_md_annotations} mode annotations.')
+    #########################################################
+    # Compare annotations and return concatenated dataframe #
+    #########################################################
+    all_results = pd.DataFrame()
+    pbar = tqdm.tqdm(total=len(annotation_sets_by_item), desc=f'Calculating metrics...')
+    pool = ThreadPoolExecutor(max_workers=32)
+
+    def calc_single(w_item_id, w_annotation_sets):
+        try:
+            set_1_item_annotations = w_annotation_sets['gt']
+            set_2_item_annotations = w_annotation_sets['model']
+            if not (len(set_1_item_annotations) == 0 and len(set_2_item_annotations) == 0):
+                results = measure_annotations(annotations_set_one=set_1_item_annotations,
+                                              annotations_set_two=set_2_item_annotations,
+                                              match_threshold=match_threshold,
+                                              # default 0.01 to get all possible matches
+                                              ignore_labels=ignore_labels,
+                                              compare_types=compare_types)
+                for compare_type in compare_types:
+                    try:
+                        results_df = results[compare_type].to_df()
+                    except KeyError:
+                        continue
+                    results_df['item_id'] = [w_item_id] * results_df.shape[0]
+                    results_df['annotation_type'] = [compare_type] * results_df.shape[0]
+                    all_results[w_item_id] = results_df
+        finally:
+            pbar.update()
+
+    all_results = dict()
+    for item_id, annotation_sets in annotation_sets_by_item.items():
+        pool.submit(calc_single, w_item_id=item_id, w_annotation_sets=annotation_sets)
+    pool.shutdown()
+    all_results = pd.concat(list(all_results.values()), ignore_index=True)
+
+    ###############################################
+    # Save results to csv for IOU/label/attribute #
+    ###############################################
+    # TODO save via feature vectors when ready
+    # file format "/.modelscores/modelId.csv"
+    all_results['model_id'] = [model.id] * all_results.shape[0]
+    all_results['dataset_id'] = [dataset.id] * all_results.shape[0]
+
+    if not os.path.isdir(os.path.join(os.getcwd(), '../.dataloop')):
+        os.mkdir(os.path.join(os.getcwd(), '../.dataloop'))
+    scores_filepath = os.path.join(os.getcwd(), '../.dataloop', f'{model.id}.csv')
+
+    all_results.to_csv(scores_filepath, index=False)
+    item = dataset.items.upload(local_path=scores_filepath,
+                                remote_path=f'/.modelscores',
+                                overwrite=True)
+    logger.info(f'Successfully created model scores and saved as item {item.id}.')
+
+    # This is a workaround for uploading interpolated precision-recall for 10 iou levels
+    calc_and_upload_interpolation(model=model, dataset=dataset)
+    return model
+
+
 def calc_precision_recall(dataset_id: str,
                           model_id: str,
-                          logger: logging.Logger,
                           iou_threshold=0.01,
                           method_type=None,
                           each_label=True,
@@ -92,18 +216,18 @@ def calc_precision_recall(dataset_id: str,
          dataset_plot_precision,
          dataset_plot_recall,
          dataset_plot_confidence] = \
-            every_point_curve(recall=list(dataset_recall),
-                              precision=list(dataset_precision),
-                              confidence=list(detections['second_confidence']))
+            _every_point_curve(recall=list(dataset_recall),
+                               precision=list(dataset_precision),
+                               confidence=list(detections['second_confidence']))
     else:
         [_,
          dataset_plot_precision,
          dataset_plot_recall,
          dataset_plot_confidence] = \
-            n_point_interpolated_curve(recall=list(dataset_recall),
-                                       precision=list(dataset_precision),
-                                       confidence=list(detections['second_confidence']),
-                                       n_points=n_points)
+            _n_point_interpolated_curve(recall=list(dataset_recall),
+                                        precision=list(dataset_precision),
+                                        confidence=list(detections['second_confidence']),
+                                        n_points=n_points)
 
     dataset_points['iou_threshold'] = [iou_threshold] * len(dataset_plot_precision)
     dataset_points['data'] = ['dataset'] * len(dataset_plot_precision)
@@ -141,18 +265,18 @@ def calc_precision_recall(dataset_id: str,
                      label_plot_precision,
                      label_plot_recall,
                      label_plot_confidence] = \
-                        every_point_curve(recall=list(label_recall),
-                                          precision=list(label_precision),
-                                          confidence=list(label_detections['second_confidence']))
+                        _every_point_curve(recall=list(label_recall),
+                                           precision=list(label_precision),
+                                           confidence=list(label_detections['second_confidence']))
                 else:
                     [_,
                      label_plot_precision,
                      label_plot_recall,
                      label_plot_confidence] = \
-                        n_point_interpolated_curve(recall=list(label_recall),
-                                                   precision=list(label_precision),
-                                                   confidence=list(label_detections['second_confidence']),
-                                                   n_points=n_points)
+                        _n_point_interpolated_curve(recall=list(label_recall),
+                                                    precision=list(label_precision),
+                                                    confidence=list(label_detections['second_confidence']),
+                                                    n_points=n_points)
 
             label_points['iou_threshold'] = [iou_threshold] * len(label_plot_precision)
             label_points['data'] = ['label'] * len(label_plot_precision)
@@ -264,156 +388,6 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     return save_dir
 
 
-def every_point_curve(recall: list, precision: list, confidence: list):
-    """
-    Calculate precision-recall curve from a list of precision & recall values
-    :param recall: list of recall values
-    :param precision: list of precision values
-    :param confidence: list of confidence values
-    :return: list of average precision all values, precision points, recall points, confidence points
-    """
-    recall_points = np.concatenate([[0], recall, [recall[-1]]])
-    precision_points = np.concatenate([[0], precision, [0]])
-    confidence_points = np.concatenate([[confidence[0]], confidence, [confidence[-1]]])
-
-    # find the maximum precision between each recall value, backwards
-    for i in range(len(precision_points) - 1, 0, -1):
-        precision_points[i - 1] = max(precision_points[i - 1], precision_points[i])
-        # print(precision_points[i-1])  # DEBUG
-
-    # build the simplified recall list, removing values when the precision doesnt change
-    recall_intervals = []
-    for i in range(len(recall_points) - 1):
-        if recall_points[1 + i] != recall_points[i]:
-            recall_intervals.append(i + 1)
-    # plt.plot(recall_points, precision_points)  # DEBUG
-
-    # use the recall intervals to calculate the average precision / area under the curve
-    avg_precis = 0
-    for i in recall_intervals:
-        avg_precis = avg_precis + np.sum((recall_points[i] - recall_points[i - 1]) * precision_points[i])
-
-    return [avg_precis,
-            precision_points[0:len(precision_points)],
-            recall_points[0:len(precision_points)],
-            confidence_points[0:len(precision_points)]]
-
-
-def n_point_interpolated_curve(recall: list, precision: list, confidence: list, n_points=201):
-    """
-    Calculate precision-recall curve from a list of precision & recall values, using n-points interpolation
-
-    :param recall: list of recall values
-    :param precision: list of precision values
-    :param confidence: list of confidence values
-    :param n_points: number of points to interpolate, default = 201
-    :return: list of average precision all values, precision points, recall points, confidence points
-    """
-    recall_all = recall
-    precision_all = precision
-    confidence_all = confidence
-
-    recall_intervals = np.linspace(1, 0, n_points)
-    # recall_intervals = list(reversed(recall_intervals))
-
-    rho_interpol = []  # the interpolated precision values for each interval range
-    recall_valid = []
-    conf_valid = []
-
-    for recall_interval in recall_intervals:
-        larger_recall = np.argwhere(recall_all[:] >= recall_interval).squeeze(axis=1)
-        precision_max = 0
-        confidence_min = 0
-        if larger_recall.size != 0:
-            precision_max = max([precision_all[i] for i in larger_recall])
-            # print(f'precis max: {precision_max}, up to recall interval {recall_interval}')  # DEBUG
-            confidence_min = confidence_all[list(precision_all).index(precision_max)]
-        conf_valid.append(confidence_min)
-        recall_valid.append(recall_interval)
-        rho_interpol.append(precision_max)
-
-    avg_precis = sum(rho_interpol) / n_points
-
-    # make points plot-ready
-    recall_points = np.concatenate([[recall_valid[0]], recall_valid, [recall_valid[-1]]])  # 1 to 0
-    precision_points = np.concatenate([[rho_interpol[0]], rho_interpol, [rho_interpol[-1]]])  # 0 to 1
-    confidence_points = np.concatenate([[conf_valid[0]], conf_valid, [conf_valid[-1]]])  # conf min to max
-
-    cc = []
-    for i in range(1, len(recall_points)):
-        point_1 = (recall_points[i], precision_points[i - 1], confidence_points[i - 1])
-        point_2 = (recall_points[i], precision_points[i], confidence_points[i])
-        if point_1 not in cc:
-            cc.append(point_1)
-        if point_2 not in cc:
-            cc.append(point_2)
-
-    recall_plot = [i[0] for i in cc]
-    precision_plot = [i[1] for i in cc]
-    confidence_plot = [i[2] for i in cc]
-
-    return [avg_precis,
-            precision_plot,
-            recall_plot,
-            confidence_plot]
-
-
-def calc_confusion_matrix(dataset_id: str,
-                          model_id: str,
-                          metric: str,
-                          show_unmatched=True) -> pd.DataFrame:
-    """
-    Calculate confusion matrix for a given model and metric
-
-    :param dataset_id: str ID of test dataset
-    :param model_id: str ID of model
-    :param metric: name of the metric for comparing
-    :param show_unmatched: display extra column showing which GT annotations were not matched
-    :return: DataFrame with confusion matrix
-    """
-    if metric.lower() == 'iou':
-        metric = 'geometry_score'
-    elif metric.lower() == 'accuracy':
-        metric = 'label_score'
-
-    model_filename = f'{model_id}.csv'
-    filters = dl.Filters(field='hidden', values=True)
-    filters.add(field='name', values=model_filename)
-    dataset = dl.datasets.get(dataset_id=dataset_id)
-    items = list(dataset.items.list(filters=filters).all())
-    if len(items) == 0:
-        raise ValueError(f'No scores found for model ID {model_id}.')
-    elif len(items) > 1:
-        raise ValueError(f'Found {len(items)} items with name {model_id}.')
-    else:
-        scores_file = items[0].download()
-
-    scores = pd.read_csv(scores_file)
-    labels = dataset.labels
-    label_names = [label.tag for label in labels]
-
-    if metric not in scores.columns:
-        raise ValueError(f'{metric} metric not included in scores.')
-
-    ###############################
-    # create table of comparisons #
-    ###############################
-    # calc
-    if label_names is None:
-        label_names = pd.concat([scores.first_label, scores.second_label]).dropna()
-
-    scores_cleaned = scores.dropna().reset_index(drop=True)
-    scores_labels = scores_cleaned[['first_label', 'second_label']]
-    grouped_labels = scores_labels.groupby(['first_label', 'second_label']).size()
-
-    conf_matrix = pd.DataFrame(index=label_names, columns=label_names, data=0)
-    for label1, label2 in grouped_labels.index:
-        # index/rows are the ground truth, cols are the predictions
-        conf_matrix.loc[label1, label2] = grouped_labels.get((label1, label2), 0)
-
-    return conf_matrix
-
-
 def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     """
     Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file,
@@ -493,11 +467,95 @@ def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
                                 overwrite=True)
 
 
-def calculate_model_item_score(model_scores: pd.DataFrame):
+def _every_point_curve(recall: list, precision: list, confidence: list):
     """
-    Calculate scores for each item that a model predicts on
-
-    @return:
+    Calculate precision-recall curve from a list of precision & recall values
+    :param recall: list of recall values
+    :param precision: list of precision values
+    :param confidence: list of confidence values
+    :return: list of average precision all values, precision points, recall points, confidence points
     """
+    recall_points = np.concatenate([[0], recall, [recall[-1]]])
+    precision_points = np.concatenate([[0], precision, [0]])
+    confidence_points = np.concatenate([[confidence[0]], confidence, [confidence[-1]]])
 
-    pass
+    # find the maximum precision between each recall value, backwards
+    for i in range(len(precision_points) - 1, 0, -1):
+        precision_points[i - 1] = max(precision_points[i - 1], precision_points[i])
+        # print(precision_points[i-1])  # DEBUG
+
+    # build the simplified recall list, removing values when the precision doesnt change
+    recall_intervals = []
+    for i in range(len(recall_points) - 1):
+        if recall_points[1 + i] != recall_points[i]:
+            recall_intervals.append(i + 1)
+    # plt.plot(recall_points, precision_points)  # DEBUG
+
+    # use the recall intervals to calculate the average precision / area under the curve
+    avg_precis = 0
+    for i in recall_intervals:
+        avg_precis = avg_precis + np.sum((recall_points[i] - recall_points[i - 1]) * precision_points[i])
+
+    return [avg_precis,
+            precision_points[0:len(precision_points)],
+            recall_points[0:len(precision_points)],
+            confidence_points[0:len(precision_points)]]
+
+
+def _n_point_interpolated_curve(recall: list, precision: list, confidence: list, n_points=201):
+    """
+    Calculate precision-recall curve from a list of precision & recall values, using n-points interpolation
+
+    :param recall: list of recall values
+    :param precision: list of precision values
+    :param confidence: list of confidence values
+    :param n_points: number of points to interpolate, default = 201
+    :return: list of average precision all values, precision points, recall points, confidence points
+    """
+    recall_all = recall
+    precision_all = precision
+    confidence_all = confidence
+
+    recall_intervals = np.linspace(1, 0, n_points)
+    # recall_intervals = list(reversed(recall_intervals))
+
+    rho_interpol = []  # the interpolated precision values for each interval range
+    recall_valid = []
+    conf_valid = []
+
+    for recall_interval in recall_intervals:
+        larger_recall = np.argwhere(recall_all[:] >= recall_interval).squeeze(axis=1)
+        precision_max = 0
+        confidence_min = 0
+        if larger_recall.size != 0:
+            precision_max = max([precision_all[i] for i in larger_recall])
+            # print(f'precis max: {precision_max}, up to recall interval {recall_interval}')  # DEBUG
+            confidence_min = confidence_all[list(precision_all).index(precision_max)]
+        conf_valid.append(confidence_min)
+        recall_valid.append(recall_interval)
+        rho_interpol.append(precision_max)
+
+    avg_precis = sum(rho_interpol) / n_points
+
+    # make points plot-ready
+    recall_points = np.concatenate([[recall_valid[0]], recall_valid, [recall_valid[-1]]])  # 1 to 0
+    precision_points = np.concatenate([[rho_interpol[0]], rho_interpol, [rho_interpol[-1]]])  # 0 to 1
+    confidence_points = np.concatenate([[conf_valid[0]], conf_valid, [conf_valid[-1]]])  # conf min to max
+
+    cc = []
+    for i in range(1, len(recall_points)):
+        point_1 = (recall_points[i], precision_points[i - 1], confidence_points[i - 1])
+        point_2 = (recall_points[i], precision_points[i], confidence_points[i])
+        if point_1 not in cc:
+            cc.append(point_1)
+        if point_2 not in cc:
+            cc.append(point_2)
+
+    recall_plot = [i[0] for i in cc]
+    precision_plot = [i[1] for i in cc]
+    confidence_plot = [i[2] for i in cc]
+
+    return [avg_precis,
+            precision_plot,
+            recall_plot,
+            confidence_plot]

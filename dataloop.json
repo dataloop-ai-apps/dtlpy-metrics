@@ -24,7 +24,7 @@
         "description": "Calculate the score for each item with in a task (consensus, qualification, honeypot)",
         "invoke": {
           "type": "function",
-          "namespace": "scoring_functions.create_task_item_score"
+          "namespace": "dlm_module.create_task_item_score"
         },
         "categories": [
           "data"
@@ -40,7 +40,7 @@
         "description": "Process consensus items based on annotator agreement threshold.",
         "invoke": {
           "type": "function",
-          "namespace": "scoring_functions.consensus_agreement"
+          "namespace": "dlm_module.consensus_agreement"
         },
         "categories": [
           "data"
@@ -92,13 +92,8 @@
     ],
     "modules": [
       {
-<<<<<<< Updated upstream
-        "name": "scoring_functions",
-        "entryPoint": "dtlpymetrics/scoring.py",
-=======
-        "name": "scoring_tasks",
+        "name": "dlm_module",
         "entryPoint": "dtlpymetrics/dtlpymetrics.py",
->>>>>>> Stashed changes
         "className": "scorer",
         "initInputs": [],
         "functions": [
@@ -119,11 +114,7 @@
             ],
             "displayIcon": "icon-dl-analytics",
             "displayName": "Create Score for Task Item"
-<<<<<<< Updated upstream
-          },
-=======
             },
->>>>>>> Stashed changes
           {
             "name": "consensus_agreement",
             "description": "Process consensus task items based on annotator agreement threshold.",
@@ -152,7 +143,7 @@
     "services": [
       {
         "name": "scoring-and-metrics",
-        "moduleName": "scoring_functions",
+        "moduleName": "dlm_module",
         "runtime": {
           "podType": "regular-xs",
           "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.4.0",

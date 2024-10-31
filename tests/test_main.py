@@ -7,7 +7,7 @@ import os
 
 import dtlpy as dl
 from dtlpymetrics.dtlpy_scores import ScoreType
-from dtlpymetrics import calculate_task_score
+from dtlpymetrics import calc_task_score
 
 logger = logging.getLogger()
 
@@ -40,9 +40,9 @@ class TestRunner(unittest.TestCase):
 
     def test_qualification_task(self):
         logger.info(f'Starting qualification testing task with dataset: {self.qualification_task.dataset}')
-        self.qualification_task = calculate_task_score(task=self.qualification_task,
-                                                       context=[ScoreType.ANNOTATION_LABEL,
-                                                                ScoreType.ANNOTATION_IOU])
+        self.qualification_task = calc_task_score(task=self.qualification_task,
+                                                  context=[ScoreType.ANNOTATION_LABEL,
+                                                           ScoreType.ANNOTATION_IOU])
 
         qualification_items = self.qualification_task.get_items().all()
         for item in qualification_items:
@@ -55,7 +55,7 @@ class TestRunner(unittest.TestCase):
 
     def test_honeypot_task(self):
         logger.info(f'Starting honeypot testing task with dataset: {self.honeypot_task.dataset}')
-        self.honeypot_task = calculate_task_score(task=self.honeypot_task, context=[ScoreType.ANNOTATION_LABEL])
+        self.honeypot_task = calc_task_score(task=self.honeypot_task, context=[ScoreType.ANNOTATION_LABEL])
 
         filters = dl.Filters()
         filters.add(field='hidden', values=True)
@@ -74,8 +74,8 @@ class TestRunner(unittest.TestCase):
         # for classification task #
         ###########################
         logger.info('calculating scores for consensus classification task')
-        self.consensus_task_classification = calculate_task_score(task=self.consensus_task_classification,
-                                                                  context=[ScoreType.ANNOTATION_LABEL])
+        self.consensus_task_classification = calc_task_score(task=self.consensus_task_classification,
+                                                             context=[ScoreType.ANNOTATION_LABEL])
 
         consensus_assignment = self.consensus_task_classification.metadata['system']['consensusAssignmentId']
         consensus_class_items = self.consensus_task_classification.get_items(get_consensus_items=True).all()
@@ -104,9 +104,9 @@ class TestRunner(unittest.TestCase):
         # for bbox task #
         #################
         logger.info('calculating scores for consensus object detection task')
-        self.consensus_task_bbox = calculate_task_score(task=self.consensus_task_bbox,
-                                                        context=[ScoreType.ANNOTATION_LABEL,
-                                                                 ScoreType.ANNOTATION_IOU])
+        self.consensus_task_bbox = calc_task_score(task=self.consensus_task_bbox,
+                                                   context=[ScoreType.ANNOTATION_LABEL,
+                                                            ScoreType.ANNOTATION_IOU])
         consensus_assignment = self.consensus_task_bbox.metadata['system']['consensusAssignmentId']
         consensus_bbox_items = self.consensus_task_bbox.get_items(get_consensus_items=True).all()
 

@@ -16,36 +16,12 @@ dl.use_attributes_2()
 logger = logging.getLogger('scoring-and-metrics')
 
 
-def get_model_scores_df(dataset: dl.Dataset, model: dl.Model) -> pd.DataFrame:
+def confusion_matrix(dataset_id: str,
+                     model_id: str,
+                     metric: str,
+                     show_unmatched=True) -> pd.DataFrame:
     """
-    Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file.
-    :param dataset: Dataset where the model was evaluated
-    :param model: Model entity
-    :return: matched_annots_df: dataframe of all annotations in ground truth and model predictions
-    """
-    file_name = f'{model.id}.csv'
-    local_path = os.path.join(os.getcwd(), '.dataloop', file_name)
-    filters = dl.Filters(field='name', values=file_name)
-    filters.add(field='hidden', values=True)
-    pages = dataset.items.list(filters=filters)
-
-    if pages.items_count > 0:
-        for item in pages.all():
-            item.download(local_path=local_path)
-    else:
-        raise ValueError(
-            f'No matched annotations file found for model {model.id} on dataset {dataset.id}. Please evaluate model on the dataset first.')
-
-    model_scores_df = pd.read_csv(local_path)
-    return model_scores_df
-
-
-def calc_confusion_matrix(dataset_id: str,
-                          model_id: str,
-                          metric: str,
-                          show_unmatched=True) -> pd.DataFrame:
-    """
-    Calculate confusion matrix for a given model and metric using
+    Calculate confusion matrix for a given model and metric (i.e. IOU, accuracy)
 
     :param dataset_id: str ID of test dataset
     :param model_id: str ID of model
@@ -58,6 +34,7 @@ def calc_confusion_matrix(dataset_id: str,
     elif metric.lower() == 'accuracy':
         metric = 'label_score'
 
+    # TODO retrieve scores directly once available
     model_filename = f'{model_id}.csv'
     filters = dl.Filters(field='hidden', values=True)
     filters.add(field='name', values=model_filename)
@@ -80,7 +57,6 @@ def calc_confusion_matrix(dataset_id: str,
     ###############################
     # create table of comparisons #
     ###############################
-    # calc
     if label_names is None:
         label_names = pd.concat([scores.first_label, scores.second_label]).dropna()
 
@@ -96,9 +72,9 @@ def calc_confusion_matrix(dataset_id: str,
     return conf_matrix
 
 
-def calc_label_confusion_matrix(item: dl.Item,
-                                scores: List[Score],
-                                save_plot=True) -> pd.DataFrame:
+def label_confusion_matrix(item: dl.Item,
+                           scores: List[Score],
+                           save_plot=True) -> pd.DataFrame:
     """
     Calculate confusion matrix from a set of label confusion scores
     :param item: dl.Item
@@ -151,6 +127,30 @@ def calc_label_confusion_matrix(item: dl.Item,
                                   axis_labels=label_names)
 
     return conf_matrix
+
+
+def get_scores_df(dataset: dl.Dataset, model: dl.Model) -> pd.DataFrame:
+    """
+    Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file.
+    :param dataset: Dataset where the model was evaluated
+    :param model: Model entity
+    :return: matched_annots_df: dataframe of all annotations in ground truth and model predictions
+    """
+    file_name = f'{model.id}.csv'
+    local_path = os.path.join(os.getcwd(), '.dataloop', file_name)
+    filters = dl.Filters(field='name', values=file_name)
+    filters.add(field='hidden', values=True)
+    pages = dataset.items.list(filters=filters)
+
+    if pages.items_count > 0:
+        for item in pages.all():
+            item.download(local_path=local_path)
+    else:
+        raise ValueError(
+            f'No matched annotations file found for model {model.id} on dataset {dataset.id}. Please evaluate model on the dataset first.')
+
+    model_scores_df = pd.read_csv(local_path)
+    return model_scores_df
 
 
 def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
@@ -288,64 +288,7 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     return save_dir
 
 
-def calculate_confusion_matrix_item(item: dl.Item,
-                                    scores: List[Score],
-                                    save_plot=True) -> pd.DataFrame:
-    """
-    Calculate confusion matrix from a set of label confusion scores
-    :param item: dl.Item
-    :param scores: list of scores
-    :param save_plot: bool
-    :return: confusion matrix as pd.DataFrame
-    """
-    scores_dl = []
-    for score in scores:
-        scores_dl.append(score)
-
-    # ###############################
-    # # create table of comparisons #
-    # ###############################
-    label_names = []
-    for score in scores_dl:
-        if score.type == ScoreType.LABEL_CONFUSION:
-            if score.entity_id not in label_names:
-                label_names.append(score.entity_id)
-            if score.relative not in label_names:
-                label_names.append(score.relative)
-
-    conf_matrix = pd.DataFrame(index=label_names, columns=label_names)
-
-    for score in scores_dl:
-        if score.type == ScoreType.LABEL_CONFUSION:
-            conf_matrix.loc[score.entity_id] = score.value
-            conf_matrix.loc[score.entity_id, score.relative] = score.value
-
-    conf_matrix.fillna(0, inplace=True)
-    conf_matrix.rename(columns={None: 'unmatched'}, inplace=True)
-    conf_matrix.rename(index={None: 'unmatched'}, inplace=True)
-    label_names = ['unmatched' if label is None else label for label in label_names]
-
-    if save_plot is True:
-        if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
-            debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-
-            plot_matrix(item_title=f'label confusion matrix {item.id}',
-                        filename=os.path.join(debug_path, 'label_confusion',
-                                              f'label_confusion_matrix_{item.id}.png'),
-                        matrix_to_plot=conf_matrix,
-                        axis_labels=label_names)
-
-        else:
-            plot_matrix(item_title=f'label confusion matrix {item.id}',
-                        filename=os.path.join('.dataloop', 'label_confusion',
-                                              f'label_confusion_matrix_{item.id}.png'),
-                        matrix_to_plot=conf_matrix,
-                        axis_labels=label_names)
-
-    return conf_matrix
-
-
-def plot_matrix(item_title, filename, matrix_to_plot, axis_labels):
+def plot_annotators_matrix(item_title, filename, matrix_to_plot, axis_labels):
     """
     Plot confusion matrix between annotator pairs
     :param item_title: title of the item
