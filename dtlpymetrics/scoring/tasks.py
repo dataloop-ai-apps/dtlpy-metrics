@@ -89,7 +89,7 @@ def calc_task_item_score(item: dl.Item,
                                        task=task,
                                        item=item)
     if is_quality_task is False:
-        logging.info('Item was not annotated via quality task, no scores were created.')
+        logging.info('Item was not annotated via quality task. No scores were created.')
     else:
         [assignments_by_id, assignments_by_annotator] = _sort_assignments(task_type=task_type,
                                                                           item=item,
