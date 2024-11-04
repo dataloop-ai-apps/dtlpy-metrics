@@ -41,7 +41,7 @@ def confusion_matrix(dataset_id: str,
     dataset = dl.datasets.get(dataset_id=dataset_id)
     items = list(dataset.items.list(filters=filters).all())
     if len(items) == 0:
-        raise ValueError(f'No scores found for model ID {model_id}.')
+        raise ValueError(f'No scores found for model ID {model_id}. Please evaluate model on the dataset first.')
     elif len(items) > 1:
         raise ValueError(f'Found {len(items)} items with name {model_id}.')
     else:

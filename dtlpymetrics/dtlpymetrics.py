@@ -86,10 +86,10 @@ def precision_recall(dataset_id: str,
     :param n_points: int number of points to interpolate in case of n point interpolation
     :return: dataframe with all the points to plot for the dataset and individual labels
     """
-    df = calc_precision_recall(dataset_id=dataset_id,
-                               model_id=model_id,
-                               iou_threshold=iou_threshold,
-                               method_type=method_type,
-                               each_label=each_label,
-                               n_points=n_points)
-    return df
+    precision_recall_df = calc_precision_recall(dataset_id=dataset_id,
+                                                model_id=model_id,
+                                                iou_threshold=iou_threshold,
+                                                method_type=method_type,
+                                                each_label=each_label,
+                                                n_points=n_points)
+    return precision_recall_df
