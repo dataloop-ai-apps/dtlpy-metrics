@@ -249,7 +249,7 @@ def _sort_annotations(task: dl.Task,
     return annots_by_assignment
 
 
-def _split_video_to_frames(annotations: List[dl.Annotation],
+def _split_video_to_frames(annotations: dl.AnnotationCollection,
                            item: dl.Item,
                            task: dl.Task,
                            task_type: str,

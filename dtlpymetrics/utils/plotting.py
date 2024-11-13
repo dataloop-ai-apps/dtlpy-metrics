@@ -1,12 +1,7 @@
 import os
-import dtlpy as dl
-import pandas as pd
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-
-from ..dtlpy_scores import Score, ScoreType
-from typing import List
 
 
 def plot_confusion_matrix(item_title, filename, matrix_to_plot, axis_labels):
@@ -42,4 +37,3 @@ def plot_confusion_matrix(item_title, filename, matrix_to_plot, axis_labels):
     plt.close()
 
     return filename
-

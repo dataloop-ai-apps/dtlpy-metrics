@@ -497,7 +497,7 @@ def _every_point_curve(recall: list, precision: list, confidence: list):
         precision_points[i - 1] = max(precision_points[i - 1], precision_points[i])
         # print(precision_points[i-1])  # DEBUG
 
-    # build the simplified recall list, removing values when the precision doesnt change
+    # build the simplified recall list, removing values when the precision doesn't change
     recall_intervals = []
     for i in range(len(recall_points) - 1):
         if recall_points[1 + i] != recall_points[i]:

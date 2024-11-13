@@ -107,7 +107,7 @@ In this example item, the ground truth has 3 for each cat and dog class. The ass
         "context": {
             "relative": "cat",
             "taskId": "<TASK_ID>",
-            "itemId": "<ITEM_ID">,
+            "itemId": "<ITEM_ID>",
             "datasetId": "<DATASET_ID>"
         }
 },
@@ -118,7 +118,7 @@ In this example item, the ground truth has 3 for each cat and dog class. The ass
         "context": {
             "relative": "dog",
             "taskId": "<TASK_ID>",
-            "itemId": "<ITEM_ID">,
+            "itemId": "<ITEM_ID>",
             "datasetId": "<DATASET_ID>"
         }
 },
@@ -129,7 +129,7 @@ In this example item, the ground truth has 3 for each cat and dog class. The ass
         "context": {
             "relative": "cat",
             "taskId": "<TASK_ID>",
-            "itemId": "<ITEM_ID">,
+            "itemId": "<ITEM_ID>",
             "datasetId": "<DATASET_ID>"
         }
 }
