@@ -29,9 +29,9 @@ def create_model_score(dataset: dl.Dataset,
     :param dataset: Dataset associated with the ground truth annotations
     :param model: Model for evaluating predictions
     :param filters: DQL Filter for retrieving the test items
-    :param compare_types: annotation types to compare
-    :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label
-    :param match_threshold: float, threshold for matching annotations together
+    :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label (optinal)
+    :param match_threshold: float, threshold for matching annotations together (optional)
+    :param compare_types: annotation types to compare (optional)
     :return: dl.Model
     """
     if dataset is None:
@@ -43,7 +43,7 @@ def create_model_score(dataset: dl.Dataset,
     if compare_types is None:
         compare_types = all_compare_types
     if not isinstance(compare_types, list):
-        if compare_types not in model.output_type:  # TODO check this validation logic
+        if compare_types not in model.output_type:
             raise ValueError(
                 f'Annotation type {compare_types} does not match model output type {model.output_type}')
         compare_types = [compare_types]
@@ -160,10 +160,10 @@ def calc_precision_recall(dataset_id: str,
     Internal function for calculating  precision recall values for model predictions, for a given metric threshold.
     :param dataset_id: str dataset ID
     :param model_id: str model ID
-    :param iou_threshold: float Threshold for accepting matched annotations as a true positive
-    :param method_type: str method for calculating precision and recall. Options are: every_point and n_point_interpolated
-    :param each_label: bool calculate precision recall for each one of the labels
-    :param n_points: int number of points to interpolate in case of n point interpolation
+    :param iou_threshold: float Threshold for accepting matched annotations as a true positive (optional)
+    :param method_type: str method for calculating precision and recall. Options are: every_point and n_point_interpolated (optional)
+    :param each_label: bool calculate precision recall for each one of the labels (optional)
+    :param n_points: int number of points to interpolate in case of n point interpolation (optional)
     :return: dataframe with all the points to plot for the dataset and individual labels
     """
     if method_type is None:
@@ -323,9 +323,9 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     :param plot_points: dict generated from calculate_precision_recall with all the points to plot by label and
      the entire dataset. keys include: confidence threshold, iou threshold, dataset levels precision, recall, and
      confidence, and label-level precision, recall and confidence
-    :param dataset_name: name of dataset to plot in legend
-    :param label_names: list of label names to plot
-    :param local_path: path to save plot
+    :param dataset_name: name of dataset to plot in legend (optional)
+    :param label_names: list of label names to plot (optional)
+    :param local_path: path to save plot (optional)
     :return: directory path where plots are saved
     """
     if local_path is None:
@@ -451,10 +451,9 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
 def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
     """
     Calculate precision recall for a model and dataset, and upload the interpolated points to the dataset
-
     :param model: dl.Model
     :param dataset: dl.Dataset
-    :return: None
+    :return: True
     """
     figures = dict()
     for iou_th in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
@@ -478,6 +477,8 @@ def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
     item = dataset.items.upload(local_path=filepath,
                                 remote_path=f'/.modelscores',
                                 overwrite=True)
+
+    return True
 
 
 def _every_point_curve(recall: list, precision: list, confidence: list):

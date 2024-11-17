@@ -27,9 +27,9 @@ def create_task_item_score(item: dl.Item,
     :param item: dl.Item
     :param task: dl.Task (optional) Task entity. If none provided, task will be retrieved from context.
     :param context: dl.Context (optional)
-    :param score_types: list of ScoreType
-    :param upload: bool
-
+    :param score_types: list of ScoreType (optional)
+    :param upload: bool flag to upload the scores to the platform (optional)
+    :return: dl.Item
     """
     if item is None:
         raise ValueError('No item provided, please provide an item.')
@@ -54,12 +54,11 @@ def consensus_agreement(item: dl.Item,
                         **kwargs) -> dl.Item:
     """
     Calculate consensus agreement for a quality task item. This is a wrapper function for get_consensus_agreement.
-    :param item:
-    :param context:
-    :param task:
-    :param progress:
-    :param kwargs:
-    :return:
+    :param item: dl.Item to calculate consensus agreement for
+    :param context: dl.Context for the item
+    :param task: dl.Task for the item (optional)
+    :param progress: dl.Progress for the item
+    :return: dl.Item
     """
     item = get_consensus_agreement(item=item,
                                    context=context,

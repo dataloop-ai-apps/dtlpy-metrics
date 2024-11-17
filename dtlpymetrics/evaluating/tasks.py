@@ -18,9 +18,9 @@ def get_consensus_agreement(item: dl.Item,
     """
     Determine whether annotators agree on annotations for a given item. Only available in pipelines.
     :param item: dl.Item
-    :param task: dl.Task (optional)
     :param context: dl.Context
-    :param progress: dl.Progress
+    :param task: dl.Task (optional)
+    :param progress: dl.Progress (optional)
     :return: dl.Item
     """
     if item is None:
@@ -75,16 +75,18 @@ def get_consensus_agreement(item: dl.Item,
     return item
 
 
-def check_annotator_agreement(scores, threshold):
+def check_annotator_agreement(scores, threshold=1):
     """
     Check agreement between all annotators
 
     Scores are averaged across users and compared to the threshold. If the average score is above the threshold,
     the function returns True.
     :param scores: list of Scores
-    :param threshold: float, 0-1
+    :param threshold: float, 0-1 (optional)
     :return: True if agreement is above threshold
     """
+    if threshold < 0 or threshold > 1:
+        raise ValueError('Threshold must be between 0 and 1. Please set a valid threshold.')
     # calculate agreement based on the average agreement across all annotators
     user_scores = [score.value for score in scores if score.type == ScoreType.USER_CONFUSION]
     if sum(user_scores) / len(user_scores) >= threshold:
@@ -96,10 +98,15 @@ def check_annotator_agreement(scores, threshold):
 def check_unanimous_agreement(scores, threshold=1):
     """
     Check unanimous agreement between all annotators above a certain threshold
+
+    Scores are averaged across users and compared to the threshold. If the average score is above the threshold,
+    the function returns True.
     :param scores: list of Scores
-    :param threshold: float, 0-1 threshold for agreement
+    :param threshold: float, 0-1 (optional)
     :return: True if all annotator pairs agree above threshold
     """
+    if threshold < 0 or threshold > 1:
+        raise ValueError('Threshold must be between 0 and 1. Please set a valid threshold.')
     # calculate unanimity based on whether each pair agrees
     for score in scores:
         if score.type == ScoreType.USER_CONFUSION:

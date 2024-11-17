@@ -26,7 +26,7 @@ def confusion_matrix(dataset_id: str,
     :param dataset_id: str ID of test dataset
     :param model_id: str ID of model
     :param metric: name of the metric for comparing
-    :param show_unmatched: display extra column showing which GT annotations were not matched
+    :param show_unmatched: display extra column showing which GT annotations were not matched (optional)
     :return: DataFrame with confusion matrix
     """
     if metric.lower() == 'iou':
@@ -79,7 +79,7 @@ def label_confusion_matrix(item: dl.Item,
     Calculate confusion matrix from a set of label confusion scores
     :param item: dl.Item
     :param scores: list of scores
-    :param save_plot: bool
+    :param save_plot: bool (optional)
     :return: confusion matrix as pd.DataFrame
     """
     scores_dl = []

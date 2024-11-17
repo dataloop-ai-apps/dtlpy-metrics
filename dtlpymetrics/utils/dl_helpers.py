@@ -28,13 +28,13 @@ def add_score_context(score: Score,
     """
     Add context to a score
     :param score: dl.Score
-    :param relative: entity the score is compared to
-    :param user_id: user or annotator who is being scored
-    :param entity_id: dl entity being scored
-    :param assignment_id: assignment id for the annotator's work to be scored
-    :param task_id: task id for the annotator's work to be scored
-    :param item_id: item id for the annotator's work to be scored
-    :param dataset_id: dataset id for the annotator's work to be scored
+    :param relative: entity the score is compared to (optional)
+    :param user_id: user or annotator who is being scored (optional)
+    :param entity_id: dl entity being scored (optional)
+    :param assignment_id: assignment id for the annotator's work to be scored (optional)
+    :param task_id: task id for the annotator's work to be scored (optional)
+    :param item_id: item id for the annotator's work to be scored (optional)
+    :param dataset_id: dataset id for the annotator's work to be scored (optional)
     :return: dl.Score
     """
     if entity_id is not None:
@@ -58,9 +58,9 @@ def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger 
     """
     Clean up annotations based on a list of scores to keep.
     :param scores: list of scores
-    :param annots_to_keep: list of annotation ids to keep
-    :param logger: logging.Logger
-    :return: None
+    :param annots_to_keep: list of annotation ids to keep (optional)
+    :param logger: logging.Logger (optional)
+    :return: True
     """
 
     annotations_to_delete = []
@@ -78,10 +78,10 @@ def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger 
     filters = dl.Filters(field='id', values=annotations_to_delete, operator=dl.FILTERS_OPERATIONS_IN)
     dl.annotations.delete(filters=filters)
 
-    return
+    return True
 
 
-def get_scores_by_annotator(scores):
+def get_scores_by_annotator(scores) -> dict:
     """
     Function to return a dic with annotator name as key and assignment entity as value
     :param scores: list of scores
@@ -99,7 +99,7 @@ def get_scores_by_annotator(scores):
     return scores_by_annotator
 
 
-def get_best_annotator_by_score(scores):
+def get_best_annotator_by_score(scores) -> int:
     """
     Get the best annotator scores for a given item
     :param scores: list of scores

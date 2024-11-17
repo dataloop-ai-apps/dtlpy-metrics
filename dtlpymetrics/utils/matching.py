@@ -55,14 +55,13 @@ def measure_annotations(
     :param annotations_set_two: dl.AnnotationCollection entity with a list of annotations to compare
     :param match_threshold: IoU threshold to count as a match
     :param ignore_labels: ignore label when comparing - measure only geometry. if annotation type is classification,
-    this will always be True
+    this will always be True (optional)
     :param ignore_attributes: ignore attribute score for final annotation score. if annotation type is classification,
-    this will always be True
-    :param ignore_geometry: only for classification
-    :param match_wrong_labels:
+    this will always be True (optional)
+    :param ignore_geometry: only for classification (optional)
+    :param match_wrong_labels: if True, will match geometric annotations even if they have different labels  (optional)
     :param compare_types: list of type to compare. enum dl.AnnotationType
-
-    Returns a dictionary of all the compare data
+    :return: dictionary of all the compared data
     """
 
     if compare_types is None:
@@ -166,17 +165,14 @@ def calculate_annotation_score(annot_collection_1: Union[dl.AnnotationCollection
 
     :param annot_collection_1: dl.AnnotationCollection or list of annotations
     :param annot_collection_2: dl.AnnotationCollection or list of annotations
-
-    :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label classification
-    :param ignore_geometry: bool, ignore iou score in mean. for classification
-    :param ignore_attributes: bool, ignore attribute score in mean
-
-    :param match_wrong_labels: bool, ignore attribute score in mean
-
-    :param include_confusion: bool, True means label confusion scores will be calculated
-    :param match_threshold: float, threshold for considering two annotations a "match"
-    :param compare_types: dl.AnnotationType entity or string for the annotation types to be compared
-    :param score_types: dl.ScoreType entity or string for the score types to be calculated (e.g. "annotation_iou")
+    :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label classification (optional)
+    :param ignore_geometry: bool, ignore iou score in mean. for classification (optional)
+    :param ignore_attributes: bool, ignore attribute score in mean (optional)
+    :param match_wrong_labels: bool, ignore attribute score in mean (optional)
+    :param include_confusion: bool, True means label confusion scores will be calculated (optional)
+    :param match_threshold: float, threshold for considering two annotations a "match" (optional)
+    :param compare_types: dl.AnnotationType entity or string for the annotation types to be compared (optional)
+    :param score_types: dl.ScoreType entity or string for the score types to be calculated (e.g. "annotation_iou") (optional)
     :return: list of Score entities
     """
     if score_types is None:
@@ -313,12 +309,12 @@ class Match:
         """
         Save a match between two annotations with all relevant scores
 
-        :param first_annotation_id:
-        :param second_annotation_id:
-        :param annotation_score:
-        :param attributes_score:
-        :param geometry_score:
-        :param label_score:
+        :param first_annotation_id: annotation ID of the annotation to compare to
+        :param second_annotation_id: annotation ID of the annotation to compare
+        :param annotation_score: score of the annotation match
+        :param attributes_score: score of the attributes match
+        :param geometry_score: score of the geometry match
+        :param label_score: score of the label match
         """
         self.first_annotation_id = first_annotation_id
         self.first_annotation_creator = first_annotation_creator
@@ -408,6 +404,7 @@ class Matchers:
         Measures IOU for two lists of bounding box points
         :param pts1: ann.geo coordinates
         :param pts2: ann.geo coordinates
+        :param config: arg added to match other functions
         :return: `float` how Intersection over Union of tho shapes
         """
         import shapely
@@ -463,6 +460,7 @@ class Matchers:
         Measure the accuracy of classification labels
         :param class1: `str` classification label
         :param class2: `str` classification label
+        :param config: arg added to match other functions
         :return: `float` how Intersection over Union of tho shapes
         """
         return 1 if class1 == class2 else 0
@@ -473,6 +471,7 @@ class Matchers:
         Measures IOU for two lists of polygon points
         :param pts1: ann.geo coordinates
         :param pts2: ann.geo coordinates
+        :param config: arg added to match other functions
         :return: `float` how Intersection over Union of tho shapes
         """
         # from shapely import Polygon
@@ -522,15 +521,17 @@ class Matchers:
         normalizing to score between [0, 1] -> 1 is the exact match
         if same point score is 1
         at about 20 pix distance score is about 0.5, 100 goes to 0
-        :param pt1:
-        :param pt2:
-        :return:
-        """
-        """
+
         x = np.arange(int(diag))
         y = np.exp(-1 / diag * 20 * x)
         plt.figure()
         plt.plot(x, y)
+
+        :param pt1: point 1
+        :param pt2: point 2
+        :param config: arg added to match other functions
+        :return: calculated point iou
+
         """
         height = config.get('height', 500)
         width = config.get('width', 500)
@@ -591,10 +592,10 @@ class Matchers:
         :param second_set: `AnnotationCollection` or list
         :param match_type: type of annotation to match (e.g. box, semantic, etc.)
         :param match_threshold: threshold for including a match
-        :param ignore_attributes: ignore attribute score for final annotation score
-        :param ignore_labels: ignore label when comparing - take also wrong label as a match
-        :param ignore_geometry: ignore geometry when comparing - for classification
-        :return:
+        :param ignore_attributes: ignore attribute score for final annotation score (optional)
+        :param ignore_labels: ignore label when comparing - take also wrong label as a match (optional)
+        :param ignore_geometry: ignore geometry when comparing - for classification (optional)
+        :return: Matches object
         """
         if ignore_geometry is True and ignore_labels is True and ignore_attributes is True:
             raise ValueError('Cant compare annotation with all ignore flags set to True, must choose at least one')
