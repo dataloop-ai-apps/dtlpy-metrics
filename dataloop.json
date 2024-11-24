@@ -7,8 +7,13 @@
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
-    "Media Type": ["Image"],
-    "Application Type": ["Pipeline Node"]
+    "Media Type": [
+      "Image"
+    ],
+    "Application Type": [
+      "Pipeline Node"
+    ],
+    "License": "Apache 2.0"
   },
   "source": {
     "type": "git",
