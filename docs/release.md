@@ -1,13 +1,19 @@
 Publishing flow:
 
+- build docker image
+- update manifest with new image URL
 - commit changes to git
 - `bumpversion patch`
 - `git push --follow-tags`
+- submit PR
+- merge PR
+
 
 PyPi
 - python setup.py bdist_wheel
 - twine check dist/*
 - twine upload dist/*
 
+
 DPK
-- python create_app.py --publish --project 4eff4f18-5285-42bb-b43d-f74cea633916
+- run publish

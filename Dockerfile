@@ -7,7 +7,7 @@ RUN pip install --user \
 
 COPY . /app/pkgs/dtlpy-metrics
 WORKDIR /app/pkgs/dtlpy-metrics
-RUN python setup.py install
+RUN python /app/pkgs/dtlpy-metrics/setup.py install
 
 # docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.4.0 -f Dockerfile .
 # docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.4.0
