@@ -15,11 +15,6 @@
     ],
     "License": "Apache 2.0"
   },
-  "source": {
-    "type": "git",
-    "repo": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
-    "tag": "main"
-  },
   "codebase": {
     "type": "git",
     "gitUrl": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
@@ -30,24 +25,82 @@
     "pipelineNodes": [
       {
         "name": "create_task_item_score",
+        "displayName": "Create Score for Task Item",
+        "description": "Calculate the score for each item with in a task (consensus, qualification, honeypot)",
         "invoke": {
           "type": "function",
-          "namespace": "scoring_functions.create_task_item_score"
+          "namespace": "dlm_module.create_task_item_score"
         },
         "categories": [
           "data"
-        ]
+        ],
+        "configuration": {
+          "fields": []
+        },
+        "scope": "node"
+      },
+      {
+        "name": "consensus_agreement",
+        "displayName": "Consensus Task Annotator Agreement",
+        "description": "Process consensus items based on annotator agreement threshold.",
+        "invoke": {
+          "type": "function",
+          "namespace": "dlm_module.consensus_agreement"
+        },
+        "categories": [
+          "data"
+        ],
+        "configuration": {
+          "fields": [
+            {
+              "name": "agreement_threshold",
+              "title": "Agreement Threshold",
+              "props": {
+                "type": "number",
+                "default": 0.5,
+                "min": 0,
+                "max": 1,
+                "step": 0.1
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-slider"
+            },
+            {
+              "name": "consensus_pass_keep_best",
+              "title": "On consensus pass, keep only best",
+              "props": {
+                "subtitle": "If consensus is reached, the default is to keep only the best. Check the box to keep all annotations.",
+                "type": "boolean",
+                "default": false
+              },
+              "widget": "dl-checkbox"
+            },
+            {
+              "name": "consensus_fail_keep_all",
+              "title": "On consensus fail, keep all annotations",
+              "props": {
+                "subtitle": "If consensus fails, the default is to keep all annotations. Uncheck the box to delete all annotations.",
+                "type": "boolean",
+                "default": true
+              },
+              "widget": "dl-checkbox"
+            }
+          ]
+        },
+        "scope": "node"
       }
     ],
     "modules": [
       {
-        "name": "scoring_functions",
-        "entryPoint": "dtlpymetrics/scoring.py",
+        "name": "dlm_module",
+        "entryPoint": "dtlpymetrics/dtlpymetrics.py",
         "className": "scorer",
         "initInputs": [],
-        "versions": {
-          "dtlpy": "1.80.4"
-        },
         "functions": [
           {
             "name": "create_task_item_score",
@@ -66,6 +119,28 @@
             ],
             "displayIcon": "icon-dl-analytics",
             "displayName": "Create Score for Task Item"
+            },
+          {
+            "name": "consensus_agreement",
+            "description": "Process consensus task items based on annotator agreement threshold.",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item",
+                "actions": [
+                  "consensus passed",
+                  "consensus failed"
+                ]
+              }
+            ],
+            "displayIcon": "icon-dl-members",
+            "displayName": "Consensus Task Annotator Agreement"
           }
         ]
       }
@@ -73,10 +148,10 @@
     "services": [
       {
         "name": "scoring-and-metrics",
-        "moduleName": "scoring_functions",
+        "moduleName": "dlm_module",
         "runtime": {
           "podType": "regular-xs",
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/cpu/scoring:0.3.0",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.4.0",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},

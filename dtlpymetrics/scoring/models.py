@@ -2,19 +2,154 @@ import datetime
 import logging
 import json
 import os
+import pathlib
+import tqdm
 
 import dtlpy as dl
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-prec_rec = dl.AppModule(name='Scoring and metrics function',
-                        description='Functions for calculating scores between annotations.'
-                        )
+from concurrent.futures import ThreadPoolExecutor
+from matplotlib import pyplot as plt
+
+from ..utils import all_compare_types, measure_annotations
+
 logger = logging.getLogger('scoring-and-metrics')
 
 
-@prec_rec.add_function(display_name='Calculate precision and recall')
+def create_model_score(dataset: dl.Dataset,
+                       model: dl.Model,
+                       filters: dl.Filters,
+                       ignore_labels=False,
+                       match_threshold=0.01,
+                       compare_types=None) -> dl.Model:
+    """
+    Creates scores for a set of model predictions compared against ground truth annotations.
+
+    :param dataset: Dataset associated with the ground truth annotations
+    :param model: Model for evaluating predictions
+    :param filters: DQL Filter for retrieving the test items
+    :param ignore_labels: bool, True means every annotation will be cross-compared regardless of label (optinal)
+    :param match_threshold: float, threshold for matching annotations together (optional)
+    :param compare_types: annotation types to compare (optional)
+    :return: dl.Model
+    """
+    if dataset is None:
+        raise ValueError('No dataset provided, please provide a dataset.')
+    if model is None:
+        raise ValueError('No model provided, please provide a model.')
+    if model.name is None:
+        raise ValueError('No model name found for the second set of annotations, please provide model name.')
+    if compare_types is None:
+        compare_types = all_compare_types
+    if not isinstance(compare_types, list):
+        if compare_types not in model.output_type:
+            raise ValueError(
+                f'Annotation type {compare_types} does not match model output type {model.output_type}')
+        compare_types = [compare_types]
+
+    # TODO use export to download the zip and take the annotation from there
+    logger.info('Downloading dataset annotations...')
+    json_path = dataset.download_annotations(filters=filters,
+                                             annotation_options=[dl.VIEW_ANNOTATION_OPTIONS_JSON],
+                                             overwrite=True)
+    item_json_files = list(pathlib.Path(json_path).rglob('*.json'))
+    if len(item_json_files) == 0:
+        raise KeyError('No items found in the dataset, please check the dataset and filters.')
+
+    ########################################
+    # Create list of item annotation lists #
+    ########################################
+    annotation_sets_by_item = dict()
+    n_gt_annotations = 0
+    n_md_annotations = 0
+    pbar = tqdm.tqdm(item_json_files)
+    pbar.set_description(f'Loading annotations from items... ')
+    for item_file in pbar:
+        item_annots_1 = []
+        item_annots_2 = []
+        with open(item_file, 'r') as f:
+            data = json.load(f)
+        item = dl.Item.from_json(_json=data,
+                                 client_api=dataset._client_api,
+                                 dataset=dataset)
+        item_id = data['id']
+        collection: dl.AnnotationCollection = dl.AnnotationCollection.from_json(_json=data['annotations'],
+                                                                                item=item)
+        for annotation in collection:
+            if annotation.metadata.get('user', {}).get('model') is None:
+                # GT annotation (no model in metadata)
+                item_annots_1.append(annotation)
+            elif annotation.metadata.get('user', {}).get('model', {}).get('name', '') == model.name:
+                # annotation came from the evaluated model
+                item_annots_2.append(annotation)
+        annotation_sets_by_item[item_id] = {'gt': item_annots_1,
+                                            'model': item_annots_2}
+        n_gt_annotations += len(item_annots_1)
+        n_md_annotations += len(item_annots_2)
+        pbar.update()
+
+    logger.info(f'Found {len(annotation_sets_by_item)} GT item.')
+    logger.info(f'Found {n_gt_annotations} GT annotations.')
+    logger.info(f'Found {n_md_annotations} mode annotations.')
+    #########################################################
+    # Compare annotations and return concatenated dataframe #
+    #########################################################
+    all_results = pd.DataFrame()
+    pbar = tqdm.tqdm(total=len(annotation_sets_by_item), desc=f'Calculating metrics...')
+    pool = ThreadPoolExecutor(max_workers=32)
+
+    def calc_single(w_item_id, w_annotation_sets):
+        try:
+            set_1_item_annotations = w_annotation_sets['gt']
+            set_2_item_annotations = w_annotation_sets['model']
+            if not (len(set_1_item_annotations) == 0 and len(set_2_item_annotations) == 0):
+                results = measure_annotations(annotations_set_one=set_1_item_annotations,
+                                              annotations_set_two=set_2_item_annotations,
+                                              match_threshold=match_threshold,
+                                              # default 0.01 to get all possible matches
+                                              ignore_labels=ignore_labels,
+                                              compare_types=compare_types)
+                for compare_type in compare_types:
+                    try:
+                        results_df = results[compare_type].to_df()
+                    except KeyError:
+                        continue
+                    results_df['item_id'] = [w_item_id] * results_df.shape[0]
+                    results_df['annotation_type'] = [compare_type] * results_df.shape[0]
+                    all_results[w_item_id] = results_df
+        finally:
+            pbar.update()
+
+    all_results = dict()
+    for item_id, annotation_sets in annotation_sets_by_item.items():
+        pool.submit(calc_single, w_item_id=item_id, w_annotation_sets=annotation_sets)
+    pool.shutdown()
+    all_results = pd.concat(list(all_results.values()), ignore_index=True)
+
+    ###############################################
+    # Save results to csv for IOU/label/attribute #
+    ###############################################
+    # TODO save via feature vectors when ready
+    # file format "/.modelscores/modelId.csv"
+    all_results['model_id'] = [model.id] * all_results.shape[0]
+    all_results['dataset_id'] = [dataset.id] * all_results.shape[0]
+
+    if not os.path.isdir(os.path.join(os.getcwd(), '../.dataloop')):
+        os.mkdir(os.path.join(os.getcwd(), '../.dataloop'))
+    scores_filepath = os.path.join(os.getcwd(), '../.dataloop', f'{model.id}.csv')
+
+    all_results.to_csv(scores_filepath, index=False)
+    item = dataset.items.upload(local_path=scores_filepath,
+                                remote_path=f'/.modelscores',
+                                overwrite=True)
+    logger.info(f'Successfully created model scores and saved as item {item.id}.')
+
+    # This is a workaround for uploading interpolated precision-recall for 10 iou levels
+    calc_and_upload_interpolation(model=model, dataset=dataset)
+    return model
+
+
 def calc_precision_recall(dataset_id: str,
                           model_id: str,
                           iou_threshold=0.01,
@@ -22,14 +157,13 @@ def calc_precision_recall(dataset_id: str,
                           each_label=True,
                           n_points=None) -> pd.DataFrame:
     """
-    Plot precision recall curve for model predictions, for a given metric threshold
-
+    Internal function for calculating  precision recall values for model predictions, for a given metric threshold.
     :param dataset_id: str dataset ID
     :param model_id: str model ID
-    :param iou_threshold: float Threshold for accepting matched annotations as a true positive
-    :param method_type: str method for calculating precision and recall. Options are: every_point and n_point_interpolated
-    :param each_label: bool calculate precision recall for each one of the labels
-    :param n_points: int number of points to interpolate in case of n point interpolation
+    :param iou_threshold: float Threshold for accepting matched annotations as a true positive (optional)
+    :param method_type: str method for calculating precision and recall. Options are: every_point and n_point_interpolated (optional)
+    :param each_label: bool calculate precision recall for each one of the labels (optional)
+    :param n_points: int number of points to interpolate in case of n point interpolation (optional)
     :return: dataframe with all the points to plot for the dataset and individual labels
     """
     if method_type is None:
@@ -47,7 +181,7 @@ def calc_precision_recall(dataset_id: str,
     dataset = dl.datasets.get(dataset_id=dataset_id)
     items = list(dataset.items.list(filters=items_filters).all())
     if len(items) == 0:
-        raise ValueError(f'No scores found for model ID {model_id}.')
+        raise ValueError(f'No scores found for model ID {model_id}. Please evaluate model on the dataset first.')
     elif len(items) > 1:
         raise ValueError(f'Found {len(items)} items with name {model_id}.')
     else:
@@ -95,18 +229,18 @@ def calc_precision_recall(dataset_id: str,
          dataset_plot_precision,
          dataset_plot_recall,
          dataset_plot_confidence] = \
-            every_point_curve(recall=list(dataset_recall),
-                              precision=list(dataset_precision),
-                              confidence=list(detections['second_confidence']))
+            _every_point_curve(recall=list(dataset_recall),
+                               precision=list(dataset_precision),
+                               confidence=list(detections['second_confidence']))
     else:
         [_,
          dataset_plot_precision,
          dataset_plot_recall,
          dataset_plot_confidence] = \
-            n_point_interpolated_curve(recall=list(dataset_recall),
-                                       precision=list(dataset_precision),
-                                       confidence=list(detections['second_confidence']),
-                                       n_points=n_points)
+            _n_point_interpolated_curve(recall=list(dataset_recall),
+                                        precision=list(dataset_precision),
+                                        confidence=list(detections['second_confidence']),
+                                        n_points=n_points)
 
     dataset_points['iou_threshold'] = [iou_threshold] * len(dataset_plot_precision)
     dataset_points['data'] = ['dataset'] * len(dataset_plot_precision)
@@ -144,18 +278,18 @@ def calc_precision_recall(dataset_id: str,
                      label_plot_precision,
                      label_plot_recall,
                      label_plot_confidence] = \
-                        every_point_curve(recall=list(label_recall),
-                                          precision=list(label_precision),
-                                          confidence=list(label_detections['second_confidence']))
+                        _every_point_curve(recall=list(label_recall),
+                                           precision=list(label_precision),
+                                           confidence=list(label_detections['second_confidence']))
                 else:
                     [_,
                      label_plot_precision,
                      label_plot_recall,
                      label_plot_confidence] = \
-                        n_point_interpolated_curve(recall=list(label_recall),
-                                                   precision=list(label_precision),
-                                                   confidence=list(label_detections['second_confidence']),
-                                                   n_points=n_points)
+                        _n_point_interpolated_curve(recall=list(label_recall),
+                                                    precision=list(label_precision),
+                                                    confidence=list(label_detections['second_confidence']),
+                                                    n_points=n_points)
 
             label_points['iou_threshold'] = [iou_threshold] * len(label_plot_precision)
             label_points['data'] = ['label'] * len(label_plot_precision)
@@ -179,7 +313,6 @@ def calc_precision_recall(dataset_id: str,
     return plot_points
 
 
-@prec_rec.add_function(display_name='Plot precision recall graph')
 def plot_precision_recall(plot_points: pd.DataFrame,
                           dataset_name=None,
                           label_names=None,
@@ -190,14 +323,14 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     :param plot_points: dict generated from calculate_precision_recall with all the points to plot by label and
      the entire dataset. keys include: confidence threshold, iou threshold, dataset levels precision, recall, and
      confidence, and label-level precision, recall and confidence
-    :param dataset_name: name of dataset to plot in legend
-    :param label_names: list of label names to plot
-    :param local_path: path to save plot
-    :return:
+    :param dataset_name: name of dataset to plot in legend (optional)
+    :param label_names: list of label names to plot (optional)
+    :param local_path: path to save plot (optional)
+    :return: directory path where plots are saved
     """
     if local_path is None:
         root_dir = os.getcwd().split('dtlpymetrics')[0]
-        save_dir = os.path.join(root_dir, 'dtlpymetrics', '.dataloop')
+        save_dir = os.path.join(root_dir, 'dtlpymetrics', '../.dataloop')
         if not os.path.exists(os.path.dirname(save_dir)):
             os.makedirs(os.path.dirname(save_dir))
     else:
@@ -268,8 +401,87 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     return save_dir
 
 
-@prec_rec.add_function(display_name='Calculate precision-recall values for every point curve')
-def every_point_curve(recall: list, precision: list, confidence: list):
+def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
+    """
+    Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file,
+    and returns a dataframe with the properties of all the false negatives.
+    :param model: Model entity
+    :param dataset: Dataset where the model was evaluated
+    :return: DataFrame with all the false negatives
+    """
+    file_name = f'{model.id}.csv'
+    local_path = os.path.join(os.getcwd(), '../.dataloop', file_name)
+    filters = dl.Filters(field='name', values=file_name)
+    filters.add(field='hidden', values=True)
+    pages = dataset.items.list(filters=filters)
+
+    if pages.items_count > 0:
+        for item in pages.all():
+            item.download(local_path=local_path)
+    else:
+        raise ValueError(
+            f'No scores file found for model {model.id} on dataset {dataset.id}. Please evaluate model on the dataset first.')
+
+    scores_df = pd.read_csv(local_path)
+
+    ########################
+    # list false negatives #
+    ########################
+    model_fns = dict()
+    annotation_to_item_map = {ann_id: item_id for ann_id, item_id in
+                              zip(scores_df.first_id, scores_df.itemId)}
+    fn_annotation_ids = scores_df[scores_df.second_id.isna()].first_id
+    print(f'model: {model.name} with {len(fn_annotation_ids)} false negative')
+    fn_items_ids = np.unique([annotation_to_item_map[ann_id] for ann_id in fn_annotation_ids])
+    for i_id in fn_items_ids:
+        if i_id not in model_fns:
+            i_id: dl.Item
+            url = dl.client_api._get_resource_url(
+                "projects/{}/datasets/{}/items/{}".format(dataset.project.id, dataset.id, i_id))
+            model_fns[i_id] = {'itemId': i_id,
+                               'url': url}
+        model_fns[i_id].update({model.name: True})
+
+    model_fn_df = pd.DataFrame(model_fns.values()).fillna(False)
+    model_fn_df.to_csv(os.path.join(os.getcwd(), f'{model.name}_false_negatives.csv'))
+
+    return model_fn_df
+
+
+def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
+    """
+    Calculate precision recall for a model and dataset, and upload the interpolated points to the dataset
+    :param model: dl.Model
+    :param dataset: dl.Dataset
+    :return: True
+    """
+    figures = dict()
+    for iou_th in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
+        df = calc_precision_recall(model_id=model.id,
+                                   dataset_id=dataset.id,
+                                   method_type='n_point_interpolation',
+                                   n_points=201,
+                                   iou_threshold=iou_th)
+        dataset_points = df[df['label_name'] == '_NA']
+        # TODO plot each label separately
+        recall = dataset_points['recall']
+        precision = dataset_points['precision']
+        confidence = dataset_points['confidence']
+        figures[iou_th] = {'recall': recall.to_list(),
+                           'precision': precision.to_list(),
+                           'confidence': confidence.to_list(),
+                           }
+    filepath = os.path.join(os.getcwd(), '../.dataloop', f'{model.id}-interpolated.json')
+    with open(filepath, 'w') as f:
+        json.dump(figures, f)
+    item = dataset.items.upload(local_path=filepath,
+                                remote_path=f'/.modelscores',
+                                overwrite=True)
+
+    return True
+
+
+def _every_point_curve(recall: list, precision: list, confidence: list):
     """
     Calculate precision-recall curve from a list of precision & recall values
     :param recall: list of recall values
@@ -286,7 +498,7 @@ def every_point_curve(recall: list, precision: list, confidence: list):
         precision_points[i - 1] = max(precision_points[i - 1], precision_points[i])
         # print(precision_points[i-1])  # DEBUG
 
-    # build the simplified recall list, removing values when the precision doesnt change
+    # build the simplified recall list, removing values when the precision doesn't change
     recall_intervals = []
     for i in range(len(recall_points) - 1):
         if recall_points[1 + i] != recall_points[i]:
@@ -304,8 +516,7 @@ def every_point_curve(recall: list, precision: list, confidence: list):
             confidence_points[0:len(precision_points)]]
 
 
-@prec_rec.add_function(display_name='Calculate precision-recall values for eleven point curves')
-def n_point_interpolated_curve(recall: list, precision: list, confidence: list, n_points=201):
+def _n_point_interpolated_curve(recall: list, precision: list, confidence: list, n_points=201):
     """
     Calculate precision-recall curve from a list of precision & recall values, using n-points interpolation
 
@@ -362,133 +573,3 @@ def n_point_interpolated_curve(recall: list, precision: list, confidence: list, 
             precision_plot,
             recall_plot,
             confidence_plot]
-
-
-@prec_rec.add_function(display_name='Create confusion matrix')
-def calc_confusion_matrix(dataset_id: str,
-                          model_id: str,
-                          metric: str,
-                          show_unmatched=True) -> pd.DataFrame:
-    """
-    Calculate confusion matrix for a given model and metric
-
-    :param dataset_id: str ID of test dataset
-    :param model_id: str ID of model
-    :param metric: name of the metric for comparing
-    :param show_unmatched: display extra column showing which GT annotations were not matched
-    :return:
-    """
-    if metric.lower() == 'iou':
-        metric = 'geometry_score'
-    elif metric.lower() == 'accuracy':
-        metric = 'label_score'
-
-    model_filename = f'{model_id}.csv'
-    filters = dl.Filters(field='hidden', values=True)
-    filters.add(field='name', values=model_filename)
-    dataset = dl.datasets.get(dataset_id=dataset_id)
-    items = list(dataset.items.list(filters=filters).all())
-    if len(items) == 0:
-        raise ValueError(f'No scores found for model ID {model_id}.')
-    elif len(items) > 1:
-        raise ValueError(f'Found {len(items)} items with name {model_id}.')
-    else:
-        scores_file = items[0].download()
-
-    scores = pd.read_csv(scores_file)
-    labels = dataset.labels
-    label_names = [label.tag for label in labels]
-
-    if metric not in scores.columns:
-        raise ValueError(f'{metric} metric not included in scores.')
-
-    ###############################
-    # create table of comparisons #
-    ###############################
-    # calc
-    if label_names is None:
-        label_names = pd.concat([scores.first_label, scores.second_label]).dropna()
-
-    scores_cleaned = scores.dropna().reset_index(drop=True)
-    scores_labels = scores_cleaned[['first_label', 'second_label']]
-    grouped_labels = scores_labels.groupby(['first_label', 'second_label']).size()
-
-    conf_matrix = pd.DataFrame(index=label_names, columns=label_names, data=0)
-    for label1, label2 in grouped_labels.index:
-        # index/rows are the ground truth, cols are the predictions
-        conf_matrix.loc[label1, label2] = grouped_labels.get((label1, label2), 0)
-
-    return conf_matrix
-
-
-@prec_rec.add_function(display_name='Get list of model annotation false negatives from scores csv')
-def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
-    """
-    Retrieves the dataframe for all the scores for a given model on a dataset via a hidden csv file,
-    and returns a dataframe with the properties of all the false negatives.
-    :param model: Model entity
-    :param dataset: Dataset where the model was evaluated
-    :return:
-    """
-    file_name = f'{model.id}.csv'
-    local_path = os.path.join(os.getcwd(), '.dataloop', file_name)
-    filters = dl.Filters(field='name', values=file_name)
-    filters.add(field='hidden', values=True)
-    pages = dataset.items.list(filters=filters)
-
-    if pages.items_count > 0:
-        for item in pages.all():
-            item.download(local_path=local_path)
-    else:
-        raise ValueError(
-            f'No scores file found for model {model.id} on dataset {dataset.id}. Please evaluate model on the dataset first.')
-
-    scores_df = pd.read_csv(local_path)
-
-    ########################
-    # list false negatives #
-    ########################
-    model_fns = dict()
-    annotation_to_item_map = {ann_id: item_id for ann_id, item_id in
-                              zip(scores_df.first_id, scores_df.itemId)}
-    fn_annotation_ids = scores_df[scores_df.second_id.isna()].first_id
-    print(f'model: {model.name} with {len(fn_annotation_ids)} false negative')
-    fn_items_ids = np.unique([annotation_to_item_map[ann_id] for ann_id in fn_annotation_ids])
-    for i_id in fn_items_ids:
-        if i_id not in model_fns:
-            i_id: dl.Item
-            url = dl.client_api._get_resource_url(
-                "projects/{}/datasets/{}/items/{}".format(dataset.project.id, dataset.id, i_id))
-            model_fns[i_id] = {'itemId': i_id,
-                               'url': url}
-        model_fns[i_id].update({model.name: True})
-
-    model_fn_df = pd.DataFrame(model_fns.values()).fillna(False)
-    model_fn_df.to_csv(os.path.join(os.getcwd(), f'{model.name}_false_negatives.csv'))
-
-    return model_fn_df
-
-
-def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
-    figures = dict()
-    for iou_th in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]:
-        df = calc_precision_recall(model_id=model.id,
-                                   dataset_id=dataset.id,
-                                   method_type='n_point_interpolation',
-                                   n_points=201,
-                                   iou_threshold=iou_th)
-        dataset_points = df[df['label_name'] == '_NA']
-        # TODO plot each label separately
-        recall = dataset_points['recall']
-        precision = dataset_points['precision']
-        confidence = dataset_points['confidence']
-        figures[iou_th] = {'recall': recall.to_list(),
-                           'precision': precision.to_list(),
-                           'confidence': confidence.to_list(),
-                           }
-    filepath = os.path.join(os.getcwd(), '.dataloop', f'{model.id}-interpolated.json')
-    with open(filepath, 'w') as f:
-        json.dump(figures, f)
-    item = dataset.items.upload(local_path=filepath,
-                                remote_path=f'/.modelscores',
-                                overwrite=True)

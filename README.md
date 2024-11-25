@@ -11,14 +11,14 @@ The components of this app are:
 1. Functions to calculate scores for quality tasks and model predictions.
 2. Custom nodes that can be added to pipelines to calculate scores when a task's quality items are completed.
 
-Also check [this notebook](docs/metrics.ipynb) for more information
+Also see [this notebook](docs/metrics.ipynb) for more information
 
 ## Quality Flows
 To understand more about each of these tasks, refer to the main Dataloop documentation linked:
 
-1. [Qualification tasks](https://dataloop.ai/docs/qualification-honeypot)
-2. [Honeypot tasks](https://dataloop.ai/docs/qualification-honeypot#honeypot)
-3. [Consensus tasks](https://dataloop.ai/docs/consensus)
+1. [Qualification tasks](https://docs.dataloop.ai/docs/en/qualification-honeypot)
+2. [Honeypot tasks](https://docs.dataloop.ai/docs/en/qualification-honeypot#honeypot)
+3. [Consensus tasks](https://docs.dataloop.ai/docs/consensus)
 
 
 In general, an annotator will receive an assignment to complete their annotation task. For a given item in a consensus task, 
@@ -49,30 +49,31 @@ During scoring, the following scores will be created for each annotation:
 - `item_confusion_score` - the count of the number of label pairs associated with the assignee’s label, relative to the reference’s label
 - `item_overall_score` - the mean value of *each* annotation overall score associated with an item
 
-**1) Raw annotation scores:** 
-
+#### 1) Raw annotation scores: 
 There are three types of scores for annotations: `annotation_iou`, `annotation_label` and `annotation_attribute`.  
 These scores can be determined by the user, and the default is to include all three scores, and the default value is 1 (which can be modified).
 
-**2) Annotation overall**
+
+#### 2) Annotation overall
 
 For `annotation_overall` score we calculate the mean value for all raw annotation scores per annotation. 
 
-**3) User confusion score**
+#### 3) User confusion score
 
 The `user_confusion` score represents the mean annotation score a given assignee has, relative to raw scores when comparing it to another set of annotations (either the reference or another assignee). 
 
-**4) Label confusion score**
+#### 4) Label confusion score
 
 The `label_confusion` score represents the count for a label annotated by a given assignee, relative to label each label class in the other set of annotations (either reference or another assignee).
 
-**5) Item overall score**
+#### 5) Item overall score
 
 The `item_overall` score is the mean value of all annotations associated with an item, averaging the mean overall annotation score.
 
+\
 Any calculated and uploaded scores will replace any previous scores for all items of a given task.
 
-_Note about videos_: Video scores will differ slightly from image scores. Video sores are calculated frame by frame, and then specific annotation scores will be the average of these scores across all relevant frames for that specific annotation. Confusion scores are not calculated due to the multi-frame nature of videos. Item overall scores remain an average of all annotations of the video item.
+_Note about videos_: Video scores will differ slightly from image scores. Video scores are calculated frame by frame, and then specific annotation scores will be the average of these scores across all relevant frames for that specific annotation. Confusion scores are not calculated due to the multi-frame nature of videos. Item overall scores remain an average of all annotations of the video item.
 
 ## Confusion Example
 
@@ -106,7 +107,7 @@ In this example item, the ground truth has 3 for each cat and dog class. The ass
         "context": {
             "relative": "cat",
             "taskId": "<TASK_ID>",
-            "itemId": "<ITEM_ID">,
+            "itemId": "<ITEM_ID>",
             "datasetId": "<DATASET_ID>"
         }
 },
@@ -117,7 +118,7 @@ In this example item, the ground truth has 3 for each cat and dog class. The ass
         "context": {
             "relative": "dog",
             "taskId": "<TASK_ID>",
-            "itemId": "<ITEM_ID">,
+            "itemId": "<ITEM_ID>",
             "datasetId": "<DATASET_ID>"
         }
 },
@@ -128,7 +129,7 @@ In this example item, the ground truth has 3 for each cat and dog class. The ass
         "context": {
             "relative": "cat",
             "taskId": "<TASK_ID>",
-            "itemId": "<ITEM_ID">,
+            "itemId": "<ITEM_ID>",
             "datasetId": "<DATASET_ID>"
         }
 }

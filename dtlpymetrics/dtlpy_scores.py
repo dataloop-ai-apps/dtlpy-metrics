@@ -1,8 +1,7 @@
 import dtlpy as dl
 from enum import Enum
 
-from dtlpy import exceptions, entities, miscellaneous, _api_reference, repositories
-from dtlpy.services.api_client import ApiClient
+from dtlpy import exceptions, entities, repositories
 
 
 class ScoreType(str, Enum):
@@ -46,7 +45,15 @@ class Score(entities.DlEntity):
 
     @classmethod
     def from_json(cls, _json: dict):
-        return cls(**_json)
+        return cls(_json)
+
+    # @property
+    # def entity_id(self):
+    #     if self.entity_id is not None:
+    #         return self.entity_id
+    #     else:
+    #         if self.entityId is not None:
+    #             return self.entityId
 
 
 class Scores:
@@ -156,7 +163,7 @@ class Scores:
     #     if filters.resource != entities.FiltersResource.FEATURE:
     #         raise exceptions.PlatformException(
     #             error='400',
-    #             message='Filters resource must to be FiltersResource.FEATURE. Got: {!r}'.format(filters.resource))
+    #             message='Filters resource must be FiltersResource.FEATURE. Got: {!r}'.format(filters.resource))
     #     paged = entities.PagedEntities(items_repository=self,
     #                                    filters=filters,
     #                                    page_offset=filters.page,
