@@ -118,7 +118,7 @@
               }
             ],
             "displayIcon": "icon-dl-analytics",
-            "displayName": "Create Score for Task Item"
+            "displayName": "Create Consensus Score"
             },
           {
             "name": "consensus_agreement",
@@ -140,7 +140,7 @@
               }
             ],
             "displayIcon": "icon-dl-members",
-            "displayName": "Consensus Task Annotator Agreement"
+            "displayName": "Consensus Agreement"
           }
         ]
       }
