@@ -7,7 +7,6 @@ from dtlpymetrics.scoring import calc_task_item_score, calc_precision_recall
 from dtlpymetrics.evaluating import get_consensus_agreement
 
 logger = logging.getLogger('scoring-and-metrics')
-scores_debug = True
 
 
 def create_task_item_score(item: dl.Item,
