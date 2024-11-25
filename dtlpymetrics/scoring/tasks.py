@@ -9,11 +9,6 @@ from typing import List
 from ..dtlpy_scores import Score, ScoreType, Scores
 from ..utils import mean_or_default, add_score_context, check_if_video, calculate_annotation_score
 
-dl.use_attributes_2()
-
-scorer = dl.AppModule(name='Scoring and metrics function',
-                      description='Functions for calculating scores when comparing between annotations.'
-                      )
 logger = logging.getLogger('scoring-and-metrics')
 
 

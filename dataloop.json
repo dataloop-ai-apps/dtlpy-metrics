@@ -150,7 +150,7 @@
         "name": "scoring-and-metrics",
         "moduleName": "dlm_module",
         "runtime": {
-          "podType": "regular-xs",
+          "podType": "regular-s",
           "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.4.0",
           "numReplicas": 1,
           "concurrency": 10,
