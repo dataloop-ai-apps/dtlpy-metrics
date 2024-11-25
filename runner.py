@@ -3,20 +3,13 @@ import logging
 import dtlpy as dl
 import pandas as pd
 
-from .scoring import calc_task_item_score, calc_precision_recall
-from .evaluating import get_consensus_agreement
-
-dl.use_attributes_2()
-
-scorer = dl.AppModule(name='Scoring and metrics app',
-                      description='Functions for calculating scores and metrics and tools for evaluating with them.')
+from dtlpymetrics.scoring import calc_task_item_score, calc_precision_recall
+from dtlpymetrics.evaluating import get_consensus_agreement
 
 logger = logging.getLogger('scoring-and-metrics')
-
 scores_debug = True
 
 
-@scorer.add_function(display_name='Calculate task scores for quality tasks')
 def create_task_item_score(item: dl.Item,
                            task: dl.Task = None,
                            context: dl.Context = None,
@@ -46,7 +39,6 @@ def create_task_item_score(item: dl.Item,
     return item
 
 
-@scorer.add_function(display_name='')
 def consensus_agreement(item: dl.Item,
                         context: dl.Context,
                         task: dl.Task = None,
@@ -68,7 +60,6 @@ def consensus_agreement(item: dl.Item,
     return item
 
 
-@scorer.add_function(display_name='Calculate precision recall values for model predictions')
 def precision_recall(dataset_id: str,
                      model_id: str,
                      iou_threshold=0.01,
