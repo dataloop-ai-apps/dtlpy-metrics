@@ -12,7 +12,6 @@ from typing import List
 from ..dtlpy_scores import Score, ScoreType
 from ..utils import plot_confusion_matrix
 
-dl.use_attributes_2()
 logger = logging.getLogger('scoring-and-metrics')
 
 
