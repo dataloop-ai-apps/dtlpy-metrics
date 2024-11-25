@@ -25,7 +25,7 @@
     "pipelineNodes": [
       {
         "name": "create_task_item_score",
-        "displayName": "Create Score for Task Item",
+        "displayName": "Create Consensus Score",
         "description": "Calculate the score for each item with in a task (consensus, qualification, honeypot)",
         "invoke": {
           "type": "function",
@@ -41,7 +41,7 @@
       },
       {
         "name": "consensus_agreement",
-        "displayName": "Consensus Task Annotator Agreement",
+        "displayName": "Consensus Agreement",
         "description": "Process consensus items based on annotator agreement threshold.",
         "invoke": {
           "type": "function",
