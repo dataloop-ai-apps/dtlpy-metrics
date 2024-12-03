@@ -99,7 +99,7 @@
       {
         "name": "dlm_module",
         "entryPoint": "runner.py",
-        "className": "scorer",
+        "className": "Scorer",
         "initInputs": [],
         "functions": [
           {

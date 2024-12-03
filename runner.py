@@ -8,7 +8,7 @@ from dtlpymetrics.evaluating import get_consensus_agreement
 
 logger = logging.getLogger('scoring-and-metrics')
 
-class scorer(dl.BaseServiceRunner):
+class Scorer(dl.BaseServiceRunner):
     """
     Scorer class for scoring and metrics.
     Functions for calculating scores and metrics and tools for evaluating with them.
