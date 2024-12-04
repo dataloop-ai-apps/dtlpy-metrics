@@ -1,5 +1,7 @@
 FROM dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7
 
+USER root
+
 ENV HOME=/tmp
 USER 1000
 
@@ -8,6 +10,7 @@ RUN pip install --user \
     seaborn \
     dtlpy
 
+RUN mkdir /tmp/app/pkgs/dtlpy-metrics
 COPY . /tmp/app/pkgs/dtlpy-metrics
 WORKDIR /tmp/app/pkgs/dtlpy-metrics
 RUN python setup.py install

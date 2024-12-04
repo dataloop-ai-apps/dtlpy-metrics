@@ -109,17 +109,25 @@
               {
                 "type": "Item",
                 "name": "item"
+              },
+              {
+                "type": "Task",
+                "name": "task"
               }
             ],
             "output": [
               {
                 "type": "Item",
                 "name": "item"
+              },
+              {
+                "type": "Task",
+                "name": "task"
               }
             ],
             "displayIcon": "icon-dl-analytics",
             "displayName": "Create Consensus Score"
-            },
+          },
           {
             "name": "consensus_agreement",
             "description": "Process consensus task items based on annotator agreement threshold.",
@@ -127,6 +135,10 @@
               {
                 "type": "Item",
                 "name": "item"
+              },
+              {
+                "type": "Task",
+                "name": "task"
               }
             ],
             "output": [
