@@ -23,6 +23,7 @@ def get_consensus_agreement(item: dl.Item,
     :param progress: dl.Progress (optional)
     :return: dl.Item
     """
+    logger.info("Running consensus agreement")
     if item is None:
         raise ValueError('No item provided, please provide an item.')
     if task is None:
