@@ -62,6 +62,7 @@ def get_consensus_agreement(item: dl.Item,
         fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', True)
     else:
         raise ValueError('Context cannot be none.')
+    logger.info(f"task: {task}")
 
     # get scores and convert to dl.Score
     calc_task_item_score(task=task, item=item, upload=False)
