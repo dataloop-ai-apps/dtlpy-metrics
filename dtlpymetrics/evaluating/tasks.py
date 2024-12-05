@@ -30,6 +30,7 @@ def get_consensus_agreement(item: dl.Item,
             raise ValueError('Must provide either task or context.')
         elif context.task is not None:
             task = context.task
+            logger.info(f"got task from context: {context.task}")
         else:
             try:
                 # pipeline = context.pipeline
