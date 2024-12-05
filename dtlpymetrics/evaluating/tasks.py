@@ -45,7 +45,8 @@ def get_consensus_agreement(item: dl.Item,
                 tasks = dl.tasks.list(filters=filters)
                 # for task in tasks.all():
                 #     print(task.name, task.id)
-                task = tasks.all()[0]
+                task = list(tasks.all())[0]
+                print(task.name, task.id)
             except ValueError:
                 raise ValueError('Context does not include a task. Please use consensus agreement only following a consensus task.')
     if context is not None:
