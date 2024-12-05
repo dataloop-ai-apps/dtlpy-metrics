@@ -68,6 +68,7 @@ def calc_task_item_score(item: dl.Item,
     :param upload: bool, default True means scores will be uploaded to the platform (optional)
     :return: item
     """
+    logger.info(f'Starting scoring for item: {item.id} and task: {task.id}')
     if task.metadata['system'].get('consensusTaskType') == 'consensus':
         task_type = 'consensus'
     elif task.metadata['system'].get('consensusTaskType') in ['qualification', 'honeypot']:
