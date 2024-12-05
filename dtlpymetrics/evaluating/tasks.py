@@ -34,7 +34,7 @@ def get_consensus_agreement(item: dl.Item,
             try:
                 # pipeline = context.pipeline
                 # pipeline_cycle = context.pipeline_cycle
-                print(context)
+                logger.info(context)
 
                 pipeline_id = context.pipeline.id
                 task_nodes = list(context.pipeline_cycle['taskNodeItemCount'].keys())
@@ -47,10 +47,10 @@ def get_consensus_agreement(item: dl.Item,
                 tasks = dl.tasks.list(filters=filters)
                 # for task in tasks.all():
                 #     print(task.name, task.id)
-                print("num tasks found: {tasks.items_count}")
+                logger.info("num tasks found: {tasks.items_count}")
                 all_tasks = list(tasks.all())
                 task = all_tasks[0]
-                print(task.name, task.id)
+                logger.info(task.name, task.id)
             except ValueError:
                 raise ValueError('Context does not include a task. Please use consensus agreement only following a consensus task.')
     if context is not None:
