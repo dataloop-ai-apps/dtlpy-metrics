@@ -44,9 +44,9 @@ class Scorer(dl.BaseServiceRunner):
 
     @staticmethod
     def consensus_agreement(item: dl.Item,
+                            context: dl.Context,
                             progress: dl.Progress,
-                            task: dl.Task = None,
-                            context: dl.Context = None) -> dl.Item:
+                            task: dl.Task = None) -> dl.Item:
         """
         Calculate consensus agreement for a quality task item.
         This is a wrapper function for get_consensus_agreement for use in pipelines.
