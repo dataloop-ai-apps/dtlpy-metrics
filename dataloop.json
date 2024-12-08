@@ -162,11 +162,7 @@
             "maxReplicas": 2,
             "queueLength": 10
           },
-          "preemptible": false,
-          "executionTimeout": 3600,
-          "drainTime": 600,
-          "onReset": "failed",
-          "runExecutionAsProcess": false
+          "preemptible": false
         },
         "maxAttempts": 3
       }
