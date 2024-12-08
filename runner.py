@@ -45,22 +45,52 @@ class Scorer(dl.BaseServiceRunner):
     @staticmethod
     def consensus_agreement(item: dl.Item,
                             context: dl.Context,
-                            task: dl.Task = None,
-                            progress: dl.Progress = None,
-                            **kwargs) -> dl.Item:
+                            progress: dl.Progress,
+                            task: dl.Task = None) -> dl.Item:
         """
-        Calculate consensus agreement for a quality task item. This is a wrapper function for get_consensus_agreement.
-        :param item: dl.Item to calculate consensus agreement for
+        Calculate consensus agreement for a quality task item.
+        This is a wrapper function for get_consensus_agreement for use in pipelines.
+        :param item: dl.Item for which to calculate consensus agreement
         :param context: dl.Context for the item
         :param task: dl.Task for the item (optional)
         :param progress: dl.Progress for the item
         :return: dl.Item
         """
+        if item is None:
+            raise ValueError('No item provided, please provide an item.')
+        if context is None:
+            raise ValueError('Must provide pipeline context.')
+        if task is None and context.task is not None:
+            task = context.task
+        if task is None:
+            # context task may still be none
+            pipeline_id = context.pipeline_id
+            task_node_id = None
+            for node in reversed(context.pipeline_execution.nodes):
+                if node.node_type == "task":
+                    task_node_id = node.node_id
+                    break
+            if task_node_id is None:
+                raise ValueError(f"Could not find task from pipeline, and task not provided.")
+            filters = dl.Filters(resource=dl.FiltersResource.TASK)
+            filters.add(field='metadata.system.nodeId', values=task_node_id)
+            filters.add(field='metadata.system.pipelineId', values=pipeline_id)
+
+            tasks = item.project.tasks.list(filters=filters)
+            if tasks.items_count != 1:
+                raise ValueError(f"Failed getting consensus task, found: {tasks.items_count} matches")
+            task = tasks.items[0]
+
+        agreement_config = dict()
+        node = context.node
+        agreement_config['agree_threshold'] = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
+        agreement_config['keep_only_best'] = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', False)
+        agreement_config['fail_keep_all'] = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', True)
+
         item = get_consensus_agreement(item=item,
-                                       context=context,
                                        task=task,
-                                       progress=progress,
-                                       **kwargs)
+                                       agreement_config=agreement_config,
+                                       progress=progress)
         return item
 
     @staticmethod

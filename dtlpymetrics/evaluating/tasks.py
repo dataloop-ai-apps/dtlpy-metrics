@@ -1,6 +1,6 @@
-import logging
 import os
 import json
+import logging
 import dtlpy as dl
 
 from ..dtlpy_scores import ScoreType, Score
@@ -11,33 +11,25 @@ logger = logging.getLogger('scoring-and-metrics')
 
 
 def get_consensus_agreement(item: dl.Item,
-                            context: dl.Context,
-                            task: dl.Task = None,
-                            progress: dl.Progress = None,
-                            **kwargs) -> dl.Item:
+                            task: dl.Task,
+                            agreement_config: dict,
+                            progress: dl.Progress = None) -> dl.Item:
     """
-    Determine whether annotators agree on annotations for a given item. Only available in pipelines.
+    Determine whether annotators agree on annotations for a given item.
     :param item: dl.Item
-    :param context: dl.Context
-    :param task: dl.Task (optional)
+    :param task: dl.Task
+    :param agreement_config: dict that needs 3 keys: "agreement_threshold", "keep_only_best", and "fail_keep_all"
     :param progress: dl.Progress (optional)
     :return: dl.Item
     """
-    if item is None:
-        raise ValueError('No item provided, please provide an item.')
-    if task is None:
-        if context is None:
-            raise ValueError('Must provide either task or context.')
-        else:
-            task = context.task
+    agree_threshold = agreement_config.get("agree_threshold", 0.5)
+    keep_only_best = agreement_config.get("keep_only_best", False)
+    fail_keep_all = agreement_config.get("fail_keep_all", True)
 
-    if context is not None:
-        node = context.node
-        agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
-        keep_only_best = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', False)
-        fail_keep_all = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', True)
-    else:
-        raise ValueError('Context cannot be none.')
+    logger.info(f"Running consensus agreement using task {task.name} with ID {task.id}")
+    logger.info(f"Configurations: agreement threshold = {agree_threshold}, "
+                f"upon agreement pass, keep only best annotations: {keep_only_best}, "
+                f"upon agreement fail keep all annotations: {fail_keep_all}")
 
     # get scores and convert to dl.Score
     calc_task_item_score(task=task, item=item, upload=False)
