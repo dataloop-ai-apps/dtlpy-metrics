@@ -1,14 +1,16 @@
-FROM dataloopai/dtlpy-agent:cpu.py3.8.opencv4.7
+FROM dataloopai/dtlpy-agent:cpu.py3.10.opencv
 
+USER 1000
 RUN pip install --user \
     shapely==2.0.0 \
     seaborn \
-    dtlpy \
-    dtlpymetrics
+    dtlpy
 
-# COPY . /app/pkgs/dtlpy-metrics
-# WORKDIR /app/pkgs/dtlpy-metrics
-# RUN python setup.py install
+COPY . /tmp/app/pkgs/dtlpy-metrics
+USER root
+WORKDIR /tmp/app/pkgs/dtlpy-metrics
+RUN python setup.py install
+USER 1000
 
 # docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.4.0 -f Dockerfile .
 # docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.4.0
