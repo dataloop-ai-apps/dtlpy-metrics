@@ -51,35 +51,6 @@ def get_consensus_agreement(item: dl.Item,
             task = tasks.items[0]
             logger.info(f"Found consensus task: {task.id}")
 
-    # if task is None:
-    #     if context is None:
-    #         raise ValueError('Must provide either task or context.')
-    #     elif context.task is not None:
-    #         task = context.task
-    #         logger.info(f"got task from context: {context.task}")
-    #     else:
-    #         try:
-    #             # pipeline = context.pipeline
-    #             # pipeline_cycle = context.pipeline_cycle
-    #             logger.info(context)
-    #
-    #             pipeline_id = context.pipeline.id
-    #             task_nodes = list(context.pipeline_cycle['taskNodeItemCount'].keys())
-    #             last_node_id = task_nodes[-1]
-    #             # project = context.project
-    #             filters = dl.Filters(resource=dl.FiltersResource.TASK)
-    #             filters.add(field='metadata.system.nodeId', values=last_node_id)
-    #             filters.add(field='metadata.system.pipelineId', values=pipeline_id)
-    #
-    #             tasks = dl.tasks.list(filters=filters)
-    #             # for task in tasks.all():
-    #             #     print(task.name, task.id)
-    #             logger.info("num tasks found: {tasks.items_count}")
-    #             all_tasks = list(tasks.all())
-    #             task = all_tasks[0]
-    #             logger.info(task.name, task.id)
-    #         except ValueError:
-    #             raise ValueError('Context does not include a task. Please use consensus agreement only following a consensus task.')
     if context is not None:
         node = context.node
         agree_threshold = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
