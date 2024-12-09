@@ -130,7 +130,7 @@ def create_model_score(dataset: dl.Dataset,
     ###############################################
     # Save results to csv for IOU/label/attribute #
     ###############################################
-    # TODO save via feature vectors when ready
+    # TODO save via scoring when ready
     # file format "/.modelscores/modelId.csv"
     all_results['model_id'] = [model.id] * all_results.shape[0]
     all_results['dataset_id'] = [dataset.id] * all_results.shape[0]
