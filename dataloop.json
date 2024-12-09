@@ -151,7 +151,7 @@
         "moduleName": "dlm_module",
         "runtime": {
           "podType": "regular-s",
-          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.6.0",
+          "runnerImage": "gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.7.0",
           "numReplicas": 1,
           "concurrency": 10,
           "pyPackages": {},
@@ -162,11 +162,7 @@
             "maxReplicas": 2,
             "queueLength": 10
           },
-          "preemptible": false,
-          "executionTimeout": 3600,
-          "drainTime": 600,
-          "onReset": "failed",
-          "runExecutionAsProcess": false
+          "preemptible": false
         },
         "maxAttempts": 3
       }
