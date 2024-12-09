@@ -12,7 +12,8 @@ from ..utils import mean_or_default, add_score_context, check_if_video, calculat
 logger = logging.getLogger('scoring-and-metrics')
 
 
-def calc_task_score(task: dl.Task, score_types=None, **kwargs) -> dl.Task:
+def calc_task_score(task: dl.Task,
+                    score_types=None) -> dl.Task:
     """
     Calculate scores for all items in a quality task, based on the item scores from each assignment.
 
