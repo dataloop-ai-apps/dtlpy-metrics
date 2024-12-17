@@ -1,7 +1,4 @@
 import logging
-import json
-import os
-
 import dtlpy as dl
 import numpy as np
 
@@ -46,7 +43,7 @@ def calc_task_score(task: dl.Task,
             elif item_task_dict.get('metadata', None) is None:
                 continue
             elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
-                calc_task_item_score(item=item, task=task, score_types=score_types)
+                _ = calc_task_item_score(item=item, task=task, score_types=score_types, upload=True)
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
                 continue
@@ -57,7 +54,7 @@ def calc_task_score(task: dl.Task,
 def calc_task_item_score(item: dl.Item,
                          task: dl.Task,
                          score_types=None,
-                         upload=True) -> dl.Item:
+                         upload=True):
     """
     Create scores for items in a task. This is the main function for creating score entities
 
@@ -85,8 +82,10 @@ def calc_task_item_score(item: dl.Item,
     is_quality_task = _check_task_type(task_type=task_type,
                                        task=task,
                                        item=item)
+
     if is_quality_task is False:
         logging.info('Item was not annotated via quality task. No scores were created.')
+        all_scores = list()
     else:
         [assignments_by_id, assignments_by_annotator] = _sort_assignments(task_type=task_type,
                                                                           item=item,
@@ -144,13 +143,6 @@ def calc_task_item_score(item: dl.Item,
         #############################
         # upload scores to platform #
         #############################
-        debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-        if debug_path is not None:
-            upload = False
-            save_dir = debug_path
-        else:
-            save_dir = os.path.join(os.getcwd(), '../.dataloop')
-
         if upload is True:
             logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
             dl_scores = Scores(client_api=dl.client_api)
@@ -158,18 +150,7 @@ def calc_task_item_score(item: dl.Item,
                                       'taskId': task.id})
             dl_scores = dl_scores.create(all_scores)
             logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
-        else:
-            logger.info(f'Saving scores locally, {save_dir}')
-            save_filepath = os.path.join(save_dir, task.id, f'{item.id}.json')
-            os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
-            scores_json = list()
-            for score in all_scores:
-                scores_json.append(score.to_json())
-            with open(save_filepath, 'w', encoding='utf-8') as f:
-                json.dump(scores_json, f, ensure_ascii=False, indent=4)
-
-            logger.info(f'SAVED score to: {save_filepath}')
-    return item
+    return all_scores
 
 
 def _check_task_type(task_type,
