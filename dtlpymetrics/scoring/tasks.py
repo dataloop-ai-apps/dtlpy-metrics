@@ -1,4 +1,7 @@
+import json
 import logging
+import os
+
 import dtlpy as dl
 import numpy as np
 
@@ -8,14 +11,17 @@ from ..utils import mean_or_default, add_score_context, check_if_video, calculat
 
 logger = logging.getLogger('scoring-and-metrics')
 
-
 def calc_task_score(task: dl.Task,
-                    score_types=None) -> dl.Task:
+                    score_types=None,
+                    upload=False,
+                    save_dir=None) -> dl.Task:
     """
     Calculate scores for all items in a quality task, based on the item scores from each assignment.
 
+    :param save_dir:
     :param task: dl.Task entity
     :param score_types: optional list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL])
+    :param upload: bool, default False means scores will be saved locally (optional)
     :return: dl.Task entity
     """
     # determine task type
@@ -35,6 +41,7 @@ def calc_task_score(task: dl.Task,
         pages = task.get_items(filters=filters, get_consensus_items=True)
 
     for item in pages.all():
+        item_scores = list()
         all_item_tasks = item.metadata['system']['refs']
         for item_task_dict in all_item_tasks:
             if item_task_dict['id'] != task.id:
@@ -43,18 +50,23 @@ def calc_task_score(task: dl.Task,
             elif item_task_dict.get('metadata', None) is None:
                 continue
             elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
-                _ = calc_task_item_score(item=item, task=task, score_types=score_types, upload=True)
+                item_scores.extend(calc_task_item_score(item=item, task=task, score_types=score_types, upload=upload))
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
                 continue
-
+        if upload is False:
+            if save_dir is None:
+                save_dir = os.path.abspath(os.path.join(os.getcwd(), '.dataloop'))
+            os.makedirs(os.path.join(save_dir, task.id), exist_ok=True)
+            with open(os.path.join(save_dir, task.id, f'{item.id}.json'), 'w') as f:
+                json.dump([score.to_json() for score in item_scores], f)
     return task
 
 
 def calc_task_item_score(item: dl.Item,
                          task: dl.Task,
                          score_types=None,
-                         upload=True):
+                         upload=True) -> list:
     """
     Create scores for items in a task. This is the main function for creating score entities
 

@@ -1,4 +1,5 @@
 import shutil
+import tempfile
 import unittest
 import datetime
 import logging
@@ -32,7 +33,8 @@ class TestRunner(unittest.TestCase):
         now = datetime.datetime.now().isoformat(sep='.', timespec='minutes').replace('.', '_').replace(':', '.')
         self.assets_path = os.path.join(PATH, 'assets')
         self.test_dump_path = os.path.join(PATH, 'assets', now)
-        os.environ['SCORES_DEBUG_PATH'] = self.test_dump_path
+        os.makedirs(self.test_dump_path, exist_ok=True)
+        logger.info(f'Temporary directory created at: {self.test_dump_path}')
 
     def tearDown(self) -> None:
         if os.path.isdir(self.test_dump_path):
@@ -42,7 +44,9 @@ class TestRunner(unittest.TestCase):
         logger.info(f'Starting qualification testing task with dataset: {self.qualification_task.dataset}')
         self.qualification_task = calc_task_score(task=self.qualification_task,
                                                   score_types=[ScoreType.ANNOTATION_LABEL,
-                                                               ScoreType.ANNOTATION_IOU])
+                                                               ScoreType.ANNOTATION_IOU],
+                                                  upload=False,
+                                                  save_dir=self.test_dump_path)
 
         qualification_items = self.qualification_task.get_items().all()
         for item in qualification_items:
@@ -55,7 +59,10 @@ class TestRunner(unittest.TestCase):
 
     def test_honeypot_task(self):
         logger.info(f'Starting honeypot testing task with dataset: {self.honeypot_task.dataset}')
-        self.honeypot_task = calc_task_score(task=self.honeypot_task, score_types=[ScoreType.ANNOTATION_LABEL])
+        self.honeypot_task = calc_task_score(task=self.honeypot_task,
+                                             score_types=[ScoreType.ANNOTATION_LABEL],
+                                             upload=False,
+                                             save_dir=self.test_dump_path)
 
         filters = dl.Filters()
         filters.add(field='hidden', values=True)
@@ -75,7 +82,9 @@ class TestRunner(unittest.TestCase):
         ###########################
         logger.info('calculating scores for consensus classification task')
         self.consensus_task_classification = calc_task_score(task=self.consensus_task_classification,
-                                                             score_types=[ScoreType.ANNOTATION_LABEL])
+                                                             score_types=[ScoreType.ANNOTATION_LABEL],
+                                                             upload=False,
+                                                             save_dir=self.test_dump_path)
 
         consensus_assignment = self.consensus_task_classification.metadata['system']['consensusAssignmentId']
         consensus_class_items = self.consensus_task_classification.get_items(get_consensus_items=True).all()
@@ -106,7 +115,9 @@ class TestRunner(unittest.TestCase):
         logger.info('calculating scores for consensus object detection task')
         self.consensus_task_bbox = calc_task_score(task=self.consensus_task_bbox,
                                                    score_types=[ScoreType.ANNOTATION_LABEL,
-                                                                ScoreType.ANNOTATION_IOU])
+                                                                ScoreType.ANNOTATION_IOU],
+                                                   upload=False,
+                                                   save_dir=self.test_dump_path)
         consensus_assignment = self.consensus_task_bbox.metadata['system']['consensusAssignmentId']
         consensus_bbox_items = self.consensus_task_bbox.get_items(get_consensus_items=True).all()
 
