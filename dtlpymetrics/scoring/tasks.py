@@ -60,11 +60,11 @@ def calc_task_item_score(item: dl.Item,
 
     In the case of qualification and honeypot, the first set of annotations is considered the reference set.
     In the case of consensus, annotations are compared twice-- once as a reference set, and once as a test set.
-    :param item: dl.Item entity (optional)
-    :param task: dl.Task entity (optional)
+    :param item: dl.Item entity
+    :param task: dl.Task entity
     :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
     :param upload: bool, default True means scores will be uploaded to the platform (optional)
-    :return: item
+    :return: list of scores
     """
     logger.info(f'Starting scoring for item: {item.id} and task: {task.id}')
     if task.metadata['system'].get('consensusTaskType') == 'consensus':
@@ -144,7 +144,7 @@ def calc_task_item_score(item: dl.Item,
         # upload scores to platform #
         #############################
         if upload is True:
-            logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
+            logger.info(f'Deleting all scores with context item ID: {item.id} and task ID: {task.id}')
             dl_scores = Scores(client_api=dl.client_api)
             dl_scores.delete(context={'itemId': item.id,
                                       'taskId': task.id})

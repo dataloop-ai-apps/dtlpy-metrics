@@ -12,30 +12,6 @@
         }
     },
     {
-        "type": "annotation_iou",
-        "value": 1.0,
-        "entityId": "64b4e23c10d264d09fcdf478",
-        "context": {
-            "relative": "64b4045610d264136bcda8bb",
-            "userId": "yaya.t@dataloop.ai",
-            "assignmentId": "64b4e158ab370776b8f007f9",
-            "taskId": "64b4e157ab37074a96f007f7",
-            "itemId": "64b4e17ce7d3e84ce61617f7"
-        }
-    },
-    {
-        "type": "annotation_attribute",
-        "value": 1.0,
-        "entityId": "64b4e23c10d264d09fcdf478",
-        "context": {
-            "relative": "64b4045610d264136bcda8bb",
-            "userId": "yaya.t@dataloop.ai",
-            "assignmentId": "64b4e158ab370776b8f007f9",
-            "taskId": "64b4e157ab37074a96f007f7",
-            "itemId": "64b4e17ce7d3e84ce61617f7"
-        }
-    },
-    {
         "type": "user_confusion",
         "value": 0.2,
         "entityId": "yaya.t@dataloop.ai",
