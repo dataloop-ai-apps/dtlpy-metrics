@@ -1,7 +1,4 @@
-import json
 import logging
-import os
-
 import dtlpy as dl
 import numpy as np
 
@@ -11,18 +8,17 @@ from ..utils import mean_or_default, add_score_context, check_if_video, calculat
 
 logger = logging.getLogger('scoring-and-metrics')
 
+
 def calc_task_score(task: dl.Task,
                     score_types=None,
-                    upload=False,
-                    save_dir=None) -> dl.Task:
+                    upload=False) -> dict:
     """
     Calculate scores for all items in a quality task, based on the item scores from each assignment.
 
-    :param save_dir:
     :param task: dl.Task entity
     :param score_types: optional list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL])
     :param upload: bool, default False means scores will be saved locally (optional)
-    :return: dl.Task entity
+    :return: dict of scores with item id as key and list of Scores as value
     """
     # determine task type
     if task.metadata['system'].get('consensusTaskType') not in ['qualification', 'honeypot', 'consensus']:
@@ -40,33 +36,32 @@ def calc_task_score(task: dl.Task,
         filters.add(field='hidden', values=False)
         pages = task.get_items(filters=filters, get_consensus_items=True)
 
+    items_scores = dict()
     for item in pages.all():
-        item_scores = list()
-        all_item_tasks = item.metadata['system']['refs']
-        for item_task_dict in all_item_tasks:
-            if item_task_dict['id'] != task.id:
+        item_refs = item.metadata['system']['refs']
+        current_task_done = False
+        for ref in item_refs:
+            if ref['id'] != task.id:
                 continue
             # for testing tasks, check if the item is complete via metadata
-            elif item_task_dict.get('metadata', None) is None:
+            elif ref.get('metadata', None) is None:
                 continue
-            elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
-                item_scores.extend(calc_task_item_score(item=item, task=task, score_types=score_types, upload=upload))
+            elif ref.get('metadata').get('status', None) in ['completed', 'consensus_done']:
+                current_task_done = True
+                break
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
                 continue
-        if upload is False:
-            if save_dir is None:
-                save_dir = os.path.abspath(os.path.join(os.getcwd(), '.dataloop'))
-            os.makedirs(os.path.join(save_dir, task.id), exist_ok=True)
-            with open(os.path.join(save_dir, task.id, f'{item.id}.json'), 'w') as f:
-                json.dump([score.to_json() for score in item_scores], f)
-    return task
+        if current_task_done is True:
+            items_scores[item.id] = calc_task_item_score(item=item, task=task, score_types=score_types, upload=upload)
+
+    return items_scores
 
 
 def calc_task_item_score(item: dl.Item,
                          task: dl.Task,
                          score_types=None,
-                         upload=True) -> list:
+                         upload=True) -> List[Score]:
     """
     Create scores for items in a task. This is the main function for creating score entities
 
@@ -76,7 +71,7 @@ def calc_task_item_score(item: dl.Item,
     :param task: dl.Task entity
     :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
     :param upload: bool, default True means scores will be uploaded to the platform (optional)
-    :return: list of scores
+    :return: list of Scores
     """
     logger.info(f'Starting scoring for item: {item.id} and task: {task.id}')
     if task.metadata['system'].get('consensusTaskType') == 'consensus':
