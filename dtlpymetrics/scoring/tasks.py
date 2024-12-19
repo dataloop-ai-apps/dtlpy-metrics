@@ -1,7 +1,4 @@
 import logging
-import json
-import os
-
 import dtlpy as dl
 import numpy as np
 
@@ -13,13 +10,15 @@ logger = logging.getLogger('scoring-and-metrics')
 
 
 def calc_task_score(task: dl.Task,
-                    score_types=None) -> dl.Task:
+                    score_types=None,
+                    upload=False) -> dict:
     """
     Calculate scores for all items in a quality task, based on the item scores from each assignment.
 
     :param task: dl.Task entity
     :param score_types: optional list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL])
-    :return: dl.Task entity
+    :param upload: bool, default False means scores will be saved locally (optional)
+    :return: dict of scores with item id as key and list of Scores as value
     """
     # determine task type
     if task.metadata['system'].get('consensusTaskType') not in ['qualification', 'honeypot', 'consensus']:
@@ -37,37 +36,42 @@ def calc_task_score(task: dl.Task,
         filters.add(field='hidden', values=False)
         pages = task.get_items(filters=filters, get_consensus_items=True)
 
+    items_scores = dict()
     for item in pages.all():
-        all_item_tasks = item.metadata['system']['refs']
-        for item_task_dict in all_item_tasks:
-            if item_task_dict['id'] != task.id:
+        item_refs = item.metadata['system']['refs']
+        current_task_done = False
+        for ref in item_refs:
+            if ref['id'] != task.id:
                 continue
             # for testing tasks, check if the item is complete via metadata
-            elif item_task_dict.get('metadata', None) is None:
+            elif ref.get('metadata', None) is None:
                 continue
-            elif item_task_dict.get('metadata').get('status', None) in ['completed', 'consensus_done']:
-                calc_task_item_score(item=item, task=task, score_types=score_types)
+            elif ref.get('metadata').get('status', None) in ['completed', 'consensus_done']:
+                current_task_done = True
+                break
             else:
                 logger.info(f'Item {item.id} is not complete, skipping scoring')
                 continue
+        if current_task_done is True:
+            items_scores[item.id] = calc_task_item_score(item=item, task=task, score_types=score_types, upload=upload)
 
-    return task
+    return items_scores
 
 
 def calc_task_item_score(item: dl.Item,
                          task: dl.Task,
                          score_types=None,
-                         upload=True) -> dl.Item:
+                         upload=True) -> List[Score]:
     """
     Create scores for items in a task. This is the main function for creating score entities
 
     In the case of qualification and honeypot, the first set of annotations is considered the reference set.
     In the case of consensus, annotations are compared twice-- once as a reference set, and once as a test set.
-    :param item: dl.Item entity (optional)
-    :param task: dl.Task entity (optional)
+    :param item: dl.Item entity
+    :param task: dl.Task entity
     :param score_types: list of ScoreTypes to calculate (e.g. [ScoreType.ANNOTATION_IOU, ScoreType.ANNOTATION_LABEL]) (optional)
     :param upload: bool, default True means scores will be uploaded to the platform (optional)
-    :return: item
+    :return: list of Scores
     """
     logger.info(f'Starting scoring for item: {item.id} and task: {task.id}')
     if task.metadata['system'].get('consensusTaskType') == 'consensus':
@@ -85,8 +89,10 @@ def calc_task_item_score(item: dl.Item,
     is_quality_task = _check_task_type(task_type=task_type,
                                        task=task,
                                        item=item)
+
     if is_quality_task is False:
         logging.info('Item was not annotated via quality task. No scores were created.')
+        all_scores = list()
     else:
         [assignments_by_id, assignments_by_annotator] = _sort_assignments(task_type=task_type,
                                                                           item=item,
@@ -144,32 +150,14 @@ def calc_task_item_score(item: dl.Item,
         #############################
         # upload scores to platform #
         #############################
-        debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-        if debug_path is not None:
-            upload = False
-            save_dir = debug_path
-        else:
-            save_dir = os.path.join(os.getcwd(), '../.dataloop')
-
         if upload is True:
-            logger.info(f'About to delete all scores with context item ID: {item.id} and task ID: {task.id}')
+            logger.info(f'Deleting all scores with context item ID: {item.id} and task ID: {task.id}')
             dl_scores = Scores(client_api=dl.client_api)
             dl_scores.delete(context={'itemId': item.id,
                                       'taskId': task.id})
             dl_scores = dl_scores.create(all_scores)
             logger.info(f'Uploaded {len(dl_scores)} scores to platform.')
-        else:
-            logger.info(f'Saving scores locally, {save_dir}')
-            save_filepath = os.path.join(save_dir, task.id, f'{item.id}.json')
-            os.makedirs(os.path.dirname(save_filepath), exist_ok=True)
-            scores_json = list()
-            for score in all_scores:
-                scores_json.append(score.to_json())
-            with open(save_filepath, 'w', encoding='utf-8') as f:
-                json.dump(scores_json, f, ensure_ascii=False, indent=4)
-
-            logger.info(f'SAVED score to: {save_filepath}')
-    return item
+    return all_scores
 
 
 def _check_task_type(task_type,

@@ -1,9 +1,7 @@
-import os
-import json
 import logging
 import dtlpy as dl
 
-from ..dtlpy_scores import ScoreType, Score
+from ..dtlpy_scores import ScoreType
 from ..scoring import calc_task_item_score
 from ..utils.dl_helpers import get_scores_by_annotator, cleanup_annots_by_score
 
@@ -32,12 +30,7 @@ def get_consensus_agreement(item: dl.Item,
                 f"upon agreement fail keep all annotations: {fail_keep_all}")
 
     # get scores and convert to dl.Score
-    calc_task_item_score(task=task, item=item, upload=False)
-    saved_filepath = os.path.join(os.getcwd(), '../.dataloop', task.id, f'{item.id}.json')
-    with open(saved_filepath, 'r') as f:
-        scores_json = json.load(f)
-    all_scores = [Score.from_json(_json=s) for s in scores_json]
-
+    all_scores = calc_task_item_score(task=task, item=item, upload=False)
     agreement = check_annotator_agreement(scores=all_scores, threshold=agree_threshold)
 
     # determine node output action
@@ -67,7 +60,7 @@ def get_consensus_agreement(item: dl.Item,
     return item
 
 
-def check_annotator_agreement(scores, threshold=1):
+def check_annotator_agreement(scores, threshold: float = 1.):
     """
     Check agreement between all annotators
 

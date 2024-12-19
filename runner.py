@@ -8,11 +8,13 @@ from dtlpymetrics.evaluating import get_consensus_agreement
 
 logger = logging.getLogger('scoring-and-metrics')
 
+
 class Scorer(dl.BaseServiceRunner):
     """
     Scorer class for scoring and metrics.
     Functions for calculating scores and metrics and tools for evaluating with them.
     """
+
     @staticmethod
     def create_task_item_score(item: dl.Item,
                                task: dl.Task = None,
@@ -36,10 +38,10 @@ class Scorer(dl.BaseServiceRunner):
             else:
                 task = context.task
 
-        item = calc_task_item_score(item=item,
-                                    task=task,
-                                    score_types=score_types,
-                                    upload=upload)
+        scores = calc_task_item_score(item=item,
+                                      task=task,
+                                      score_types=score_types,
+                                      upload=upload)
         return item
 
     @staticmethod
@@ -84,8 +86,10 @@ class Scorer(dl.BaseServiceRunner):
         agreement_config = dict()
         node = context.node
         agreement_config['agree_threshold'] = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)
-        agreement_config['keep_only_best'] = node.metadata.get('customNodeConfig', dict()).get('consensus_pass_keep_best', False)
-        agreement_config['fail_keep_all'] = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all', True)
+        agreement_config['keep_only_best'] = node.metadata.get('customNodeConfig', dict()).get(
+            'consensus_pass_keep_best', False)
+        agreement_config['fail_keep_all'] = node.metadata.get('customNodeConfig', dict()).get('consensus_fail_keep_all',
+                                                                                              True)
 
         item = get_consensus_agreement(item=item,
                                        task=task,
