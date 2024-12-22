@@ -18,8 +18,8 @@ class Scorer(dl.BaseServiceRunner):
     def __init__(self):
         import dtlpymetrics
         import sys
-        print(f"This dtlpymetrics version is: {dtlpymetrics.__version__}")
-        print(f"This is the python executable: {sys.executable}")
+        logger.info(f"This dtlpymetrics version is: {dtlpymetrics.__version__}")
+        logger.info(f"This is the python executable: {sys.executable}")
 
     @staticmethod
     def create_task_item_score(item: dl.Item,
