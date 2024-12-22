@@ -15,6 +15,10 @@ class Scorer(dl.BaseServiceRunner):
     Functions for calculating scores and metrics and tools for evaluating with them.
     """
 
+    def __init__(self):
+        import dtlpymetrics
+        print(f"This dtlpymetrics version is: {dtlpymetrics.__version__}")
+
     @staticmethod
     def create_task_item_score(item: dl.Item,
                                task: dl.Task = None,
