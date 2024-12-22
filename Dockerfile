@@ -12,6 +12,7 @@ RUN /usr/local/bin/python -m pip install --user \
     seaborn \
     dtlpy
 
+RUN pip uninstall -y dtlpymetrics
 RUN cd /tmp/app/pkgs/dtlpy-metrics && /usr/local/bin/python setup.py install --prefix=$HOME/.local
 
 
