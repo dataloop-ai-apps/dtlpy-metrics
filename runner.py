@@ -51,6 +51,22 @@ class Scorer(dl.BaseServiceRunner):
         return item
 
     @staticmethod
+    def get_previous_task_nodes(pipeline, start_node_id, previous_nodes):
+        """
+        Recursively collects previous nodes in the pipeline and stores them in previous_nodes.
+        """
+        for connection in pipeline.connections:
+            connection: dl.PipelineConnection
+            if connection.target.node_id in start_node_id:
+                if connection.source.node_id not in previous_nodes:
+                    node = pipeline.nodes.get(node_id=connection.source.node_id)
+                    previous_nodes[connection.source.node_id] = node
+                    if node.node_type == 'task':
+                        return connection.source.node_id
+                    else:
+                        return Scorer.get_previous_task_nodes(pipeline, connection.source.node_id, previous_nodes)
+
+    @staticmethod
     def consensus_agreement(item: dl.Item,
                             context: dl.Context,
                             progress: dl.Progress,
@@ -73,22 +89,25 @@ class Scorer(dl.BaseServiceRunner):
         if task is None:
             # context task may still be none
             pipeline_id = context.pipeline_id
-            task_node_id = None
-            for node in reversed(context.pipeline_execution.nodes):
-                if node.node_type == "task":
-                    task_node_id = node.node_id
-                    break
+            pipeline = context.pipeline
+            current_node_id = context.node.node_id
+
+            previous_nodes = dict()
+            logger.info(f"Finding task recursively node for pipeline: {pipeline_id}")
+            task_node_id = Scorer.get_previous_task_nodes(pipeline=pipeline,
+                                                          start_node_id=current_node_id,
+                                                          previous_nodes=previous_nodes)
             if task_node_id is None:
                 raise ValueError(f"Could not find task from pipeline, and task not provided.")
             filters = dl.Filters(resource=dl.FiltersResource.TASK)
             filters.add(field='metadata.system.nodeId', values=task_node_id)
             filters.add(field='metadata.system.pipelineId', values=pipeline_id)
 
-            tasks = item.project.tasks.list(filters=filters)
+            tasks = pipeline.project.tasks.list(filters=filters)
             if tasks.items_count != 1:
                 raise ValueError(f"Failed getting consensus task, found: {tasks.items_count} matches")
             task = tasks.items[0]
-
+        logger.info(f"Found task id: {task.id}")
         agreement_config = dict()
         node = context.node
         agreement_config['agree_threshold'] = node.metadata.get('customNodeConfig', dict()).get('threshold', 0.5)

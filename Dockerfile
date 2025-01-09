@@ -16,6 +16,6 @@ RUN pip uninstall -y dtlpymetrics
 RUN cd /tmp/app/pkgs/dtlpy-metrics && /usr/local/bin/python setup.py install --prefix=$HOME/.local
 
 
-# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.11.0 -f Dockerfile .
-# docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.11.0
-# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.11.0 bash
+# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.12.0 -f Dockerfile .
+# docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.12.0
+# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.15.0 bash
