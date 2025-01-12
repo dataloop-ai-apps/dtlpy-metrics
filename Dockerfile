@@ -12,6 +12,6 @@ RUN cd /tmp/app/pkgs/dtlpy-metrics && /usr/local/bin/python setup.py install
 
 USER 1000
 ENV HOME=/tmp
-# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.18.0 -f Dockerfile .
-# docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.18.0
+# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.19.0 -f Dockerfile .
+# docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.19.0
 # docker run -it gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.17.0 bash
