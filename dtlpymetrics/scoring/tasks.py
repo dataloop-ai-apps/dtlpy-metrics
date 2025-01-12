@@ -248,8 +248,13 @@ def _split_video_to_frames(annotations: dl.AnnotationCollection,
     :param assignments_by_id:
     :return:
     """
-    # sort all annotations by frame
-    num_frames = item.metadata['system']['nb_frames']
+    # get max frames for all annotations
+    try:
+        num_frames = int(item.metadata['system']['ffmpeg']['nb_read_frames'])
+    except KeyError:
+        end_frames = [ann.end_frame for ann in annotations]
+        num_frames = np.max(end_frames) + 1
+
     all_annotation_slices = dict()
     for f in range(num_frames):
         all_annotation_slices[f] = annotations.get_frame(frame_num=f)
