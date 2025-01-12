@@ -428,8 +428,8 @@ def get_video_scores(annotations_by_frame: dict,
     ####################
     # calculate scores #
     ####################
-    all_scores_by_annotation = dict()
-
+    all_scores_by_frame = dict()
+    ann_ids = list()
     for frame, annots_by_assignment in annotations_by_frame.items():
         # compare between each assignment and create Score entities
         frame_scores = list()
@@ -450,55 +450,69 @@ def get_video_scores(annotations_by_frame: dict,
                     f'Comparing assignee: {assignment_annotator_i!r} with assignee: {assignment_annotator_j!r}')
                 annot_collection_1 = annots_by_assignment[assignment_annotator_i]
                 annot_collection_2 = annots_by_assignment[assignment_annotator_j]
-
+                ann_ids.extend([ann.id for ann in annot_collection_1])
+                ann_ids.extend([ann.id for ann in annot_collection_2])
                 # score types that can be returned: ANNOTATION_IOU, ANNOTATION_LABEL, ANNOTATION_ATTRIBUTE
                 pairwise_scores = calculate_annotation_score(annot_collection_1=annot_collection_1,
                                                              annot_collection_2=annot_collection_2,
-                                                             ignore_labels=True,
-                                                             include_confusion=False,
+                                                             ignore_labels=False,
+                                                             ignore_attributes=True,
+                                                             ignore_geometry=True,
                                                              match_threshold=0.01,
                                                              score_types=score_types)
-
-                updated_scores = []
-                # update scores with context
                 for score in pairwise_scores:
-                    updated_score = add_score_context(score=score,
-                                                      user_id=assignment_annotator_j,
-                                                      task_id=task.id,
-                                                      assignment_id=assignments_by_annotator[assignment_annotator_j].id,
-                                                      item_id=item.id,
-                                                      dataset_id=item.dataset.id)
-                    updated_scores.append(updated_score)
+                    if score.type == ScoreType.USER_CONFUSION:
+                        updated_score = add_score_context(
+                            score=score,
+                            user_id=assignment_annotator_j,
+                            task_id=task.id,
+                            entity_id=assignment_annotator_j,
+                            relative=assignment_annotator_i,
+                            assignment_id=assignments_by_annotator[assignment_annotator_j].id,
+                            item_id=item.id)
+                    else:
+                        updated_score = add_score_context(
+                            score=score,
+                            user_id=assignment_annotator_j,
+                            task_id=task.id,
+                            assignment_id=assignments_by_annotator[assignment_annotator_j].id,
+                            item_id=item.id)
+                    frame_scores.append(updated_score)
+        all_scores_by_frame[frame] = frame_scores
 
-                raw_annotation_scores = [score for score in updated_scores if score.type != ScoreType.LABEL_CONFUSION]
-                frame_scores.extend(raw_annotation_scores)
-
-                # calc overall annotation
-                user_annotation_overalls = list()
-                for annotation in annot_collection_2:  # go over all annotations from the "test" set
-                    single_annotation_slice_score = mean_or_default(arr=[score.value
-                                                                         for score in raw_annotation_scores
-                                                                         if score.entity_id == annotation.id],
-                                                                    default=1)
-                    # overall slice score
-                    user_annotation_overalls.append(single_annotation_slice_score)
-                    annotation_overall = Score(type=ScoreType.ANNOTATION_OVERALL,
-                                               value=single_annotation_slice_score,
-                                               entity_id=annotation.id,
-                                               task_id=task.id,
-                                               item_id=item.id,
-                                               user_id=assignment_annotator_j,
-                                               dataset_id=item.dataset.id)
-                    frame_scores.append(annotation_overall)
-
-        for score in frame_scores:
-            if score.entity_id not in all_scores_by_annotation:
-                all_scores_by_annotation[score.entity_id] = list()
-            all_scores_by_annotation[score.entity_id].append(score)
 
     # once each frame's score is calculated, take the average score of all frames
     all_scores = list()
-    for annotation_id, annotation_frame_scores in all_scores_by_annotation.items():
+    unique_annotation_ids = np.unique(ann_ids)
+
+    confusion_scores = list()
+    for frame, scores in all_scores_by_frame.items():
+        for score in scores:
+            if score.type == ScoreType.LABEL_CONFUSION:
+                confusion_scores.append(score)
+
+    confusion_dict = dict()
+    for score in confusion_scores:
+        if score.entity_id not in confusion_dict:
+            confusion_dict[score.entity_id] = dict()
+        if score.relative not in confusion_dict[score.entity_id]:
+            confusion_dict[score.entity_id][score.relative] = 0
+        confusion_dict[score.entity_id][score.relative] += 1
+    for entity_id, v in confusion_dict.items():
+        for relative, count in v.items():
+            all_scores.append(Score(type=ScoreType.LABEL_CONFUSION,
+                                    value=count,
+                                    entity_id=entity_id,  # assignee label
+                                    relative=relative,
+                                    task_id=task.id,
+                                    item_id=item.id
+                                    ))
+
+    for annotation_id in unique_annotation_ids:
+        annotation_frame_scores = [frame_score
+                                   for frame_scores in all_scores_by_frame.values()
+                                   for frame_score in frame_scores
+                                   if frame_score.entity_id == annotation_id]
         all_scores.append(Score(type=ScoreType.ANNOTATION_OVERALL,
                                 value=mean_or_default(arr=[score.value for score in annotation_frame_scores if
                                                            score.type == ScoreType.ANNOTATION_OVERALL.value],
