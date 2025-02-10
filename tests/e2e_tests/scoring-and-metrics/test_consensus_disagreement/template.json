@@ -1,0 +1,401 @@
+{
+  "projectId": null,
+  "orgId": null,
+  "connections": [
+    {
+      "src": {
+        "nodeId": "624caf34-bf03-4f9a-a709-667e2dbfc61f",
+        "portId": "a81dd14f-4ae8-4387-ba6e-66294b960751"
+      },
+      "tgt": {
+        "nodeId": "b5aade59-7ec1-450e-8ae6-866e33023faa",
+        "portId": "b76b73a3-5cd9-44e8-9285-a68db5e9b884"
+      },
+      "condition": "{}",
+      "action": "consensus_done"
+    },
+    {
+      "src": {
+        "nodeId": "4a40cb74-c8ac-4a0a-942f-072e04cd28df",
+        "portId": "a2148190-1122-4f44-a925-59a5ba9b8765"
+      },
+      "tgt": {
+        "nodeId": "624caf34-bf03-4f9a-a709-667e2dbfc61f",
+        "portId": "7c7cf22b-7910-410e-878f-99fcf9799f8f"
+      },
+      "condition": "{}"
+    },
+    {
+      "src": {
+        "nodeId": "4a40cb74-c8ac-4a0a-942f-072e04cd28df",
+        "portId": "a2148190-1122-4f44-a925-59a5ba9b8765"
+      },
+      "tgt": {
+        "nodeId": "4a121126-8edf-476f-b72c-36a639c9573a",
+        "portId": "7c978882-8dc2-4184-bff9-7b5726b5bd98"
+      },
+      "condition": "{}"
+    },
+    {
+      "src": {
+        "nodeId": "b5aade59-7ec1-450e-8ae6-866e33023faa",
+        "portId": "4757714f-8426-4269-8a30-bcf09b1dab5c"
+      },
+      "tgt": {
+        "nodeId": "5976da23-b261-4410-a96d-4daa1cf9bce9",
+        "portId": "76e2024b-0c70-4fb6-9743-12a30eed300a"
+      },
+      "condition": "{}",
+      "action": "consensus passed"
+    },
+    {
+      "src": {
+        "nodeId": "b5aade59-7ec1-450e-8ae6-866e33023faa",
+        "portId": "4757714f-8426-4269-8a30-bcf09b1dab5c"
+      },
+      "tgt": {
+        "nodeId": "71b3f4eb-e854-4b70-bcde-b1ce0727b295",
+        "portId": "ee0f88b1-f873-4216-8f5f-2dcd9c356aed"
+      },
+      "condition": "{}",
+      "action": "consensus failed"
+    }
+  ],
+  "startNodes": [
+    {
+      "nodeId": "4a40cb74-c8ac-4a0a-942f-072e04cd28df",
+      "type": "root",
+      "id": "85f4d3e0-90d5-4ca1-a53e-d947202d2b4e"
+    }
+  ],
+  "variables": [
+    {
+      "name": "dataset",
+      "type": "Dataset",
+      "description": null
+    }
+  ],
+  "description": "",
+  "name": "consensus agreement",
+  "templateKind": "org",
+  "nodes": [
+    {
+      "id": "b5aade59-7ec1-450e-8ae6-866e33023faa",
+      "inputs": [
+        {
+          "portId": "b76b73a3-5cd9-44e8-9285-a68db5e9b884",
+          "nodeId": "0f992f7f-7f85-4e76-bcca-8d6caaf70e3e",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "input"
+        }
+      ],
+      "outputs": [
+        {
+          "portId": "4757714f-8426-4269-8a30-bcf09b1dab5c",
+          "nodeId": "b4b204ca-49c4-445e-b7f7-83f6f73ccbe7",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "actions": [
+            "consensus passed",
+            "consensus failed"
+          ],
+          "io": "output"
+        }
+      ],
+      "name": "Consensus Agreement",
+      "type": "custom",
+      "namespace": {
+        "functionName": "consensus_agreement",
+        "projectName": null,
+        "serviceName": "scoring-and-metrics",
+        "moduleName": "dlm_module",
+        "packageName": "scoring-and-metrics"
+      },
+      "projectId": "c156c404-718c-4695-b187-87551cfb134c",
+      "appName": "Scoring and metrics app",
+      "dpkName": "scoring-and-metrics",
+      "metadata": {
+        "position": {
+          "x": 1122,
+          "y": 403,
+          "z": 0
+        },
+        "componentGroupName": "data",
+        "customNodeConfig": {
+          "agreement_threshold": 0.5,
+          "consensus_pass_keep_best": false,
+          "consensus_fail_keep_all": true,
+          "validation": {
+            "valid": true,
+            "errors": [
+            ]
+          }
+        },
+        "repeatable": true,
+        "pipelineNodeName": "consensus_agreement"
+      }
+    },
+    {
+      "id": "624caf34-bf03-4f9a-a709-667e2dbfc61f",
+      "inputs": [
+        {
+          "portId": "7c7cf22b-7910-410e-878f-99fcf9799f8f",
+          "nodeId": "e5cbc877-746e-43d5-bbf4-37c8c7c67f93",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "input"
+        }
+      ],
+      "outputs": [
+        {
+          "portId": "a81dd14f-4ae8-4387-ba6e-66294b960751",
+          "nodeId": "2a3f2f41-4547-46f3-a501-dd96a58d28d4",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "color": "#50223a",
+          "actions": [
+            "completed",
+            "discard",
+            "consensus_done"
+          ],
+          "io": "output"
+        }
+      ],
+      "name": "Consensus Task",
+      "type": "task",
+      "namespace": {
+        "functionName": "move_to_task",
+        "projectName": "DataloopTasks",
+        "serviceName": "pipeline-utils",
+        "moduleName": "default_module",
+        "packageName": "pipeline-utils"
+      },
+      "projectId": "f8a4b8ce-5ff3-4386-84dc-1bda3a5bc92a",
+      "metadata": {
+        "position": {
+          "x": 727,
+          "y": 403,
+          "z": 0
+        },
+        "taskType": "annotation",
+        "consensusTaskType": "consensus",
+        "priority": 2,
+        "componentGroupName": "labeling",
+        "repeatable": true,
+        "dueDate": 0
+      }
+    },
+    {
+      "id": "4a40cb74-c8ac-4a0a-942f-072e04cd28df",
+      "inputs": [
+        {
+          "portId": "efd36679-8930-4529-bd39-0a3d3b0c974e",
+          "nodeId": "6ce29f27-bd82-4f85-b3f4-c4c8b74bee01",
+          "type": "Dataset",
+          "name": "dataset",
+          "displayName": "dataset",
+          "variableName": "dataset",
+          "io": "input"
+        }
+      ],
+      "outputs": [
+        {
+          "portId": "a2148190-1122-4f44-a925-59a5ba9b8765",
+          "nodeId": "ecc81e4b-616c-415f-b247-e3ac30dc4995",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "output"
+        }
+      ],
+      "name": "preprocess",
+      "type": "code",
+      "namespace": {
+        "functionName": "run",
+        "packageName": "",
+        "serviceName": ""
+      },
+      "projectId": null,
+      "config": {
+        "package": {
+          "code": "import dtlpy as dl\n\n\nclass ServiceRunner:\n    def run(self, dataset: dl.Dataset):\n        filters = dl.Filters()\n        filters.add(field='metadata.single_item_test', values=True)\n        items = dataset.items.list(filters=filters)\n        if items.items_count != 1:\n            raise ValueError(f\"Expected 1 item, got {len(items)}\")\n        item = list(items.all())[0]\n        return item\n",
+          "name": "run",
+          "type": "code",
+          "codebase": {
+            "type": "item"
+          }
+        }
+      },
+      "metadata": {
+        "position": {
+          "x": 446.23455810546875,
+          "y": 405,
+          "z": 0
+        },
+        "componentGroupName": "automation",
+        "codeApplicationName": "preprocess",
+        "repeatable": true
+      }
+    },
+    {
+      "id": "4a121126-8edf-476f-b72c-36a639c9573a",
+      "inputs": [
+        {
+          "portId": "7c978882-8dc2-4184-bff9-7b5726b5bd98",
+          "nodeId": "0efd0d3c-d1bf-4940-aa00-34146498bfaf",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "input"
+        }
+      ],
+      "outputs": [
+        {
+          "portId": "e755d461-a4cc-4c8b-95d6-d55404f04f98",
+          "nodeId": "ffb3a012-976e-4bbd-b362-7407be336160",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "output"
+        }
+      ],
+      "name": "status-handler",
+      "type": "code",
+      "namespace": {
+        "functionName": "run",
+        "packageName": "",
+        "serviceName": ""
+      },
+      "projectId": null,
+      "config": {
+        "package": {
+          "code": "import dtlpy as dl\nimport time\nimport logging\n\nlogger = logging.getLogger(name='dtlpytest')\n\n\nclass ServiceRunner:\n    def run(self, item: dl.Item, context: dl.Context):\n        tries = 15\n        curr_try = 0\n\n        pipeline = context.pipeline\n        task: dl.Task = None\n        consensus_items_dir = None\n\n        task_found = False\n        while not task_found:\n            if curr_try >= tries:\n                raise Exception(\"TIMEOUT: Task not found\")\n\n            try:\n                task: dl.Task = item.dataset.tasks.get(task_name=f\"Consensus Task ({pipeline.name})\")\n                consensus_items_dir = f\"/.consensus/{task.id}{item.dir}\"\n                if consensus_items_dir.endswith(\"/\"):\n                    consensus_items_dir = consensus_items_dir[:-1]\n                task_found = True\n            except dl.exceptions.NotFound:\n                logger.warning(\"Task not found, waiting for task to be created\")\n                time.sleep(5)\n\n        curr_try = 0\n        items_found = False\n        requested_consensus_items = None\n        while not items_found:\n            if curr_try >= tries:\n                raise Exception(\"TIMEOUT: Items not found\")\n\n            consensus_items = task.get_items(get_consensus_items=True)\n            if isinstance(consensus_items, dl.entities.PagedEntities):\n                consensus_items = list(consensus_items.all())\n\n            filtered_consensus_items = []\n            for consensus_item in consensus_items:\n                if consensus_item.dir == consensus_items_dir:\n                    filtered_consensus_items.append(consensus_item)\n\n            if len(filtered_consensus_items) == 2:\n                requested_consensus_items = filtered_consensus_items\n                items_found = True\n            else:\n                logger.warning(\"Items not found, waiting for items to be created\")\n                time.sleep(5)\n\n        item1: dl.Item = requested_consensus_items[0]\n        builder1 = item1.annotations.builder()\n        builder1.add(annotation_definition=dl.Classification(label=\"car1\"))\n        builder1.upload()\n        item1.update_status(status=dl.ItemStatus.COMPLETED, task_id=task.id)\n\n        item2: dl.Item = requested_consensus_items[1]\n        builder2 = item2.annotations.builder()\n        builder2.add(annotation_definition=dl.Classification(label=\"car2\"))\n        builder2.upload()\n        item2.update_status(status=dl.ItemStatus.COMPLETED, task_id=task.id)\n\n        return item\n",
+          "name": "run",
+          "type": "code",
+          "codebase": {
+            "type": "item"
+          }
+        }
+      },
+      "metadata": {
+        "position": {
+          "x": 726.7283905406058,
+          "y": 548.1851588119695,
+          "z": 0
+        },
+        "componentGroupName": "automation",
+        "codeApplicationName": "status-handler",
+        "repeatable": true
+      }
+    },
+    {
+      "id": "5976da23-b261-4410-a96d-4daa1cf9bce9",
+      "inputs": [
+        {
+          "portId": "76e2024b-0c70-4fb6-9743-12a30eed300a",
+          "nodeId": "76e2024b-0c70-4fb6-9743-12a30eed300a",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "input"
+        }
+      ],
+      "outputs": [
+        {
+          "portId": "604a4ca2-32c1-4ced-af3a-7528568e56c4",
+          "nodeId": "604a4ca2-32c1-4ced-af3a-7528568e56c4",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "output"
+        }
+      ],
+      "name": "pass",
+      "type": "code",
+      "namespace": {
+        "functionName": "run",
+        "packageName": "",
+        "serviceName": ""
+      },
+      "projectId": null,
+      "config": {
+        "package": {
+          "code": "import dtlpy as dl\n\nclass ServiceRunner:\n\n    def run(self, item):\n        raise ValueError(\"Test Failed\")\n        return item\n",
+          "name": "run",
+          "type": "code",
+          "codebase": {
+            "type": "item"
+          }
+        }
+      },
+      "metadata": {
+        "position": {
+          "x": 1559.7630086887848,
+          "y": 336.94293427783936,
+          "z": 0
+        },
+        "componentGroupName": "automation",
+        "codeApplicationName": "pass",
+        "repeatable": true
+      }
+    },
+    {
+      "id": "71b3f4eb-e854-4b70-bcde-b1ce0727b295",
+      "inputs": [
+        {
+          "portId": "ee0f88b1-f873-4216-8f5f-2dcd9c356aed",
+          "nodeId": "ee0f88b1-f873-4216-8f5f-2dcd9c356aed",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "input"
+        }
+      ],
+      "outputs": [
+        {
+          "portId": "3e128745-4f8a-4e71-bb2c-7605d5b6c3a1",
+          "nodeId": "3e128745-4f8a-4e71-bb2c-7605d5b6c3a1",
+          "type": "Item",
+          "name": "item",
+          "displayName": "item",
+          "io": "output"
+        }
+      ],
+      "name": "fail",
+      "type": "code",
+      "namespace": {
+        "functionName": "run",
+        "packageName": "",
+        "serviceName": ""
+      },
+      "projectId": null,
+      "config": {
+        "package": {
+          "code": "import dtlpy as dl\n\nclass ServiceRunner:\n\n    def run(self, item):\n        return item\n",
+          "name": "run",
+          "type": "code",
+          "codebase": {
+            "type": "item"
+          }
+        }
+      },
+      "metadata": {
+        "position": {
+          "x": 1560.6919827549318,
+          "y": 473.5399274405812,
+          "z": 0
+        },
+        "componentGroupName": "automation",
+        "codeApplicationName": "fail",
+        "repeatable": true
+      }
+    }
+  ],
+  "preview": "67aa205820f9bf2d34879ca4",
+  "_id": "67aa20c7bd57d1631e7777bb"
+}
