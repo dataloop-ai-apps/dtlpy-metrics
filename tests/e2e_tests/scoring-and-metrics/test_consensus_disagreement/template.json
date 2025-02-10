@@ -125,7 +125,7 @@
         },
         "componentGroupName": "data",
         "customNodeConfig": {
-          "agreement_threshold": 0.5,
+          "agreement_threshold": 0.75,
           "consensus_pass_keep_best": false,
           "consensus_fail_keep_all": true,
           "validation": {
