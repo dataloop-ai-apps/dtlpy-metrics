@@ -1,0 +1,37 @@
+# ordered list of dpks to publish and install
+dpks:
+    - name: scoring-and-metrics
+      install_app: True
+
+services:
+    - name: scoring-and-metrics
+      source_app: scoring-and-metrics
+
+# ordered list of datasets to create from local assets or to get from installed apps
+datasets:
+    - name: test_dataset
+      type: local
+
+# TODO: Add support for adding service dpk to the pipeline
+
+# list of pipeline variables to update with reference
+variables:
+    - name: dataset
+      resource_type: datasets
+      resource_value:
+          resource_name: test_dataset
+
+# list of pipeline task nodes to update with parameters
+task_nodes:
+    - name: Consensus Task
+      dataset: test_dataset
+      metadata:
+          taskOwner: annotator1@dataloop.ai
+          workload:
+              - assigneeId: annotator1@dataloop.ai
+                load: 50
+              - assigneeId: annotator2@dataloop.ai
+                load: 50
+          consensusTaskType: consensus
+          consensusAssignees: 2
+          consensusPercentage: 100
