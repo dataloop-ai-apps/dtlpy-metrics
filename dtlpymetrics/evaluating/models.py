@@ -109,21 +109,11 @@ def label_confusion_matrix(item: dl.Item,
     label_names = ['unmatched' if label is None else label for label in label_names]
 
     if save_plot is True:
-        if os.environ.get('SCORES_DEBUG_PATH', None) is not None:
-            debug_path = os.environ.get('SCORES_DEBUG_PATH', None)
-
-            plot_confusion_matrix(item_title=f'label confusion matrix {item.id}',
-                                  filename=os.path.join(debug_path, 'label_confusion',
-                                                        f'label_confusion_matrix_{item.id}.png'),
-                                  matrix_to_plot=conf_matrix,
-                                  axis_labels=label_names)
-
-        else:
-            plot_confusion_matrix(item_title=f'label confusion matrix {item.id}',
-                                  filename=os.path.join('.dataloop', 'label_confusion',
-                                                        f'label_confusion_matrix_{item.id}.png'),
-                                  matrix_to_plot=conf_matrix,
-                                  axis_labels=label_names)
+        plot_confusion_matrix(item_title=f'label confusion matrix {item.id}',
+                              filename=os.path.join('.dataloop', 'label_confusion',
+                                                    f'label_confusion_matrix_{item.id}.png'),
+                              matrix_to_plot=conf_matrix,
+                              axis_labels=label_names)
 
     return conf_matrix
 

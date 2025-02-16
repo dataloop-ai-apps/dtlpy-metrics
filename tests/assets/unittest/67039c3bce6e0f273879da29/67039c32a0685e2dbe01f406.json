@@ -12,30 +12,6 @@
         }
     },
     {
-        "type": "annotation_iou",
-        "value": 1.0,
-        "entityId": "6703ace6850da5ee49c95015",
-        "context": {
-            "relative": "6703ace6850da5f122c95019",
-            "userId": "ofir.g@dataloop.ai",
-            "assignmentId": "67039c3bce6e0fe9b679da2c",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_attribute",
-        "value": 1,
-        "entityId": "6703ace6850da5ee49c95015",
-        "context": {
-            "relative": "6703ace6850da5f122c95019",
-            "userId": "ofir.g@dataloop.ai",
-            "assignmentId": "67039c3bce6e0fe9b679da2c",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
         "type": "user_confusion",
         "value": 0.0,
         "entityId": "ofir.g@dataloop.ai",
@@ -49,30 +25,6 @@
     },
     {
         "type": "annotation_label",
-        "value": 1,
-        "entityId": "6703ace6850da56ef7c95011",
-        "context": {
-            "relative": "6703ace6850da5f122c95019",
-            "userId": "aaron.p@dataloop.ai",
-            "assignmentId": "67039c3bce6e0fdfbb79da2d",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_iou",
-        "value": 1.0,
-        "entityId": "6703ace6850da56ef7c95011",
-        "context": {
-            "relative": "6703ace6850da5f122c95019",
-            "userId": "aaron.p@dataloop.ai",
-            "assignmentId": "67039c3bce6e0fdfbb79da2d",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_attribute",
         "value": 1,
         "entityId": "6703ace6850da56ef7c95011",
         "context": {
@@ -98,30 +50,6 @@
     {
         "type": "annotation_label",
         "value": 0,
-        "entityId": "6703ace6850da5f122c95019",
-        "context": {
-            "relative": "6703ace6850da5ee49c95015",
-            "userId": "yaya.t@dataloop.ai",
-            "assignmentId": "67039c3bce6e0f430679da2b",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_iou",
-        "value": 1.0,
-        "entityId": "6703ace6850da5f122c95019",
-        "context": {
-            "relative": "6703ace6850da5ee49c95015",
-            "userId": "yaya.t@dataloop.ai",
-            "assignmentId": "67039c3bce6e0f430679da2b",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_attribute",
-        "value": 1,
         "entityId": "6703ace6850da5f122c95019",
         "context": {
             "relative": "6703ace6850da5ee49c95015",
@@ -156,30 +84,6 @@
         }
     },
     {
-        "type": "annotation_iou",
-        "value": 1.0,
-        "entityId": "6703ace6850da56ef7c95011",
-        "context": {
-            "relative": "6703ace6850da5ee49c95015",
-            "userId": "aaron.p@dataloop.ai",
-            "assignmentId": "67039c3bce6e0fdfbb79da2d",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_attribute",
-        "value": 1,
-        "entityId": "6703ace6850da56ef7c95011",
-        "context": {
-            "relative": "6703ace6850da5ee49c95015",
-            "userId": "aaron.p@dataloop.ai",
-            "assignmentId": "67039c3bce6e0fdfbb79da2d",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
         "type": "user_confusion",
         "value": 0.0,
         "entityId": "aaron.p@dataloop.ai",
@@ -193,30 +97,6 @@
     },
     {
         "type": "annotation_label",
-        "value": 1,
-        "entityId": "6703ace6850da5f122c95019",
-        "context": {
-            "relative": "6703ace6850da56ef7c95011",
-            "userId": "yaya.t@dataloop.ai",
-            "assignmentId": "67039c3bce6e0f430679da2b",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_iou",
-        "value": 1.0,
-        "entityId": "6703ace6850da5f122c95019",
-        "context": {
-            "relative": "6703ace6850da56ef7c95011",
-            "userId": "yaya.t@dataloop.ai",
-            "assignmentId": "67039c3bce6e0f430679da2b",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_attribute",
         "value": 1,
         "entityId": "6703ace6850da5f122c95019",
         "context": {
@@ -242,30 +122,6 @@
     {
         "type": "annotation_label",
         "value": 0,
-        "entityId": "6703ace6850da5ee49c95015",
-        "context": {
-            "relative": "6703ace6850da56ef7c95011",
-            "userId": "ofir.g@dataloop.ai",
-            "assignmentId": "67039c3bce6e0fe9b679da2c",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_iou",
-        "value": 1.0,
-        "entityId": "6703ace6850da5ee49c95015",
-        "context": {
-            "relative": "6703ace6850da56ef7c95011",
-            "userId": "ofir.g@dataloop.ai",
-            "assignmentId": "67039c3bce6e0fe9b679da2c",
-            "taskId": "67039c3bce6e0f273879da29",
-            "itemId": "67039c32a0685e2dbe01f406"
-        }
-    },
-    {
-        "type": "annotation_attribute",
-        "value": 1,
         "entityId": "6703ace6850da5ee49c95015",
         "context": {
             "relative": "6703ace6850da56ef7c95011",
