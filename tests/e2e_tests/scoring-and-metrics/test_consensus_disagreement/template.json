@@ -135,7 +135,7 @@
           }
         },
         "repeatable": true,
-        "pipelineNodeName": "consensus_agreement"
+        "pipelineNodeName": "consensus_disagreement"
       }
     },
     {
