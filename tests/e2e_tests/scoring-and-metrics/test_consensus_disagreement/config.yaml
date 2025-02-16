@@ -1,5 +1,4 @@
 # ordered list of dpks to publish and install
-# TODO: For now, install the DPK on the project first
 dpks:
     - name: scoring-and-metrics
       install_app: True
