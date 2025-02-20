@@ -76,7 +76,7 @@
     }
   ],
   "description": "",
-  "name": "consensus agreement",
+  "name": "consensus disagreement",
   "templateKind": "org",
   "nodes": [
     {
