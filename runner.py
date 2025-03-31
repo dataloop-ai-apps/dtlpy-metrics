@@ -20,7 +20,7 @@ class Scorer(dl.BaseServiceRunner):
                                score_types=None,
                                upload=True):
         """
-        Calculate scores for a quality task item. This is a wrapper function for _create_task_item_score.
+        Calculate scores for a quality task item. This is a wrapper function for calc_task_item_score.
         :param item: dl.Item
         :param task: dl.Task (optional) Task entity. If none provided, task will be retrieved from context.
         :param context: dl.Context (optional)
