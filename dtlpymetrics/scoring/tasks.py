@@ -293,8 +293,8 @@ def get_image_scores(annots_by_assignment: dict,
                      assignments_by_annotator: dict,
                      task: dl.Task,
                      item: dl.Item,
-                     score_types: list,
-                     task_type: str) -> list:
+                     task_type: str,
+                     score_types: list = None) -> list:
     """
     Calculate scores for an image item
 
@@ -302,8 +302,8 @@ def get_image_scores(annots_by_assignment: dict,
     :param assignments_by_annotator: dict of assignments groups by annotator
     :param task: dl.Task
     :param item: dl.Item
-    :param score_types: list of score types to be calculated
     :param task_type: str, 'testing' or 'consensus'
+    :param score_types: list of score types to be calculated (optional)
     :return all_scores: list of all annotation and item scores
 
     """
