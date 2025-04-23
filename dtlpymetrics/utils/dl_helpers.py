@@ -62,7 +62,7 @@ def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger 
     :param logger: logging.Logger (optional)
     :return: True
     """
-
+    annots_to_keep = [] if annots_to_keep is None else annots_to_keep
     annotations_to_delete = []
     for score in scores:
         if score.type == ScoreType.ANNOTATION_OVERALL:
