@@ -7,12 +7,8 @@
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
-    "Media Type": [
-      "Image"
-    ],
-    "Application Type": [
-      "Pipeline Node"
-    ],
+    "Media Type": ["Image"],
+    "Application Type": ["Pipeline Node"],
     "License": "Apache 2.0"
   },
   "codebase": {
@@ -31,11 +27,42 @@
           "type": "function",
           "namespace": "dlm_module.create_task_item_score"
         },
-        "categories": [
-          "data"
-        ],
+        "categories": ["data"],
         "configuration": {
-          "fields": []
+          "fields": [
+            {
+              "name": "score_types",
+              "title": "Score Types",
+              "props": {
+                "type": "string",
+                "required": true,
+                "placeholder": "Score types to calculate",
+                "multiselect": true,
+                "options": [
+                  {
+                    "value": "annotation_iou",
+                    "label": "Annotation IoU"
+                  },
+                  {
+                    "value": "annotation_label",
+                    "label": "Annotation Label"
+                  },
+                  {
+                    "value": "annotation_attribute",
+                    "label": "Annotation Attribute"
+                  }
+                ]
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error",
+                  "errorMessage": "At least one score type is required"
+                }
+              ],
+              "widget": "dl-select"
+            }
+          ]
         },
         "scope": "node"
       },
@@ -47,9 +74,7 @@
           "type": "function",
           "namespace": "dlm_module.consensus_agreement"
         },
-        "categories": [
-          "data"
-        ],
+        "categories": ["data"],
         "configuration": {
           "fields": [
             {
@@ -119,7 +144,7 @@
             ],
             "displayIcon": "icon-dl-analytics",
             "displayName": "Create Consensus Score"
-            },
+          },
           {
             "name": "consensus_agreement",
             "description": "Process consensus task items based on annotator agreement threshold.",
@@ -133,10 +158,7 @@
               {
                 "type": "Item",
                 "name": "item",
-                "actions": [
-                  "consensus passed",
-                  "consensus failed"
-                ]
+                "actions": ["consensus passed", "consensus failed"]
               }
             ],
             "displayIcon": "icon-dl-members",

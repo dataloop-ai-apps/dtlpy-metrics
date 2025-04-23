@@ -3,10 +3,29 @@ import logging
 import dtlpy as dl
 import pandas as pd
 
+from typing import List
+
 from dtlpymetrics.scoring import calc_task_item_score, calc_precision_recall
 from dtlpymetrics.evaluating import get_consensus_agreement
+from dtlpymetrics.dtlpy_scores import ScoreType
 
 logger = logging.getLogger('scoring-and-metrics')
+
+def convert_score_types(node_scores: List[str]) -> List[ScoreType]: # TODO once there's multi option dropdown checkboxes
+    """
+    Map score types to ScoreType enum.
+    """
+    score_types = []
+    for node_score in node_scores:  
+        if node_score == 'annotation_iou':
+            score_types.append(ScoreType.ANNOTATION_IOU)
+        elif node_score == 'annotation_label':
+            score_types.append(ScoreType.ANNOTATION_LABEL)
+        elif node_score == 'annotation_attribute':
+            score_types.append(ScoreType.ANNOTATION_ATTRIBUTE)
+    if len(score_types) == 0:
+        score_types = None
+    return score_types
 
 
 class Scorer(dl.BaseServiceRunner):
@@ -28,7 +47,7 @@ class Scorer(dl.BaseServiceRunner):
                                score_types=None,
                                upload=True):
         """
-        Calculate scores for a quality task item. This is a wrapper function for _create_task_item_score.
+        Calculate scores for a quality task item. This is a wrapper function for calc_task_item_score.
         :param item: dl.Item
         :param task: dl.Task (optional) Task entity. If none provided, task will be retrieved from context.
         :param context: dl.Context (optional)
@@ -43,6 +62,9 @@ class Scorer(dl.BaseServiceRunner):
                 raise ValueError('Must provide either task or context.')
             else:
                 task = context.task
+        if context is not None:
+            node_scores = context.node.metadata.get('customNodeConfig', dict()).get('score_types', [])
+            score_types = convert_score_types(node_scores)
 
         scores = calc_task_item_score(item=item,
                                       task=task,
