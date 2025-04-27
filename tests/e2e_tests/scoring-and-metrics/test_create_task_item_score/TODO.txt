@@ -1,0 +1,2 @@
+Required support of the following features:
+filter task existing scores
