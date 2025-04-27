@@ -12,8 +12,6 @@ datasets:
     - name: test_dataset
       type: local
 
-# TODO: Add support for adding service dpk to the pipeline
-
 # list of pipeline variables to update with reference
 variables:
     - name: dataset
