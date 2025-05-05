@@ -9,6 +9,7 @@ RUN /usr/local/bin/python -m pip install \
 
 USER 1000
 ENV HOME=/tmp
-# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.19.0 -f Dockerfile .
-# docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.19.0
-# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.17.0 bash
+
+# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.20.0 -f Dockerfile .
+# docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.20.0
+# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.20.0 bash
