@@ -40,7 +40,7 @@ def confusion_matrix(dataset_id: str,
     dataset = dl.datasets.get(dataset_id=dataset_id)
     items = list(dataset.items.list(filters=filters).all())
     if len(items) == 0:
-        raise ValueError(f'No scores found for model ID {model_id}. Please evaluate model on the dataset first.')
+        raise ValueError(f'No scores found for model ID {model_id}. Please create scores for the model on the dataset first.')
     elif len(items) > 1:
         raise ValueError(f'Found {len(items)} items with name {model_id}.')
     else:
@@ -136,7 +136,8 @@ def get_model_scores_df(dataset: dl.Dataset, model: dl.Model) -> pd.DataFrame:
             item.download(local_path=local_path)
     else:
         raise ValueError(
-            f'No matched annotations file found for model {model.id} on dataset {dataset.id}. Please evaluate model on the dataset first.')
+            f'No matched annotations file found for model {model.id} on dataset {dataset.id}. '
+            f'Please create scores for the model on the dataset first.')
 
     model_scores_df = pd.read_csv(local_path)
     return model_scores_df
@@ -161,7 +162,8 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
             item.download(local_path=local_path)
     else:
         raise ValueError(
-            f'No scores file found for model {model.id} on dataset {dataset.id}. Please evaluate model on the dataset first.')
+            f'No scores file found for model {model.id} on dataset {dataset.id}. '
+            f'Please create scores for the model on the dataset first.')
 
     scores_df = pd.read_csv(local_path)
 
