@@ -104,10 +104,11 @@ def check_unanimous_agreement(scores, threshold=1):
     if threshold < 0 or threshold > 1:
         raise ValueError('Threshold must be between 0 and 1. Please set a valid threshold.')
     # calculate unanimity based on whether each pair agrees
+    agreement = True
     for score in scores:
         if score.type == ScoreType.USER_CONFUSION:
             if score.value >= threshold:
                 continue
             else:
-                return False
-    return True
+                agreement = False
+    return agreement
