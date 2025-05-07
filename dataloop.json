@@ -17,7 +17,7 @@
   },
   "codebase": {
     "type": "git",
-    "gitUrl": "https://github.com/dataloop-ai-apps/scoring-and-metrics.git",
+    "gitUrl": "https://github.com/dataloop-ai-apps/dtlpy-metrics.git",
     "gitTag": "1.2.19"
   },
   "scope": "public",
