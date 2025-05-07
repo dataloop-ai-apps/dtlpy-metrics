@@ -42,7 +42,15 @@ def get_consensus_agreement(item: dl.Item,
                 logger.info("Keeping the annotation with the highest score.")
                 scores_by_annotator = get_scores_by_annotator(scores=all_scores)
                 annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
-                best_annotator = annot_scores[max(annot_scores, key=annot_scores.get)][0]
+                
+                # Get the annotator with the highest score
+                max_score = max(annot_scores.values())
+                best_annotator = None
+                # Find the first key with the maximum value
+                for key, value in annot_scores.items():
+                    if value == max_score:
+                        best_annotator = key
+                        break
                 logger.info(f"Best annotator assignment ID: {best_annotator}")
 
                 annots_to_keep = [score.entity_id for score in all_scores if
@@ -80,11 +88,8 @@ def check_annotator_agreement(scores, threshold: float = 1.):
         raise ValueError('Threshold must be between 0 and 1. Please set a valid threshold.')
     # calculate agreement based on the average agreement across all annotators
     user_scores = [score.value for score in scores if score.type == ScoreType.USER_CONFUSION]
-    if sum(user_scores) / len(user_scores) >= threshold:
-        return True
-    else:
-        return False
-
+    agreement = True if sum(user_scores) / len(user_scores) >= threshold else False
+    return agreement
 
 def check_unanimous_agreement(scores, threshold=1):
     """
