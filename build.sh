@@ -1,6 +1,6 @@
+# Clean up any existing installation
 pip uninstall -y dtlpymetrics
 
-# cd /tmp/app/pkgs/dtlpy-metrics && /usr/local/bin/python setup.py install
 # Change to the package directory
 cd /tmp/app/pkgs/dtlpy-metrics
 
