@@ -46,14 +46,16 @@ def get_consensus_agreement(item: dl.Item,
                                   (score.context.get('assignmentId') == best_annotator) and (
                                           score.type == ScoreType.ANNOTATION_OVERALL)]
 
-                cleanup_annots_by_score(scores=all_scores,
+                cleanup_annots_by_score(item=item,
+                                        scores=all_scores,
                                         annots_to_keep=annots_to_keep,
                                         logger=logger)
         else:
             progress.update(action='consensus failed')
             logger.info(f'Consensus failed for item {item.id}')
             if fail_keep_all is False:
-                cleanup_annots_by_score(scores=all_scores,
+                cleanup_annots_by_score(item=item,
+                                        scores=all_scores,
                                         annots_to_keep=None,
                                         logger=logger)
 

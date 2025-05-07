@@ -54,9 +54,10 @@ def add_score_context(score: Score,
     return score
 
 
-def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger = None):
+def cleanup_annots_by_score(item: dl.Item, scores, annots_to_keep=None, logger: logging.Logger = None):
     """
     Clean up annotations based on a list of scores to keep.
+    :param item: dl.Item
     :param scores: list of scores
     :param annots_to_keep: list of annotation ids to keep (optional)
     :param logger: logging.Logger (optional)
@@ -77,9 +78,7 @@ def cleanup_annots_by_score(scores, annots_to_keep=None, logger: logging.Logger 
 
     filters = dl.Filters(resource=dl.FiltersResource.ANNOTATION)
     filters.add(field='id', values=annotations_to_delete, operator=dl.FILTERS_OPERATIONS_IN)
-    dl.annotations.delete(filters=filters)
-
-    return True
+    item.annotations.delete(filters=filters)
 
 
 def get_scores_by_annotator(scores) -> dict:
