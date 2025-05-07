@@ -42,7 +42,6 @@ def get_consensus_agreement(item: dl.Item,
                 logger.info("Keeping the annotation with the highest score.")
                 scores_by_annotator = get_scores_by_annotator(scores=all_scores)
                 annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
-                
                 # Get the annotator with the highest score
                 max_score = max(annot_scores.values())
                 best_annotator = None
