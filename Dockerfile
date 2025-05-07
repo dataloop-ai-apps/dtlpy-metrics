@@ -1,7 +1,5 @@
 FROM dataloopai/dtlpy-agent:cpu.py3.10.opencv
 USER root
-COPY . /tmp/app/pkgs/dtlpy-metrics
-RUN chmod -R 777 /tmp/app && chown -R 1000:1000 /tmp/app
 
 RUN /usr/local/bin/python -m pip install \
     shapely==2.0.0 \
