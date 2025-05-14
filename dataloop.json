@@ -132,6 +132,24 @@
             "displayName": "Consensus Agreement"
           },
           {
+            "name": "create_item_model_score",
+            "displayName": "Create Model Score",
+            "description": "Calculate the score for each item based on model predictions",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "displayIcon": "icon-dl-analytics"
+          },
+          {
             "name": "model_agreement",
             "displayName": "Model Agreement with GT",
             "description": "Calculate the agreement between a model and the ground truth.",
@@ -145,9 +163,10 @@
               {
                 "type": "Item",
                 "name": "item",
-                "actions": ["agreement passed", "agreement failed"]
+                "actions": ["model passed", "model failed"]
               }
-            ]
+            ],
+            "displayIcon": "icon-dl-analytics"
           }
         ]
       }

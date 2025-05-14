@@ -10,15 +10,15 @@ import seaborn as sns
 from typing import List
 
 from ..dtlpy_scores import Score, ScoreType
+from ..scoring import calc_item_model_score
 from ..utils import plot_confusion_matrix
 
-logger = logging.getLogger('scoring-and-metrics')
+logger = logging.getLogger("scoring-and-metrics")
 
 
-def confusion_matrix(dataset_id: str,
-                     model_id: str,
-                     metric: str,
-                     show_unmatched=True) -> pd.DataFrame:
+def confusion_matrix(
+    dataset_id: str, model_id: str, metric: str, show_unmatched=True
+) -> pd.DataFrame:
     """
     Calculate confusion matrix for a given model and metric (i.e. IOU, accuracy)
 
@@ -28,21 +28,23 @@ def confusion_matrix(dataset_id: str,
     :param show_unmatched: display extra column showing which GT annotations were not matched (optional)
     :return: DataFrame with confusion matrix
     """
-    if metric.lower() == 'iou':
-        metric = 'geometry_score'
-    elif metric.lower() == 'accuracy':
-        metric = 'label_score'
+    if metric.lower() == "iou":
+        metric = "geometry_score"
+    elif metric.lower() == "accuracy":
+        metric = "label_score"
 
     # TODO retrieve scores directly once available
-    model_filename = f'{model_id}.csv'
-    filters = dl.Filters(field='hidden', values=True)
-    filters.add(field='name', values=model_filename)
+    model_filename = f"{model_id}.csv"
+    filters = dl.Filters(field="hidden", values=True)
+    filters.add(field="name", values=model_filename)
     dataset = dl.datasets.get(dataset_id=dataset_id)
     items = list(dataset.items.list(filters=filters).all())
     if len(items) == 0:
-        raise ValueError(f'No scores found for model ID {model_id}. Please create scores for the model on the dataset first.')
+        raise ValueError(
+            f"No scores found for model ID {model_id}. Please create scores for the model on the dataset first."
+        )
     elif len(items) > 1:
-        raise ValueError(f'Found {len(items)} items with name {model_id}.')
+        raise ValueError(f"Found {len(items)} items with name {model_id}.")
     else:
         scores_file = items[0].download()
 
@@ -51,7 +53,7 @@ def confusion_matrix(dataset_id: str,
     label_names = [label.tag for label in labels]
 
     if metric not in scores.columns:
-        raise ValueError(f'{metric} metric not included in scores.')
+        raise ValueError(f"{metric} metric not included in scores.")
 
     ###############################
     # create table of comparisons #
@@ -60,8 +62,8 @@ def confusion_matrix(dataset_id: str,
         label_names = pd.concat([scores.first_label, scores.second_label]).dropna()
 
     scores_cleaned = scores.dropna().reset_index(drop=True)
-    scores_labels = scores_cleaned[['first_label', 'second_label']]
-    grouped_labels = scores_labels.groupby(['first_label', 'second_label']).size()
+    scores_labels = scores_cleaned[["first_label", "second_label"]]
+    grouped_labels = scores_labels.groupby(["first_label", "second_label"]).size()
 
     conf_matrix = pd.DataFrame(index=label_names, columns=label_names, data=0)
     for label1, label2 in grouped_labels.index:
@@ -71,9 +73,9 @@ def confusion_matrix(dataset_id: str,
     return conf_matrix
 
 
-def label_confusion_matrix(item: dl.Item,
-                           scores: List[Score],
-                           save_plot=True) -> pd.DataFrame:
+def label_confusion_matrix(
+    item: dl.Item, scores: List[Score], save_plot=True
+) -> pd.DataFrame:
     """
     Calculate confusion matrix from a set of label confusion scores
     :param item: dl.Item
@@ -104,16 +106,19 @@ def label_confusion_matrix(item: dl.Item,
             conf_matrix.loc[score.entity_id, score.relative] = score.value
 
     conf_matrix.fillna(0, inplace=True)
-    conf_matrix.rename(columns={None: 'unmatched'}, inplace=True)
-    conf_matrix.rename(index={None: 'unmatched'}, inplace=True)
-    label_names = ['unmatched' if label is None else label for label in label_names]
+    conf_matrix.rename(columns={None: "unmatched"}, inplace=True)
+    conf_matrix.rename(index={None: "unmatched"}, inplace=True)
+    label_names = ["unmatched" if label is None else label for label in label_names]
 
     if save_plot is True:
-        plot_confusion_matrix(item_title=f'label confusion matrix {item.id}',
-                              filename=os.path.join('.dataloop', 'label_confusion',
-                                                    f'label_confusion_matrix_{item.id}.png'),
-                              matrix_to_plot=conf_matrix,
-                              axis_labels=label_names)
+        plot_confusion_matrix(
+            item_title=f"label confusion matrix {item.id}",
+            filename=os.path.join(
+                ".dataloop", "label_confusion", f"label_confusion_matrix_{item.id}.png"
+            ),
+            matrix_to_plot=conf_matrix,
+            axis_labels=label_names,
+        )
 
     return conf_matrix
 
@@ -125,10 +130,10 @@ def get_model_scores_df(dataset: dl.Dataset, model: dl.Model) -> pd.DataFrame:
     :param model: Model entity
     :return: matched_annots_df: dataframe of all annotations in ground truth and model predictions
     """
-    file_name = f'{model.id}.csv'
-    local_path = os.path.join(os.getcwd(), '.dataloop', file_name)
-    filters = dl.Filters(field='name', values=file_name)
-    filters.add(field='hidden', values=True)
+    file_name = f"{model.id}.csv"
+    local_path = os.path.join(os.getcwd(), ".dataloop", file_name)
+    filters = dl.Filters(field="name", values=file_name)
+    filters.add(field="hidden", values=True)
     pages = dataset.items.list(filters=filters)
 
     if pages.items_count > 0:
@@ -136,8 +141,9 @@ def get_model_scores_df(dataset: dl.Dataset, model: dl.Model) -> pd.DataFrame:
             item.download(local_path=local_path)
     else:
         raise ValueError(
-            f'No matched annotations file found for model {model.id} on dataset {dataset.id}. '
-            f'Please create scores for the model on the dataset first.')
+            f"No matched annotations file found for model {model.id} on dataset {dataset.id}. "
+            f"Please create scores for the model on the dataset first."
+        )
 
     model_scores_df = pd.read_csv(local_path)
     return model_scores_df
@@ -151,10 +157,10 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     :param dataset: Dataset where the model was evaluated
     :return: DataFrame with all the false negatives
     """
-    file_name = f'{model.id}.csv'
-    local_path = os.path.join(os.getcwd(), '../.dataloop', file_name)
-    filters = dl.Filters(field='name', values=file_name)
-    filters.add(field='hidden', values=True)
+    file_name = f"{model.id}.csv"
+    local_path = os.path.join(os.getcwd(), "../.dataloop", file_name)
+    filters = dl.Filters(field="name", values=file_name)
+    filters.add(field="hidden", values=True)
     pages = dataset.items.list(filters=filters)
 
     if pages.items_count > 0:
@@ -162,8 +168,9 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
             item.download(local_path=local_path)
     else:
         raise ValueError(
-            f'No scores file found for model {model.id} on dataset {dataset.id}. '
-            f'Please create scores for the model on the dataset first.')
+            f"No scores file found for model {model.id} on dataset {dataset.id}. "
+            f"Please create scores for the model on the dataset first."
+        )
 
     scores_df = pd.read_csv(local_path)
 
@@ -171,30 +178,34 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     # list false negatives #
     ########################
     model_fns = dict()
-    annotation_to_item_map = {ann_id: item_id for ann_id, item_id in
-                              zip(scores_df.first_id, scores_df.itemId)}
+    annotation_to_item_map = {
+        ann_id: item_id for ann_id, item_id in zip(scores_df.first_id, scores_df.itemId)
+    }
     fn_annotation_ids = scores_df[scores_df.second_id.isna()].first_id
-    print(f'model: {model.name} with {len(fn_annotation_ids)} false negative')
-    fn_items_ids = np.unique([annotation_to_item_map[ann_id] for ann_id in fn_annotation_ids])
+    print(f"model: {model.name} with {len(fn_annotation_ids)} false negative")
+    fn_items_ids = np.unique(
+        [annotation_to_item_map[ann_id] for ann_id in fn_annotation_ids]
+    )
     for i_id in fn_items_ids:
         if i_id not in model_fns:
             i_id: dl.Item
             url = dl.client_api._get_resource_url(
-                "projects/{}/datasets/{}/items/{}".format(dataset.project.id, dataset.id, i_id))
-            model_fns[i_id] = {'itemId': i_id,
-                               'url': url}
+                "projects/{}/datasets/{}/items/{}".format(
+                    dataset.project.id, dataset.id, i_id
+                )
+            )
+            model_fns[i_id] = {"itemId": i_id, "url": url}
         model_fns[i_id].update({model.name: True})
 
     model_fn_df = pd.DataFrame(model_fns.values()).fillna(False)
-    model_fn_df.to_csv(os.path.join(os.getcwd(), f'{model.name}_false_negatives.csv'))
+    model_fn_df.to_csv(os.path.join(os.getcwd(), f"{model.name}_false_negatives.csv"))
 
     return model_fn_df
 
 
-def plot_precision_recall(plot_points: pd.DataFrame,
-                          dataset_name=None,
-                          label_names=None,
-                          local_path=None):
+def plot_precision_recall(
+    plot_points: pd.DataFrame, dataset_name=None, label_names=None, local_path=None
+):
     """
     Plot precision recall curve for a given metric threshold
 
@@ -207,8 +218,8 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     :return: directory path where plots are saved
     """
     if local_path is None:
-        root_dir = os.getcwd().split('dtlpymetrics')[0]
-        save_dir = os.path.join(root_dir, 'dtlpymetrics', '../.dataloop')
+        root_dir = os.getcwd().split("dtlpymetrics")[0]
+        save_dir = os.path.join(root_dir, "dtlpymetrics", "../.dataloop")
         if not os.path.exists(os.path.dirname(save_dir)):
             os.makedirs(os.path.dirname(save_dir))
     else:
@@ -217,24 +228,28 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     ###################
     # plot by dataset #
     ###################
-    logger.info('Plotting precision recall')
+    logger.info("Plotting precision recall")
 
     plt.figure()
     plt.xlim(0, 1.1)
     plt.ylim(0, 1.1)
 
     # plot each label separately
-    dataset_points = plot_points[plot_points['data'] == 'dataset']
-    dataset_legend = f"{dataset_points['dataset_id'].iloc[0]}" if dataset_name is None else dataset_name
+    dataset_points = plot_points[plot_points["data"] == "dataset"]
+    dataset_legend = (
+        f"{dataset_points['dataset_id'].iloc[0]}"
+        if dataset_name is None
+        else dataset_name
+    )
 
-    plt.plot(dataset_points['recall'],
-             dataset_points['precision'],
-             label=dataset_legend)
+    plt.plot(
+        dataset_points["recall"], dataset_points["precision"], label=dataset_legend
+    )
 
-    plt.legend(loc='upper right')
+    plt.legend(loc="upper right")
 
-    plt.xlabel('recall')
-    plt.ylabel('precision')
+    plt.xlabel("recall")
+    plt.ylabel("precision")
     plt.grid()
 
     # plot the dataset level
@@ -242,15 +257,15 @@ def plot_precision_recall(plot_points: pd.DataFrame,
     save_path = os.path.join(save_dir, plot_filename)
     plt.savefig(save_path)
     # plt.close()
-    logger.info(f'Saved dataset precision recall plot to {save_path}')
+    logger.info(f"Saved dataset precision recall plot to {save_path}")
 
     #################
     # plot by label #
     #################
-    all_labels = plot_points[plot_points['data'] == 'label']
+    all_labels = plot_points[plot_points["data"] == "label"]
 
     if (label_names is None) or (bool(label_names) is False):
-        label_names = all_labels['label_name'].copy().drop_duplicates()
+        label_names = all_labels["label_name"].copy().drop_duplicates()
 
     plt.figure()
     plt.xlim(0, 1.1)
@@ -258,23 +273,23 @@ def plot_precision_recall(plot_points: pd.DataFrame,
 
     # plot each label separately
     for label_name in label_names:
-        label_points = all_labels[all_labels['label_name'] == label_name].copy()
+        label_points = all_labels[all_labels["label_name"] == label_name].copy()
 
-        plt.plot(label_points['recall'],
-                 label_points['precision'],
-                 label=label_name)
+        plt.plot(label_points["recall"], label_points["precision"], label=label_name)
 
-    plt.legend(loc='upper right')
-    plt.xlabel('recall')
-    plt.ylabel('precision')
+    plt.legend(loc="upper right")
+    plt.xlabel("recall")
+    plt.ylabel("precision")
     plt.grid()
 
     # plot the dataset level
-    plot_filename = f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
+    plot_filename = (
+        f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
+    )
     save_path = os.path.join(save_dir, plot_filename)
     plt.savefig(save_path)
     # plt.close()
-    logger.info(f'Saved labels precision recall plot to {save_path}')
+    logger.info(f"Saved labels precision recall plot to {save_path}")
 
     return save_dir
 
@@ -292,17 +307,17 @@ def plot_annotators_matrix(item_title, filename, matrix_to_plot, axis_labels):
     mask = np.zeros_like(matrix_to_plot, dtype=bool)
     # mask[np.triu_indices_from(mask)] = True
 
-    sns.set(rc={'figure.figsize': (20, 10),
-                'axes.facecolor': 'white'},
-            font_scale=2)
-    sns_plot = sns.heatmap(matrix_to_plot,
-                           annot=True,
-                           mask=mask,
-                           cmap='Blues',
-                           xticklabels=axis_labels,
-                           yticklabels=axis_labels,
-                           vmin=0,
-                           vmax=1)
+    sns.set(rc={"figure.figsize": (20, 10), "axes.facecolor": "white"}, font_scale=2)
+    sns_plot = sns.heatmap(
+        matrix_to_plot,
+        annot=True,
+        mask=mask,
+        cmap="Blues",
+        xticklabels=axis_labels,
+        yticklabels=axis_labels,
+        vmin=0,
+        vmax=1,
+    )
     sns_plot.set(title=item_title)
     sns_plot.set_yticklabels(sns_plot.get_yticklabels(), rotation=270)
 
@@ -312,3 +327,58 @@ def plot_annotators_matrix(item_title, filename, matrix_to_plot, axis_labels):
     plt.close()
 
     return filename
+
+
+def get_model_agreement(
+    item: dl.Item, model: dl.Model, agreement_config: dict
+) -> bool:
+    """
+    Determine whether model predictions agree with ground truth annotations for a given item.
+    :param item: dl.Item
+    :param model: dl.Model
+    :param agreement_config: dict that needs 2 keys: "agree_threshold" and "fail_keep_all"
+    :return: bool
+    """
+    agree_threshold = agreement_config.get("agree_threshold", 0.5)
+    fail_keep_all = agreement_config.get("fail_keep_all", True)
+
+    logger.info(f"Running model agreement using model {model.name} with ID {model.id}")
+    logger.info(
+        f"Configurations: agreement threshold = {agree_threshold}, "
+        f"upon agreement fail keep all annotations: {fail_keep_all}"
+    )
+
+    # get scores for model predictions
+    all_scores = calc_item_model_score(item=item, model=model, score_types=None, upload=False)
+    agreement = check_model_agreement(scores=all_scores, threshold=agree_threshold)
+
+    return agreement
+
+
+def check_model_agreement(scores, threshold: float = 1.0) -> bool:
+    """
+    Check agreement between model predictions and ground truth annotations
+
+    Scores are averaged across all predictions and compared to the threshold. If the average score is above the threshold,
+    the function returns True.
+    :param scores: list of Scores
+    :param threshold: float, 0-1 (optional)
+    :return: True if agreement is above threshold
+    """
+    if threshold < 0 or threshold > 1:
+        raise ValueError(
+            "Threshold must be between 0 and 1. Please set a valid threshold."
+        )
+
+    # calculate agreement based on the average score across all predictions
+    prediction_scores = [
+        score.value for score in scores if score.type == ScoreType.ANNOTATION_OVERALL
+    ]
+    if not prediction_scores:
+        logger.warning("No prediction scores found")
+        return False
+
+    agreement = (
+        True if sum(prediction_scores) / len(prediction_scores) >= threshold else False
+    )
+    return agreement

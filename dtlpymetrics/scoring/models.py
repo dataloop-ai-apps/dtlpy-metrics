@@ -12,7 +12,14 @@ import pandas as pd
 from concurrent.futures import ThreadPoolExecutor
 from matplotlib import pyplot as plt
 
-from ..utils import all_compare_types, measure_annotations
+from ..utils import (
+    all_compare_types,
+    measure_annotations,
+    mean_or_default,
+    check_if_video,
+)
+from typing import List
+from ..dtlpy_scores import Score, ScoreType, Scores
 
 logger = logging.getLogger("scoring-and-metrics")
 
@@ -163,34 +170,144 @@ def create_model_score(
     calc_and_upload_interpolation(model=model, dataset=dataset)
     return model
 
-
 def calc_item_model_score(
-    item: dl.Item, model: dl.Model, compare_types=None
+    item: dl.Item, model: dl.Model, score_types=None, upload=True
 ) -> List[Score]:
     """
     Creates scores for a set of model predictions compared against ground truth annotations in a given dataset.
 
     :param item: Item entity
     :param model: Model entity
-    :param compare_types: annotation types to compare (optional)
+    :param score_types: annotation types to compare (optional)
+    :param upload: bool, default False means scores will be saved locally (optional)
     :return: list of Scores
     """
+    logger.info(f"Starting scoring for item: {item.id} with model: {model.id}")
 
     ###################################
     # collect annotations for sorting #
     ###################################
-    # get annotations from ground truth annotations and model annotations
-
     annotations = item.annotations.list()
+
+    # Sort annotations into ground truth and model predictions
+    gt_annotations = []
+    model_annotations = []
+
+    for annotation in annotations:
+        if annotation.metadata.get("user", {}).get("model") is None:
+            # GT annotation (no model in metadata)
+            gt_annotations.append(annotation)
+        elif (
+            annotation.metadata.get("user", {}).get("model", {}).get("name", "")
+            == model.name
+        ):
+            # annotation came from the evaluated model
+            model_annotations.append(annotation)
 
     #########################################
     # sort annotations and calculate scores #
     #########################################
 
+    is_video = check_if_video(item=item)
+
+    if is_video is True:  # video items
+        annotations_by_frame = _split_video_to_frames(
+            annotations=annotations, item=item, model=model
+        )
+
+        all_scores = get_video_scores(
+            annotations_by_frame=annotations_by_frame,
+            assignments_by_annotator={"model": None},  # Dummy assignment for model
+            task=None,  # No task for model scoring
+            item=item,
+            score_types=score_types,
+            task_type="testing",
+        )  # Treat as testing task
+    else:  # image items
+        annots_by_assignment = {"gt": gt_annotations, "model": model_annotations}
+        all_scores = get_image_scores(
+            annots_by_assignment=annots_by_assignment,
+            assignments_by_annotator={"model": None},  # Dummy assignment for model
+            task=None,  # No task for model scoring
+            item=item,
+            score_types=score_types,
+            task_type="testing",
+        )  # Treat as testing task
+
+    # overall item score is an average of all overall annotation scores
+    item_overall = [
+        score.value
+        for score in all_scores
+        if score.type == ScoreType.ANNOTATION_OVERALL.value
+    ]
+
+    item_score = Score(
+        type=ScoreType.ITEM_OVERALL,
+        value=mean_or_default(arr=item_overall, default=1),
+        entity_id=item.id,
+        task_id=None,  # No task for model scoring
+        item_id=item.id,
+        dataset_id=item.dataset.id,
+    )
+    all_scores.append(item_score)
+
     #############################
     # upload scores to platform #
     #############################
+    if upload is True:
+        logger.info(
+            f"Deleting all scores with context item ID: {item.id} and model ID: {model.id}"
+        )
+        dl_scores = Scores(client_api=dl.client_api)
+        dl_scores.delete(context={"itemId": item.id, "modelId": model.id})
+        dl_scores = dl_scores.create(all_scores)
+        logger.info(f"Uploaded {len(dl_scores)} scores to platform.")
 
+    return all_scores
+
+def _split_video_to_frames(
+    annotations: dl.AnnotationCollection, item: dl.Item, model: dl.Model
+) -> dict:
+    """
+    Split video annotations frame by frame and sort by type (gt/model)
+
+    :param annotations: Collection of annotations to split
+    :param item: dl.Item entity
+    :param model: dl.Model entity
+    :return: dict of annotations by frame and type
+    """
+    # get max frames for all annotations
+    try:
+        num_frames = int(item.metadata["system"]["ffmpeg"]["nb_read_frames"])
+    except KeyError:
+        end_frames = [ann.end_frame for ann in annotations]
+        num_frames = np.max(end_frames) + 1
+
+    # Get all annotation slices for each frame
+    all_annotation_slices = dict()
+    for f in range(num_frames):
+        all_annotation_slices[f] = annotations.get_frame(frame_num=f)
+
+    # Sort annotations by frame and type (gt/model)
+    annotations_by_frame = {}
+    for frame, annotation_slices in all_annotation_slices.items():
+        frame_gt = []
+        frame_model = []
+        for annotation_slice in annotation_slices:
+            if annotation_slice.metadata.get("user", {}).get("model") is None:
+                # GT annotation (no model in metadata)
+                frame_gt.append(annotation_slice)
+            elif (
+                annotation_slice.metadata.get("user", {})
+                .get("model", {})
+                .get("name", "")
+                == model.name
+            ):
+                # annotation came from the evaluated model
+                frame_model.append(annotation_slice)
+        annotations_by_frame[frame] = {"gt": frame_gt, "model": frame_model}
+
+    return annotations_by_frame
 
 def calc_precision_recall(
     dataset_id: str,
