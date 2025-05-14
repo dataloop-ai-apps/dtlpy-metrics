@@ -5,13 +5,13 @@ from dtlpy import exceptions, entities, repositories
 
 
 class ScoreType(str, Enum):
-    ANNOTATION_IOU = 'annotation_iou'
-    ANNOTATION_LABEL = 'annotation_label'
-    ANNOTATION_ATTRIBUTE = 'annotation_attribute'
-    ANNOTATION_OVERALL = 'annotation_overall'
-    ITEM_OVERALL = 'item_overall'
-    USER_CONFUSION = 'user_confusion'
-    LABEL_CONFUSION = 'label_confusion'
+    ANNOTATION_IOU = "annotation_iou"
+    ANNOTATION_LABEL = "annotation_label"
+    ANNOTATION_ATTRIBUTE = "annotation_attribute"
+    ANNOTATION_OVERALL = "annotation_overall"
+    ITEM_OVERALL = "item_overall"
+    USER_CONFUSION = "user_confusion"
+    LABEL_CONFUSION = "label_confusion"
 
     def __str__(self) -> str:
         return str.__str__(self)
@@ -19,25 +19,27 @@ class ScoreType(str, Enum):
 
 class Score(entities.DlEntity):
     # platform
-    id: str = entities.DlProperty(location=['id'], _type=str)
-    url: str = entities.DlProperty(location=['url'], _type=str)
-    created_at: str = entities.DlProperty(location=['createdAt'], _type=str)
-    updated_at: str = entities.DlProperty(location=['updatedAt'], _type=str)
-    creator: str = entities.DlProperty(location=['creator'], _type=str)
+    id: str = entities.DlProperty(location=["id"], _type=str)
+    url: str = entities.DlProperty(location=["url"], _type=str)
+    created_at: str = entities.DlProperty(location=["createdAt"], _type=str)
+    updated_at: str = entities.DlProperty(location=["updatedAt"], _type=str)
+    creator: str = entities.DlProperty(location=["creator"], _type=str)
     # score
-    entity_id: str = entities.DlProperty(location=['entityId'], _type=str)
-    value: str = entities.DlProperty(location=['value'], _type=float)
-    type: str = entities.DlProperty(location=['type'], _type=str)
+    entity_id: str = entities.DlProperty(location=["entityId"], _type=str)
+    value: str = entities.DlProperty(location=["value"], _type=float)
+    type: str = entities.DlProperty(location=["type"], _type=str)
     # context
-    context: str = entities.DlProperty(location=['context'], _type=dict)
-    project_id: str = entities.DlProperty(location=['context', 'projectId'], _type=str)
-    dataset_id: str = entities.DlProperty(location=['context', 'datasetId'], _type=str)
-    task_id: str = entities.DlProperty(location=['context', 'taskId'], _type=str)
-    user_id: str = entities.DlProperty(location=['context', 'userId'], _type=str)
-    assignment_id: str = entities.DlProperty(location=['context', 'assignmentId'], _type=str)
-    item_id: str = entities.DlProperty(location=['context', 'itemId'], _type=str)
-    model_id: str = entities.DlProperty(location=['context', 'modelId'], _type=str)
-    relative: str = entities.DlProperty(location=['context', 'relative'], _type=str)
+    context: str = entities.DlProperty(location=["context"], _type=dict)
+    project_id: str = entities.DlProperty(location=["context", "projectId"], _type=str)
+    dataset_id: str = entities.DlProperty(location=["context", "datasetId"], _type=str)
+    task_id: str = entities.DlProperty(location=["context", "taskId"], _type=str)
+    user_id: str = entities.DlProperty(location=["context", "userId"], _type=str)
+    assignment_id: str = entities.DlProperty(
+        location=["context", "assignmentId"], _type=str
+    )
+    item_id: str = entities.DlProperty(location=["context", "itemId"], _type=str)
+    model_id: str = entities.DlProperty(location=["context", "modelId"], _type=str)
+    relative: str = entities.DlProperty(location=["context", "relative"], _type=str)
 
     def to_json(self):
         _json = self._dict.copy()
@@ -57,12 +59,14 @@ class Score(entities.DlEntity):
 
 
 class Scores:
-    URL = '/scores'
+    URL = "/scores"
 
-    def __init__(self,
-                 client_api: dl.ApiClient,
-                 project: entities.Project = None,
-                 project_id: str = None):
+    def __init__(
+        self,
+        client_api: dl.ApiClient,
+        project: entities.Project = None,
+        project_id: str = None,
+    ):
         self._project = project
         self._project_id = project_id
         self._client_api = client_api
@@ -71,26 +75,33 @@ class Scores:
     def project(self) -> entities.Project:
         if self._project is None and self._project_id is not None:
             # get from id
-            self._project = repositories.Projects(client_api=self._client_api).get(project_id=self._project_id)
+            self._project = repositories.Projects(client_api=self._client_api).get(
+                project_id=self._project_id
+            )
         if self._project is None:
             # try get checkout
-            project = self._client_api.state_io.get('project')
+            project = self._client_api.state_io.get("project")
             if project is not None:
-                self._project = entities.Project.from_json(_json=project, client_api=self._client_api)
+                self._project = entities.Project.from_json(
+                    _json=project, client_api=self._client_api
+                )
         if self._project is None:
             raise exceptions.PlatformException(
-                error='2001',
-                message='Cannot perform action WITHOUT Project entity in Datasets repository.'
-                        ' Please checkout or set a project')
+                error="2001",
+                message="Cannot perform action WITHOUT Project entity in Datasets repository."
+                " Please checkout or set a project",
+            )
         assert isinstance(self._project, entities.Project)
         return self._project
 
     ###########
     # methods #
     ###########
-    def get(self, score_id: str) -> Score:
-        success, response = self._client_api.gen_request(req_type="GET",
-                                                         path="{}/{}".format(self.URL, score_id))
+    # get scores for a task
+    def get(self, task_id: str) -> Score:
+        success, response = self._client_api.gen_request(
+            req_type="GET", path="{}/{}".format(self.URL, task_id)
+        )
 
         # exception handling
         if not success:
@@ -101,11 +112,11 @@ class Scores:
 
     def create(self, scores):
         if not isinstance(scores, list):
-            raise ValueError(f'score input must be a list of dl.Score')
-        payload = {'scores': [score.to_json() for score in scores]}
-        success, response = self._client_api.gen_request(req_type="post",
-                                                         json_req=payload,
-                                                         path=self.URL)
+            raise ValueError(f"score input must be a list of dl.Score")
+        payload = {"scores": [score.to_json() for score in scores]}
+        success, response = self._client_api.gen_request(
+            req_type="post", json_req=payload, path=self.URL
+        )
 
         # exception handling
         if not success:
@@ -117,9 +128,9 @@ class Scores:
 
     def delete(self, context: dict):
 
-        success, response = self._client_api.gen_request(req_type="delete",
-                                                         path=self.URL,
-                                                         json_req={'context': context})
+        success, response = self._client_api.gen_request(
+            req_type="delete", path=self.URL, json_req={"context": context}
+        )
 
         # check response
         if success:
@@ -147,23 +158,23 @@ class Scores:
     #
     # def list(self, filters: entities.Filters = None) -> entities.PagedEntities:
     #     """
-    #     List of features
+    #     List of scores
     #
-    #     :param dtlpy.entities.filters.Filters filters: Filters to query the features data
+    #     :param dtlpy.entities.filters.Filters filters: Filters to query the scores data
     #     :return: Pages object
     #     :rtype: dtlpy.entities.paged_entities.PagedEntities
     #     """
     #     # default filters
     #     if filters is None:
-    #         filters = entities.Filters(resource=entities.FiltersResource.FEATURE, user_query=False)
+    #         filters = entities.Filters(resource=entities.FiltersResource.SCORE, user_query=False)
     #     # assert type filters
     #     if not isinstance(filters, entities.Filters):
     #         raise exceptions.PlatformException(error='400',
     #                                            message='Unknown filters type: {!r}'.format(type(filters)))
-    #     if filters.resource != entities.FiltersResource.FEATURE:
+    #     if filters.resource != entities.FiltersResource.SCORE:
     #         raise exceptions.PlatformException(
     #             error='400',
-    #             message='Filters resource must be FiltersResource.FEATURE. Got: {!r}'.format(filters.resource))
+    #             message='Filters resource must be FiltersResource.SCORE. Got: {!r}'.format(filters.resource))
     #     paged = entities.PagedEntities(items_repository=self,
     #                                    filters=filters,
     #                                    page_offset=filters.page,
@@ -176,7 +187,7 @@ class Scores:
     #     jobs = [None for _ in range(len(response_items))]
     #     # return triggers list
     #     for i_item, item in enumerate(response_items):
-    #         jobs[i_item] = pool.submit(entities.Feature._protected_from_json,
+    #         jobs[i_item] = pool.submit(entities.Score._protected_from_json,
     #                                    **{'client_api': self._client_api,
     #                                       '_json': item})
     #     # get all results
@@ -189,26 +200,26 @@ class Scores:
 
 
 def tests():
-    dl.setenv('rc')
-    project = dl.projects.get(project_id='2cb9ae90-b6e8-4d15-9016-17bacc9b7bdf')
-    task = dl.tasks.get(task_id='63bffffa8cac97275a31fd17')
-    annotation = dl.annotations.get(annotation_id='6499302b6563931044046cbc')
+    dl.setenv("rc")
+    project = dl.projects.get(project_id="2cb9ae90-b6e8-4d15-9016-17bacc9b7bdf")
+    task = dl.tasks.get(task_id="63bffffa8cac97275a31fd17")
+    annotation = dl.annotations.get(annotation_id="6499302b6563931044046cbc")
 
-    score = Score(type=ScoreType.ANNOTATION_IOU,
-                  value=0.9,
-                  entity_id=annotation.id,
-                  task_id=task.id)
+    score = Score(
+        type=ScoreType.ANNOTATION_IOU,
+        value=0.9,
+        entity_id=annotation.id,
+        task_id=task.id,
+    )
     print(score.to_json())
 
-    scores = Scores(client_api=dl.client_api,
-                    project=project)
+    scores = Scores(client_api=dl.client_api, project=project)
 
     dl_scores = scores.create([score])
     print([d.id for d in dl_scores])
 
-    scores.delete({'taskId': task.id,
-                   'itemId': annotation.item.id})
+    scores.delete({"taskId": task.id, "itemId": annotation.item.id})
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     tests()

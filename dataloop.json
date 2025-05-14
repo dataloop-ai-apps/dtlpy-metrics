@@ -7,12 +7,8 @@
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
-    "Media Type": [
-      "Image"
-    ],
-    "Application Type": [
-      "Pipeline Node"
-    ],
+    "Media Type": ["Image"],
+    "Application Type": ["Pipeline Node"],
     "License": "Apache 2.0"
   },
   "codebase": {
@@ -31,9 +27,7 @@
           "type": "function",
           "namespace": "dlm_module.create_task_item_score"
         },
-        "categories": [
-          "data"
-        ],
+        "categories": ["data"],
         "configuration": {
           "fields": []
         },
@@ -47,9 +41,7 @@
           "type": "function",
           "namespace": "dlm_module.consensus_agreement"
         },
-        "categories": [
-          "data"
-        ],
+        "categories": ["data"],
         "configuration": {
           "fields": [
             {
@@ -119,7 +111,7 @@
             ],
             "displayIcon": "icon-dl-analytics",
             "displayName": "Create Consensus Score"
-            },
+          },
           {
             "name": "consensus_agreement",
             "description": "Process consensus task items based on annotator agreement threshold.",
@@ -133,14 +125,29 @@
               {
                 "type": "Item",
                 "name": "item",
-                "actions": [
-                  "consensus passed",
-                  "consensus failed"
-                ]
+                "actions": ["consensus passed", "consensus failed"]
               }
             ],
             "displayIcon": "icon-dl-members",
             "displayName": "Consensus Agreement"
+          },
+          {
+            "name": "model_agreement",
+            "displayName": "Model Agreement with GT",
+            "description": "Calculate the agreement between a model and the ground truth.",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item",
+                "actions": ["agreement passed", "agreement failed"]
+              }
+            ]
           }
         ]
       }
