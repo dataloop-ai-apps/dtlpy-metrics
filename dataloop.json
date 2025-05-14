@@ -85,6 +85,34 @@
           ]
         },
         "scope": "node"
+      },
+      {
+        "name": "create_item_model_score",
+        "displayName": "Create Model Score",
+        "description": "Calculate the score for each item based on model predictions",
+        "invoke": {
+          "type": "function",
+          "namespace": "dlm_module.create_item_model_score"
+        },
+        "categories": ["data"],
+        "configuration": {
+          "fields": []
+        },
+        "scope": "node"
+      },
+      {
+        "name": "model_agreement",
+        "displayName": "Model Agreement with GT",
+        "description": "Calculate the agreement between a model and the ground truth.",
+        "invoke": {
+          "type": "function",
+          "namespace": "dlm_module.model_agreement"
+        },
+        "categories": ["data"],
+        "configuration": {
+          "fields": []
+        },
+        "scope": "node"
       }
     ],
     "modules": [

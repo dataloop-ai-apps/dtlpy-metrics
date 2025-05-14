@@ -35,9 +35,9 @@ class Scorer(dl.BaseServiceRunner):
         context: dl.Context = None,
         score_types=None,
         upload=True,
-    ):
+    ) -> dl.Item:
         """
-        Calculate scores for a quality task item. This is a wrapper function for _create_task_item_score.
+        Calculate scores for a quality task item. This is a wrapper function for calc_task_item_score.
         :param item: dl.Item
         :param task: dl.Task (optional) Task entity. If none provided, task will be retrieved from context.
         :param context: dl.Context (optional)
@@ -123,6 +123,7 @@ class Scorer(dl.BaseServiceRunner):
                 )
             task = tasks.items[0]
         logger.info(f"Found task id: {task.id}")
+        
         agreement_config = dict()
         node = context.node
         agreement_config["agree_threshold"] = node.metadata.get(
@@ -136,7 +137,7 @@ class Scorer(dl.BaseServiceRunner):
         ).get("consensus_fail_keep_all", True)
 
         agreement = get_consensus_agreement(
-            item=item, task=task, agreement_config=agreement_config, progress=progress
+            item=item, task=task, agreement_config=agreement_config
         )
 
         if agreement is True:
@@ -188,6 +189,7 @@ class Scorer(dl.BaseServiceRunner):
         :param model: dl.Model whose predictions to evaluate
         :param context: dl.Context (optional)
         :param score_types: list of ScoreType (optional)
+        :param upload: bool flag to upload the scores to the platform (optional)
         :return: dl.Item
         """
         if item is None:
@@ -196,7 +198,7 @@ class Scorer(dl.BaseServiceRunner):
             raise ValueError("No model provided, please provide a model.")
 
         scores = calc_item_model_score(
-            item=item, model=model, compare_types=score_types
+            item=item, model=model, score_types=score_types, upload=upload
         )
         return item
 
@@ -206,7 +208,6 @@ class Scorer(dl.BaseServiceRunner):
         context: dl.Context,
         progress: dl.Progress,
         model: dl.Model = None,
-        agreement_threshold: float = 0.5,
     ) -> dl.Item:
         """
         Calculate agreement between model predictions and ground truth annotations.
@@ -214,7 +215,6 @@ class Scorer(dl.BaseServiceRunner):
         :param context: dl.Context for the item
         :param progress: dl.Progress for the item
         :param model: dl.Model to evaluate (optional)
-        :param agreement_threshold: float threshold for agreement (optional)
         :return: dl.Item
         """
         if item is None:
@@ -227,30 +227,25 @@ class Scorer(dl.BaseServiceRunner):
             else:
                 raise ValueError("Must provide either model or context with model.")
 
-        # Get scores for the item
-        # TODO replace with get scores when api is available
-        scores = calc_item_model_score(item=item, model=model)
+        agreement_config = dict()
+        node = context.node
+        agreement_config["agree_threshold"] = node.metadata.get(
+            "customNodeConfig", dict()
+        ).get("threshold", 0.5)
+        agreement_config["keep_annots"] = node.metadata.get(
+            "customNodeConfig", dict()
+        ).get("model_keep_annots", False)
 
-        # Calculate agreement based on overall scores
-        overall_scores = [
-            score.value for score in scores if score.type == "ANNOTATION_OVERALL"
-        ]
-        if not overall_scores:
-            agreement = False
-        else:
-            agreement = sum(overall_scores) / len(overall_scores) >= agreement_threshold
+        agreement = get_model_agreement(
+            item=item, model=model, agreement_config=agreement_config
+        )
 
         # determine node output action
-        if progress is not None:
-            if agreement is True:
-                progress.update(action="model agreement passed")
-                logger.info(f"Model agreement passed for item {item.id}")
-            else:
-                progress.update(action="model agreement failed")
-                logger.info(f"Model agreement failed for item {item.id}")
-                if fail_keep_all is False:
-                    logger.info("Deleting all model predictions.")
-                    cleanup_annots_by_score(
-                        item=item, scores=all_scores, annots_to_keep=None, logger=logger
-                    )
+        if agreement is True:
+            progress.update(action="model passed")
+            logger.info(f"Model agreement passed for item {item.id}")
+        else:
+            progress.update(action="model failed")
+            logger.info(f"Model agreement failed for item {item.id}")
+
         return item

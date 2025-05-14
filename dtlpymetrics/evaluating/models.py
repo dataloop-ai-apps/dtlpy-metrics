@@ -329,9 +329,7 @@ def plot_annotators_matrix(item_title, filename, matrix_to_plot, axis_labels):
     return filename
 
 
-def get_model_agreement(
-    item: dl.Item, model: dl.Model, agreement_config: dict
-) -> bool:
+def get_model_agreement(item: dl.Item, model: dl.Model, agreement_config: dict) -> bool:
     """
     Determine whether model predictions agree with ground truth annotations for a given item.
     :param item: dl.Item
@@ -340,17 +338,29 @@ def get_model_agreement(
     :return: bool
     """
     agree_threshold = agreement_config.get("agree_threshold", 0.5)
-    fail_keep_all = agreement_config.get("fail_keep_all", True)
+    keep_annots = agreement_config.get("keep_annots", True)
 
     logger.info(f"Running model agreement using model {model.name} with ID {model.id}")
     logger.info(
         f"Configurations: agreement threshold = {agree_threshold}, "
-        f"upon agreement fail keep all annotations: {fail_keep_all}"
+        f"after checking agreement keep model annotations: {keep_annots}"
     )
 
-    # get scores for model predictions
-    all_scores = calc_item_model_score(item=item, model=model, score_types=None, upload=False)
+    # get scores for model predictions and convert to dl.Score
+    all_scores = calc_item_model_score(
+        item=item, model=model, score_types=None, upload=False
+    )
     agreement = check_model_agreement(scores=all_scores, threshold=agree_threshold)
+
+    if keep_annots is False:
+        cleanup_annots_by_score(
+            item=item, scores=all_scores, annots_to_keep=None, logger=logger
+        )
+
+    if agreement is True:
+        logger.info(f"Model agreement passed for item {item.id}")
+    else:
+        logger.info(f"Model agreement failed for item {item.id}")
 
     return agreement
 

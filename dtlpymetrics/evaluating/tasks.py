@@ -31,8 +31,43 @@ def get_consensus_agreement(
     # get scores and convert to dl.Score
     all_scores = calc_task_item_score(task=task, item=item, upload=False)
     agreement = check_annotator_agreement(scores=all_scores, threshold=agree_threshold)
+    
+    # determine node output action
+    if agreement is True:
+        logger.info(f'Consensus passed for item {item.id}')
+        if keep_only_best is True:
+            logger.info("Keeping the annotation with the highest score.")
+            scores_by_annotator = get_scores_by_annotator(scores=all_scores)
+            annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
+            # Get the annotator with the highest score
+            max_score = max(annot_scores.values())
+            best_annotator = None
+            # Find the first key with the maximum value
+            for key, value in annot_scores.items():
+                if value == max_score:
+                    best_annotator = key
+                    break
+            logger.info(f"Best annotator assignment ID: {best_annotator}")
+
+            annots_to_keep = [score.entity_id for score in all_scores if
+                                (score.context.get('assignmentId') == best_annotator) and (
+                                        score.type == ScoreType.ANNOTATION_OVERALL)]
+            logger.info(f"Annotations to keep: {annots_to_keep}")
+            cleanup_annots_by_score(item=item,
+                                    scores=all_scores,
+                                    annots_to_keep=annots_to_keep,
+                                    logger=logger)
+    else:
+        logger.info(f'Consensus failed for item {item.id}')
+        if fail_keep_all is False:
+                logger.info("Deleting all annotations.")
+                cleanup_annots_by_score(item=item,
+                                        scores=all_scores,
+                                        annots_to_keep=None,
+                                        logger=logger)
 
     return agreement
+
 
 
 def check_annotator_agreement(scores, threshold: float = 1.0):
