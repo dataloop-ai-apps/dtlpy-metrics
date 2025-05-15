@@ -148,7 +148,7 @@ class Scorer(dl.BaseServiceRunner):
         return precision_recall_df
 
     @staticmethod
-    def create_item_model_score(item: dl.Item, model: dl.Model, context: dl.Context) -> dl.Item:
+    def create_model_item_score(item: dl.Item, model: dl.Model, context: dl.Context) -> dl.Item:
         """
         Calculate scores for a model's predictions on an item compared to ground truth annotations.
         This is a wrapper function for calc_item_model_score.
@@ -164,19 +164,21 @@ class Scorer(dl.BaseServiceRunner):
         if model is None:
             raise ValueError("No model provided, please provide a model.")
 
-        score_types = []
-        score_label = context.node.metadata.get("customNodeConfig", dict()).get("score_label", None)
-        if score_label is not None:
-            score_types.append(ScoreType.LABEL)
-        score_iou = context.node.metadata.get("customNodeConfig", dict()).get("score_iou", None)
-        if score_iou is not None:
-            score_types.append(ScoreType.IOU)
-        score_attributes = context.node.metadata.get("customNodeConfig", dict()).get("score_attributes", None)
-        if score_attributes is not None:
-            score_types.append(ScoreType.ATTRIBUTES)
+        score_types = [member.name for member in ScoreType]
+        score_label = context.node.metadata.get("customNodeConfig", dict()).get("score_label", True)
+        if score_label is False:
+            score_types.remove("ANNOTATION_LABEL")
+            # score_types.remove("LABEL_CONFUSION")
+        score_iou = context.node.metadata.get("customNodeConfig", dict()).get("score_iou", True)
+        if score_iou is False:
+            score_types.remove("ANNOTATION_IOU")
+        score_attributes = context.node.metadata.get("customNodeConfig", dict()).get("score_attributes", True)
+        if score_attributes is False:
+            score_types.remove("ANNOTATION_ATTRIBUTE")
 
         # TODO get scoretypes from context config once UX is available
         scores = calc_item_model_score(item=item, model=model, score_types=score_types, upload=True)
+
         return item
 
     @staticmethod
