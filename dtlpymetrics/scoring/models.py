@@ -202,10 +202,8 @@ def calc_item_model_score(item: dl.Item, model: dl.Model, score_types=None, uplo
             score_types=score_types,
         )
     else:  # image items
-        annots_by_assignment = {"gt": gt_annotations, "model": model_annotations}
         all_scores = get_image_scores(
-            annots_by_assignment=annots_by_assignment,
-            assignments_by_annotator={"gt": gt_annotations, "model": model_annotations},  # Dummy assignment for model
+            grouped_annotations={"gt": gt_annotations, "model": model_annotations},
             item=item,
             model=model,
             score_types=score_types,
@@ -715,7 +713,7 @@ def get_image_scores(
         ignore_geometry=True,
         match_threshold=match_threshold,
         score_types=score_types,
-    )
+        )
 
     for score in pairwise_scores:
         updated_score = add_score_context(score=score, entity_id=score.entity_id, model_id=model.id, item_id=item.id)
@@ -764,9 +762,6 @@ def get_image_scores(
         # for instance, if we had [A,A,B], and the current is A, the overall probability is 2/3
         overalls_values = [s.value for s in overalls]
         overalls_values.append(1)  # the match to the current annotation, this will it the probability
-        user_id = overalls[0].user_id
-        assignment_id = overalls[0].assignment_id
-        # overalls_values.append(1)  # Add s
 
         # add joint overall (single one for each annotation
         all_scores.append(
