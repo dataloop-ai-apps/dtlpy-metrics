@@ -131,7 +131,7 @@
             },
             {
               "name": "model_keep_annots",
-              "title": "After model agreement, keep all annotations",
+              "title": "After agreement evaluation, keep all annotations",
               "props": {
                 "subtitle": "The default is to keep model annotations. Uncheck the box to delete all model annotations.",
                 "type": "boolean",
