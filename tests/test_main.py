@@ -23,7 +23,8 @@ class TestRunner(unittest.TestCase):
         self.consensus_task_classification = self.project.tasks.get(
             # task_name='consensus testing task - classification')  # b47
             # task_name='consensus testing task - classification 2.0 (Score-task-5)')  # 27f
-            task_name='scoring test - consensus classification (TEST consensus classification)')  # a29
+            task_name='scoring test - consensus classification (TEST consensus classification)'
+        )  # a29
         self.consensus_task_bbox = self.project.tasks.get(task_name='consensus testing task - bbox')  # 855
         # self.label_confusion_task = self.project.tasks.get(task_name='qualification testing - confusion matrix') # e14
 
@@ -36,10 +37,11 @@ class TestRunner(unittest.TestCase):
 
     def test_qualification_task(self):
         logger.info(f'Starting qualification testing task with dataset: {self.qualification_task.dataset}')
-        qualification_scores = calc_task_score(task=self.qualification_task,
-                                               score_types=[ScoreType.ANNOTATION_LABEL,
-                                                            ScoreType.ANNOTATION_IOU],
-                                               upload=False)
+        qualification_scores = calc_task_score(
+            task=self.qualification_task,
+            score_types=[ScoreType.ANNOTATION_LABEL, ScoreType.ANNOTATION_IOU],
+            upload=False,
+        )
 
         qualification_items = self.qualification_task.get_items().all()
         for item in qualification_items:
@@ -51,9 +53,9 @@ class TestRunner(unittest.TestCase):
 
     def test_honeypot_task(self):
         logger.info(f'Starting honeypot testing task with dataset: {self.honeypot_task.dataset}')
-        honeypot_scores = calc_task_score(task=self.honeypot_task,
-                                          score_types=[ScoreType.ANNOTATION_LABEL],
-                                          upload=False)
+        honeypot_scores = calc_task_score(
+            task=self.honeypot_task, score_types=[ScoreType.ANNOTATION_LABEL], upload=False
+        )
 
         filters = dl.Filters()
         filters.add(field='hidden', values=True)
@@ -71,9 +73,9 @@ class TestRunner(unittest.TestCase):
         # for classification task #
         ###########################
         logger.info('calculating scores for consensus classification task')
-        consensus_classification_scores = calc_task_score(task=self.consensus_task_classification,
-                                                          score_types=[ScoreType.ANNOTATION_LABEL],
-                                                          upload=False)
+        consensus_classification_scores = calc_task_score(
+            task=self.consensus_task_classification, score_types=[ScoreType.ANNOTATION_LABEL], upload=False
+        )
 
         consensus_assignment = self.consensus_task_classification.metadata['system']['consensusAssignmentId']
         consensus_class_items = self.consensus_task_classification.get_items(get_consensus_items=True).all()
@@ -88,8 +90,9 @@ class TestRunner(unittest.TestCase):
             if consensus_task_found is True:
                 num_consensus += 1
                 logger.info(f'Comparing calculated scores with reference scores for item: {item.id}')
-                with open(os.path.join(self.assets_path, self.consensus_task_classification.id, f'{item.id}.json'),
-                          'r') as f:
+                with open(
+                    os.path.join(self.assets_path, self.consensus_task_classification.id, f'{item.id}.json'), 'r'
+                ) as f:
                     ref_scores = json.load(f)
                 test_scores = [score.to_json() for score in consensus_classification_scores[item.id]]
                 self.assertListEqual(test_scores, ref_scores)
@@ -100,10 +103,11 @@ class TestRunner(unittest.TestCase):
         # for bbox task #
         #################
         logger.info('calculating scores for consensus object detection task')
-        consensus_bbox_scores = calc_task_score(task=self.consensus_task_bbox,
-                                                score_types=[ScoreType.ANNOTATION_LABEL,
-                                                             ScoreType.ANNOTATION_IOU],
-                                                upload=False)
+        consensus_bbox_scores = calc_task_score(
+            task=self.consensus_task_bbox,
+            score_types=[ScoreType.ANNOTATION_LABEL, ScoreType.ANNOTATION_IOU],
+            upload=False,
+        )
         consensus_assignment = self.consensus_task_bbox.metadata['system']['consensusAssignmentId']
         consensus_bbox_items = self.consensus_task_bbox.get_items(get_consensus_items=True).all()
 
@@ -140,11 +144,16 @@ class TestRunner(unittest.TestCase):
         dl.setenv("prod")
         model = dl.models.get(model_id='67076a13859b460370cfd24a')
         item_agree = dl.items.get(item_id='67076a10fb04409b488e570c')
-        agreement = get_model_agreement(item=item_agree, model=model, agreement_config={'agree_threshold': 0.5, 'fail_keep_all': True})
+        agreement = get_model_agreement(
+            item=item_agree, model=model, agreement_config={'agree_threshold': 0.5, 'fail_keep_all': True}
+        )
         self.assertTrue(agreement)
         item_disagree = dl.items.get(item_id='67076a10fb044082498e5709')
-        disagreement = get_model_agreement(item=item_disagree, model=model, agreement_config={'agree_threshold': 0.5, 'fail_keep_all': False})
+        disagreement = get_model_agreement(
+            item=item_disagree, model=model, agreement_config={'agree_threshold': 0.5, 'fail_keep_all': False}
+        )
         self.assertFalse(disagreement)
+
 
 if __name__ == "__main__":
     unittest.main()

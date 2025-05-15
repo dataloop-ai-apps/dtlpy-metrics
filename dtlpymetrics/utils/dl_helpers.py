@@ -17,15 +17,17 @@ def check_if_video(item: dl.Item):
     return is_video
 
 
-def add_score_context(score: Score,
-                      relative=None,
-                      user_id=None,
-                      entity_id=None,
-                      assignment_id=None,
-                      task_id=None,
-                      item_id=None,
-                      model_id=None,
-                      dataset_id=None):
+def add_score_context(
+    score: Score,
+    relative=None,
+    user_id=None,
+    entity_id=None,
+    assignment_id=None,
+    task_id=None,
+    item_id=None,
+    model_id=None,
+    dataset_id=None,
+):
     """
     Add context to a score
     :param score: dl.Score

@@ -1,3 +1,5 @@
+from typing import List
+
 import datetime
 import logging
 import os
@@ -7,18 +9,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from typing import List
 
 from ..dtlpy_scores import Score, ScoreType
 from ..scoring import calc_item_model_score
-from ..utils import plot_confusion_matrix
+from ..utils import plot_confusion_matrix, cleanup_annots_by_score
 
 logger = logging.getLogger("scoring-and-metrics")
 
 
-def confusion_matrix(
-    dataset_id: str, model_id: str, metric: str, show_unmatched=True
-) -> pd.DataFrame:
+def confusion_matrix(dataset_id: str, model_id: str, metric: str, show_unmatched=True) -> pd.DataFrame:
     """
     Calculate confusion matrix for a given model and metric (i.e. IOU, accuracy)
 
@@ -73,9 +72,7 @@ def confusion_matrix(
     return conf_matrix
 
 
-def label_confusion_matrix(
-    item: dl.Item, scores: List[Score], save_plot=True
-) -> pd.DataFrame:
+def label_confusion_matrix(item: dl.Item, scores: List[Score], save_plot=True) -> pd.DataFrame:
     """
     Calculate confusion matrix from a set of label confusion scores
     :param item: dl.Item
@@ -113,9 +110,7 @@ def label_confusion_matrix(
     if save_plot is True:
         plot_confusion_matrix(
             item_title=f"label confusion matrix {item.id}",
-            filename=os.path.join(
-                ".dataloop", "label_confusion", f"label_confusion_matrix_{item.id}.png"
-            ),
+            filename=os.path.join(".dataloop", "label_confusion", f"label_confusion_matrix_{item.id}.png"),
             matrix_to_plot=conf_matrix,
             axis_labels=label_names,
         )
@@ -178,22 +173,14 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     # list false negatives #
     ########################
     model_fns = dict()
-    annotation_to_item_map = {
-        ann_id: item_id for ann_id, item_id in zip(scores_df.first_id, scores_df.itemId)
-    }
+    annotation_to_item_map = {ann_id: item_id for ann_id, item_id in zip(scores_df.first_id, scores_df.itemId)}
     fn_annotation_ids = scores_df[scores_df.second_id.isna()].first_id
     print(f"model: {model.name} with {len(fn_annotation_ids)} false negative")
-    fn_items_ids = np.unique(
-        [annotation_to_item_map[ann_id] for ann_id in fn_annotation_ids]
-    )
+    fn_items_ids = np.unique([annotation_to_item_map[ann_id] for ann_id in fn_annotation_ids])
     for i_id in fn_items_ids:
         if i_id not in model_fns:
             i_id: dl.Item
-            url = dl.client_api._get_resource_url(
-                "projects/{}/datasets/{}/items/{}".format(
-                    dataset.project.id, dataset.id, i_id
-                )
-            )
+            url = dl.client_api._get_resource_url(f"projects/{dataset.project.id}/datasets/{dataset.id}/items/{i_id}")
             model_fns[i_id] = {"itemId": i_id, "url": url}
         model_fns[i_id].update({model.name: True})
 
@@ -203,9 +190,7 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     return model_fn_df
 
 
-def plot_precision_recall(
-    plot_points: pd.DataFrame, dataset_name=None, label_names=None, local_path=None
-):
+def plot_precision_recall(plot_points: pd.DataFrame, dataset_name=None, label_names=None, local_path=None):
     """
     Plot precision recall curve for a given metric threshold
 
@@ -236,15 +221,9 @@ def plot_precision_recall(
 
     # plot each label separately
     dataset_points = plot_points[plot_points["data"] == "dataset"]
-    dataset_legend = (
-        f"{dataset_points['dataset_id'].iloc[0]}"
-        if dataset_name is None
-        else dataset_name
-    )
+    dataset_legend = f"{dataset_points['dataset_id'].iloc[0]}" if dataset_name is None else dataset_name
 
-    plt.plot(
-        dataset_points["recall"], dataset_points["precision"], label=dataset_legend
-    )
+    plt.plot(dataset_points["recall"], dataset_points["precision"], label=dataset_legend)
 
     plt.legend(loc="upper right")
 
@@ -283,9 +262,7 @@ def plot_precision_recall(
     plt.grid()
 
     # plot the dataset level
-    plot_filename = (
-        f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
-    )
+    plot_filename = f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
     save_path = os.path.join(save_dir, plot_filename)
     plt.savefig(save_path)
     # plt.close()
@@ -347,15 +324,11 @@ def get_model_agreement(item: dl.Item, model: dl.Model, agreement_config: dict) 
     )
 
     # get scores for model predictions and convert to dl.Score
-    all_scores = calc_item_model_score(
-        item=item, model=model, score_types=None, upload=False
-    )
+    all_scores = calc_item_model_score(item=item, model=model, score_types=None, upload=False)
     agreement = check_model_agreement(scores=all_scores, threshold=agree_threshold)
 
     if keep_annots is False:
-        cleanup_annots_by_score(
-            item=item, scores=all_scores, annots_to_keep=None, logger=logger
-        )
+        cleanup_annots_by_score(item=item, scores=all_scores, annots_to_keep=None, logger=logger)
 
     if agreement is True:
         logger.info(f"Model agreement passed for item {item.id}")
@@ -369,26 +342,20 @@ def check_model_agreement(scores, threshold: float = 1.0) -> bool:
     """
     Check agreement between model predictions and ground truth annotations
 
-    Scores are averaged across all predictions and compared to the threshold. If the average score is above the threshold,
-    the function returns True.
+    Scores are averaged across all predictions and compared to the threshold. 
+    If the average score is above the threshold, the function returns True.
     :param scores: list of Scores
     :param threshold: float, 0-1 (optional)
     :return: True if agreement is above threshold
     """
     if threshold < 0 or threshold > 1:
-        raise ValueError(
-            "Threshold must be between 0 and 1. Please set a valid threshold."
-        )
+        raise ValueError("Threshold must be between 0 and 1. Please set a valid threshold.")
 
     # calculate agreement based on the average score across all predictions
-    prediction_scores = [
-        score.value for score in scores if score.type == ScoreType.ANNOTATION_OVERALL
-    ]
+    prediction_scores = [score.value for score in scores if score.type == ScoreType.ANNOTATION_OVERALL]
     if not prediction_scores:
         logger.warning("No prediction scores found")
         return False
 
-    agreement = (
-        True if sum(prediction_scores) / len(prediction_scores) >= threshold else False
-    )
+    agreement = True if sum(prediction_scores) / len(prediction_scores) >= threshold else False
     return agreement

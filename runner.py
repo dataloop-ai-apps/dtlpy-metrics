@@ -2,15 +2,8 @@ import logging
 import dtlpy as dl
 import pandas as pd
 
-from dtlpymetrics.scoring import (
-    calc_task_item_score,
-    calc_precision_recall,
-    calc_item_model_score,
-)
-from dtlpymetrics.evaluating import (
-    get_consensus_agreement,
-    get_model_agreement,
-)
+from dtlpymetrics.scoring import calc_task_item_score, calc_precision_recall, calc_item_model_score
+from dtlpymetrics.evaluating import get_consensus_agreement, get_model_agreement
 
 logger = logging.getLogger("scoring-and-metrics")
 
@@ -30,11 +23,7 @@ class Scorer(dl.BaseServiceRunner):
 
     @staticmethod
     def create_task_item_score(
-        item: dl.Item,
-        task: dl.Task = None,
-        context: dl.Context = None,
-        score_types=None,
-        upload=True,
+        item: dl.Item, task: dl.Task = None, context: dl.Context = None, score_types=None, upload=True
     ) -> dl.Item:
         """
         Calculate scores for a quality task item. This is a wrapper function for calc_task_item_score.
@@ -53,9 +42,7 @@ class Scorer(dl.BaseServiceRunner):
             else:
                 task = context.task
 
-        scores = calc_task_item_score(
-            item=item, task=task, score_types=score_types, upload=upload
-        )
+        scores = calc_task_item_score(item=item, task=task, score_types=score_types, upload=upload)
         return item
 
     @staticmethod
@@ -72,14 +59,10 @@ class Scorer(dl.BaseServiceRunner):
                     if node.node_type == "task":
                         return connection.source.node_id
                     else:
-                        return Scorer.get_previous_task_nodes(
-                            pipeline, connection.source.node_id, previous_nodes
-                        )
+                        return Scorer.get_previous_task_nodes(pipeline, connection.source.node_id, previous_nodes)
 
     @staticmethod
-    def consensus_agreement(
-        item: dl.Item, context: dl.Context, progress: dl.Progress, task: dl.Task = None
-    ) -> dl.Item:
+    def consensus_agreement(item: dl.Item, context: dl.Context, progress: dl.Progress, task: dl.Task = None) -> dl.Item:
         """
         Calculate consensus agreement for a quality task item.
         This is a wrapper function for get_consensus_agreement for use in pipelines.
@@ -104,41 +87,31 @@ class Scorer(dl.BaseServiceRunner):
             previous_nodes = dict()
             logger.info(f"Finding task node recursively for pipeline: {pipeline_id}")
             task_node_id = Scorer.get_previous_task_nodes(
-                pipeline=pipeline,
-                start_node_id=current_node_id,
-                previous_nodes=previous_nodes,
+                pipeline=pipeline, start_node_id=current_node_id, previous_nodes=previous_nodes
             )
             if task_node_id is None:
-                raise ValueError(
-                    f"Could not find task from pipeline, and task not provided."
-                )
+                raise ValueError(f"Could not find task from pipeline, and task not provided.")
             filters = dl.Filters(resource=dl.FiltersResource.TASK)
             filters.add(field="metadata.system.nodeId", values=task_node_id)
             filters.add(field="metadata.system.pipelineId", values=pipeline_id)
 
             tasks = pipeline.project.tasks.list(filters=filters)
             if tasks.items_count != 1:
-                raise ValueError(
-                    f"Failed getting consensus task, found: {tasks.items_count} matches"
-                )
+                raise ValueError(f"Failed getting consensus task, found: {tasks.items_count} matches")
             task = tasks.items[0]
         logger.info(f"Found task id: {task.id}")
-        
+
         agreement_config = dict()
         node = context.node
-        agreement_config["agree_threshold"] = node.metadata.get(
-            "customNodeConfig", dict()
-        ).get("threshold", 0.5)
-        agreement_config["keep_only_best"] = node.metadata.get(
-            "customNodeConfig", dict()
-        ).get("consensus_pass_keep_best", False)
-        agreement_config["fail_keep_all"] = node.metadata.get(
-            "customNodeConfig", dict()
-        ).get("consensus_fail_keep_all", True)
-
-        agreement = get_consensus_agreement(
-            item=item, task=task, agreement_config=agreement_config
+        agreement_config["agree_threshold"] = node.metadata.get("customNodeConfig", dict()).get("threshold", 0.5)
+        agreement_config["keep_only_best"] = node.metadata.get("customNodeConfig", dict()).get(
+            "consensus_pass_keep_best", False
         )
+        agreement_config["fail_keep_all"] = node.metadata.get("customNodeConfig", dict()).get(
+            "consensus_fail_keep_all", True
+        )
+
+        agreement = get_consensus_agreement(item=item, task=task, agreement_config=agreement_config)
 
         if agreement is True:
             progress.update(action="consensus passed")
@@ -151,12 +124,7 @@ class Scorer(dl.BaseServiceRunner):
 
     @staticmethod
     def precision_recall(
-        dataset_id: str,
-        model_id: str,
-        iou_threshold=0.01,
-        method_type=None,
-        each_label=True,
-        n_points=None,
+        dataset_id: str, model_id: str, iou_threshold=0.01, method_type=None, each_label=True, n_points=None
     ) -> pd.DataFrame:
         """
         Calculate precision recall values for model predictions, for a given metric threshold.
@@ -197,18 +165,11 @@ class Scorer(dl.BaseServiceRunner):
         if model is None:
             raise ValueError("No model provided, please provide a model.")
 
-        scores = calc_item_model_score(
-            item=item, model=model, score_types=score_types, upload=upload
-        )
+        _ = calc_item_model_score(item=item, model=model, score_types=score_types, upload=True)
         return item
 
     @staticmethod
-    def model_agreement(
-        item: dl.Item,
-        context: dl.Context,
-        progress: dl.Progress,
-        model: dl.Model = None,
-    ) -> dl.Item:
+    def model_agreement(item: dl.Item, context: dl.Context, progress: dl.Progress, model: dl.Model = None) -> dl.Item:
         """
         Calculate agreement between model predictions and ground truth annotations.
         :param item: dl.Item to evaluate
@@ -229,16 +190,10 @@ class Scorer(dl.BaseServiceRunner):
 
         agreement_config = dict()
         node = context.node
-        agreement_config["agree_threshold"] = node.metadata.get(
-            "customNodeConfig", dict()
-        ).get("threshold", 0.5)
-        agreement_config["keep_annots"] = node.metadata.get(
-            "customNodeConfig", dict()
-        ).get("model_keep_annots", False)
+        agreement_config["agree_threshold"] = node.metadata.get("customNodeConfig", dict()).get("threshold", 0.5)
+        agreement_config["keep_annots"] = node.metadata.get("customNodeConfig", dict()).get("model_keep_annots", False)
 
-        agreement = get_model_agreement(
-            item=item, model=model, agreement_config=agreement_config
-        )
+        agreement = get_model_agreement(item=item, model=model, agreement_config=agreement_config)
 
         # determine node output action
         if agreement is True:

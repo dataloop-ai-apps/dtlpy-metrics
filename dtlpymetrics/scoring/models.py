@@ -1,3 +1,4 @@
+from typing import List
 import datetime
 import logging
 import json
@@ -9,7 +10,6 @@ import dtlpy as dl
 import numpy as np
 import pandas as pd
 
-from typing import List
 from concurrent.futures import ThreadPoolExecutor
 from matplotlib import pyplot as plt
 
@@ -50,30 +50,22 @@ def create_model_score(
     if model is None:
         raise ValueError("No model provided, please provide a model.")
     if model.name is None:
-        raise ValueError(
-            "No model name found for the second set of annotations, please provide model name."
-        )
+        raise ValueError("No model name found for the second set of annotations, please provide model name.")
     if compare_types is None:
         compare_types = all_compare_types
     if not isinstance(compare_types, list):
         if compare_types not in model.output_type:
-            raise ValueError(
-                f"Annotation type {compare_types} does not match model output type {model.output_type}"
-            )
+            raise ValueError(f"Annotation type {compare_types} does not match model output type {model.output_type}")
         compare_types = [compare_types]
 
     # TODO use export to download the zip and take the annotation from there
     logger.info("Downloading dataset annotations...")
     json_path = dataset.download_annotations(
-        filters=filters,
-        annotation_options=[dl.VIEW_ANNOTATION_OPTIONS_JSON],
-        overwrite=True,
+        filters=filters, annotation_options=[dl.VIEW_ANNOTATION_OPTIONS_JSON], overwrite=True
     )
     item_json_files = list(pathlib.Path(json_path).rglob("*.json"))
     if len(item_json_files) == 0:
-        raise KeyError(
-            "No items found in the dataset, please check the dataset and filters."
-        )
+        raise KeyError("No items found in the dataset, please check the dataset and filters.")
 
     ########################################
     # Create list of item annotation lists #
@@ -82,25 +74,20 @@ def create_model_score(
     n_gt_annotations = 0
     n_md_annotations = 0
     pbar = tqdm.tqdm(item_json_files)
-    pbar.set_description(f"Loading annotations from items... ")
+    pbar.set_description("Loading annotations from items... ")
     for item_file in pbar:
         with open(item_file, "r") as f:
             data = json.load(f)
-        item = dl.Item.from_json(
-            _json=data, client_api=dataset._client_api, dataset=dataset
-        )
+        item = dl.Item.from_json(_json=data, client_api=dataset._client_api, dataset=dataset)
         item_id = data["id"]
-        collection: dl.AnnotationCollection = dl.AnnotationCollection.from_json(
-            _json=data["annotations"], item=item
-        )
+        collection: dl.AnnotationCollection = dl.AnnotationCollection.from_json(_json=data["annotations"], item=item)
+        item_annots_1 = []
+        item_annots_2 = []
         for annotation in collection:
             if annotation.metadata.get("user", {}).get("model") is None:
                 # GT annotation (no model in metadata)
                 item_annots_1.append(annotation)
-            elif (
-                annotation.metadata.get("user", {}).get("model", {}).get("name", "")
-                == model.name
-            ):
+            elif annotation.metadata.get("user", {}).get("model", {}).get("name", "") == model.name:
                 # annotation came from the evaluated model
                 item_annots_2.append(annotation)
         annotation_sets_by_item[item_id] = {"gt": item_annots_1, "model": item_annots_2}
@@ -115,16 +102,14 @@ def create_model_score(
     # Compare annotations and return concatenated dataframe #
     #########################################################
     all_results = pd.DataFrame()
-    pbar = tqdm.tqdm(total=len(annotation_sets_by_item), desc=f"Calculating metrics...")
+    pbar = tqdm.tqdm(total=len(annotation_sets_by_item), desc="Calculating metrics...")
     pool = ThreadPoolExecutor(max_workers=32)
 
     def calc_single(w_item_id, w_annotation_sets):
         try:
             set_1_item_annotations = w_annotation_sets["gt"]
             set_2_item_annotations = w_annotation_sets["model"]
-            if not (
-                len(set_1_item_annotations) == 0 and len(set_2_item_annotations) == 0
-            ):
+            if not (len(set_1_item_annotations) == 0 and len(set_2_item_annotations) == 0):
                 results = measure_annotations(
                     annotations_set_one=set_1_item_annotations,
                     annotations_set_two=set_2_item_annotations,
@@ -163,9 +148,7 @@ def create_model_score(
     scores_filepath = os.path.join(os.getcwd(), "../.dataloop", f"{model.id}.csv")
 
     all_results.to_csv(scores_filepath, index=False)
-    item = dataset.items.upload(
-        local_path=scores_filepath, remote_path=f"/.modelscores", overwrite=True
-    )
+    item = dataset.items.upload(local_path=scores_filepath, remote_path=f"/.modelscores", overwrite=True)
     logger.info(f"Successfully created model scores and saved as item {item.id}.")
 
     # This is a workaround for uploading interpolated precision-recall for 10 iou levels
@@ -173,9 +156,7 @@ def create_model_score(
     return model
 
 
-def calc_item_model_score(
-    item: dl.Item, model: dl.Model, score_types=None, upload=True
-) -> List[Score]:
+def calc_item_model_score(item: dl.Item, model: dl.Model, score_types=None, upload=True) -> List[Score]:
     """
     Creates scores for a set of model predictions compared against ground truth annotations in a given dataset.
 
@@ -200,10 +181,7 @@ def calc_item_model_score(
         if annotation.metadata.get("user", {}).get("model") is None:
             # GT annotation (no model in metadata)
             gt_annotations.append(annotation)
-        elif (
-            annotation.metadata.get("user", {}).get("model", {}).get("name", "")
-            == model.name
-        ):
+        elif annotation.metadata.get("user", {}).get("model", {}).get("name", "") == model.name:
             # annotation came from the evaluated model
             model_annotations.append(annotation)
 
@@ -214,16 +192,11 @@ def calc_item_model_score(
     is_video = check_if_video(item=item)
 
     if is_video is True:  # video items
-        annotations_by_frame = _split_video_to_frames(
-            annotations=annotations, item=item, model=model
-        )
+        annotations_by_frame = _split_video_to_frames(annotations=annotations, item=item, model=model)
 
         all_scores = get_video_scores(
             annotations_by_frame=annotations_by_frame,
-            assignments_by_annotator={
-                "gt": gt_annotations,
-                "model": model_annotations,
-            },  # Dummy assignment for model
+            assignments_by_annotator={"gt": gt_annotations, "model": model_annotations},  # Dummy assignment for model
             item=item,
             model=model,
             score_types=score_types,
@@ -232,21 +205,14 @@ def calc_item_model_score(
         annots_by_assignment = {"gt": gt_annotations, "model": model_annotations}
         all_scores = get_image_scores(
             annots_by_assignment=annots_by_assignment,
-            assignments_by_annotator={
-                "gt": gt_annotations,
-                "model": model_annotations,
-            },  # Dummy assignment for model
+            assignments_by_annotator={"gt": gt_annotations, "model": model_annotations},  # Dummy assignment for model
             item=item,
             model=model,
             score_types=score_types,
         )
 
     # overall item score is an average of all overall annotation scores
-    item_overall = [
-        score.value
-        for score in all_scores
-        if score.type == ScoreType.ANNOTATION_OVERALL.value
-    ]
+    item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
 
     item_score = Score(
         type=ScoreType.ITEM_OVERALL,
@@ -261,9 +227,7 @@ def calc_item_model_score(
     # upload scores to platform #
     #############################
     if upload is True:
-        logger.info(
-            f"Deleting all scores with context item ID: {item.id} and model ID: {model.id}"
-        )
+        logger.info(f"Deleting all scores with context item ID: {item.id} and model ID: {model.id}")
         dl_scores = Scores(client_api=dl.client_api)
         dl_scores.delete(context={"itemId": item.id, "modelId": model.id})
         dl_scores = dl_scores.create(all_scores)
@@ -272,9 +236,7 @@ def calc_item_model_score(
     return all_scores
 
 
-def _split_video_to_frames(
-    annotations: dl.AnnotationCollection, item: dl.Item, model: dl.Model
-) -> dict:
+def _split_video_to_frames(annotations: dl.AnnotationCollection, item: dl.Item, model: dl.Model) -> dict:
     """
     Split video annotations frame by frame and sort by type (gt/model)
 
@@ -304,12 +266,7 @@ def _split_video_to_frames(
             if annotation_slice.metadata.get("user", {}).get("model") is None:
                 # GT annotation (no model in metadata)
                 frame_gt.append(annotation_slice)
-            elif (
-                annotation_slice.metadata.get("user", {})
-                .get("model", {})
-                .get("name", "")
-                == model.name
-            ):
+            elif annotation_slice.metadata.get("user", {}).get("model", {}).get("name", "") == model.name:
                 # annotation came from the evaluated model
                 frame_model.append(annotation_slice)
         annotations_by_frame[frame] = {"gt": frame_gt, "model": frame_model}
@@ -318,12 +275,7 @@ def _split_video_to_frames(
 
 
 def calc_precision_recall(
-    dataset_id: str,
-    model_id: str,
-    iou_threshold=0.01,
-    method_type=None,
-    each_label=True,
-    n_points=None,
+    dataset_id: str, model_id: str, iou_threshold=0.01, method_type=None, each_label=True, n_points=None
 ) -> pd.DataFrame:
     """
     Internal function for calculating  precision recall values for model predictions, for a given metric threshold.
@@ -338,9 +290,7 @@ def calc_precision_recall(
     if method_type is None:
         method_type = "n_point_interpolation"
     elif method_type not in ["every_point", "n_point_interpolation"]:
-        raise ValueError(
-            f"Unknown method type {method_type}. Options are: every_point and n_point_interpolated"
-        )
+        raise ValueError(f"Unknown method type {method_type}. Options are: every_point and n_point_interpolated")
 
     ################################
     # get matched annotations data #
@@ -352,9 +302,7 @@ def calc_precision_recall(
     dataset = dl.datasets.get(dataset_id=dataset_id)
     items = list(dataset.items.list(filters=items_filters).all())
     if len(items) == 0:
-        raise ValueError(
-            f"No scores found for model ID {model_id}. Please evaluate model on the dataset first."
-        )
+        raise ValueError(f"No scores found for model ID {model_id}. Please evaluate model on the dataset first.")
     elif len(items) > 1:
         raise ValueError(f"Found {len(items)} items with name {model_id}.")
     else:
@@ -365,11 +313,7 @@ def calc_precision_recall(
     labels = dataset.labels
     label_names = [label.tag for label in labels]
     if len(label_names) == 0:
-        label_names = list(
-            pd.concat([scores.first_label, scores.second_label])
-            .dropna()
-            .drop_duplicates()
-        )
+        label_names = list(pd.concat([scores.first_label, scores.second_label]).dropna().drop_duplicates())
 
     ##############################
     # calculate precision/recall #
@@ -390,9 +334,7 @@ def calc_precision_recall(
 
     detections = scores[scores.second_id.notna()].copy()
 
-    detections.sort_values(
-        "second_confidence", inplace=True, ascending=False, ignore_index=True
-    )
+    detections.sort_values("second_confidence", inplace=True, ascending=False, ignore_index=True)
     detections["true_positives"] = detections["geometry_score"] >= iou_threshold
     detections["false_positives"] = detections["geometry_score"] < iou_threshold
 
@@ -405,21 +347,17 @@ def calc_precision_recall(
     # detections.to_csv(index=False)  # DEBUG
 
     if method_type == "every_point":
-        [_, dataset_plot_precision, dataset_plot_recall, dataset_plot_confidence] = (
-            _every_point_curve(
-                recall=list(dataset_recall),
-                precision=list(dataset_precision),
-                confidence=list(detections["second_confidence"]),
-            )
+        [_, dataset_plot_precision, dataset_plot_recall, dataset_plot_confidence] = _every_point_curve(
+            recall=list(dataset_recall),
+            precision=list(dataset_precision),
+            confidence=list(detections["second_confidence"]),
         )
     else:
-        [_, dataset_plot_precision, dataset_plot_recall, dataset_plot_confidence] = (
-            _n_point_interpolated_curve(
-                recall=list(dataset_recall),
-                precision=list(dataset_precision),
-                confidence=list(detections["second_confidence"]),
-                n_points=n_points,
-            )
+        [_, dataset_plot_precision, dataset_plot_recall, dataset_plot_confidence] = _n_point_interpolated_curve(
+            recall=list(dataset_recall),
+            precision=list(dataset_precision),
+            confidence=list(detections["second_confidence"]),
+            n_points=n_points,
         )
 
     dataset_points["iou_threshold"] = [iou_threshold] * len(dataset_plot_precision)
@@ -440,20 +378,14 @@ def calc_precision_recall(
         label_points = {key: {} for key in dataset_points}
         for label_name in list(set(label_names)):
             label_detections = detections.loc[
-                (detections.first_label == label_name)
-                | (detections.second_label == label_name)
+                (detections.first_label == label_name) | (detections.second_label == label_name)
             ].copy()
             if label_detections.shape[0] == 0:
                 label_plot_precision = [0]
                 label_plot_recall = [0]
                 label_plot_confidence = [0]
             else:
-                label_detections.sort_values(
-                    "second_confidence",
-                    inplace=True,
-                    ascending=False,
-                    ignore_index=True,
-                )
+                label_detections.sort_values("second_confidence", inplace=True, ascending=False, ignore_index=True)
 
                 label_fps = np.cumsum(label_detections["false_positives"])
                 label_tps = np.cumsum(label_detections["true_positives"])
@@ -461,23 +393,13 @@ def calc_precision_recall(
                 label_precision = np.divide(label_tps, (label_fps + label_tps))
 
                 if method_type == "every_point":
-                    [
-                        _,
-                        label_plot_precision,
-                        label_plot_recall,
-                        label_plot_confidence,
-                    ] = _every_point_curve(
+                    [_, label_plot_precision, label_plot_recall, label_plot_confidence] = _every_point_curve(
                         recall=list(label_recall),
                         precision=list(label_precision),
                         confidence=list(label_detections["second_confidence"]),
                     )
                 else:
-                    [
-                        _,
-                        label_plot_precision,
-                        label_plot_recall,
-                        label_plot_confidence,
-                    ] = _n_point_interpolated_curve(
+                    [_, label_plot_precision, label_plot_recall, label_plot_confidence] = _n_point_interpolated_curve(
                         recall=list(label_recall),
                         precision=list(label_precision),
                         confidence=list(label_detections["second_confidence"]),
@@ -506,9 +428,7 @@ def calc_precision_recall(
     return plot_points
 
 
-def plot_precision_recall(
-    plot_points: pd.DataFrame, dataset_name=None, label_names=None, local_path=None
-):
+def plot_precision_recall(plot_points: pd.DataFrame, dataset_name=None, label_names=None, local_path=None):
     """
     Plot precision recall curve for a given metric threshold
 
@@ -539,15 +459,9 @@ def plot_precision_recall(
 
     # plot each label separately
     dataset_points = plot_points[plot_points["data"] == "dataset"]
-    dataset_legend = (
-        f"{dataset_points['dataset_id'].iloc[0]}"
-        if dataset_name is None
-        else dataset_name
-    )
+    dataset_legend = f"{dataset_points['dataset_id'].iloc[0]}" if dataset_name is None else dataset_name
 
-    plt.plot(
-        dataset_points["recall"], dataset_points["precision"], label=dataset_legend
-    )
+    plt.plot(dataset_points["recall"], dataset_points["precision"], label=dataset_legend)
 
     plt.legend(loc="upper right")
 
@@ -586,9 +500,7 @@ def plot_precision_recall(
     plt.grid()
 
     # plot the dataset level
-    plot_filename = (
-        f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
-    )
+    plot_filename = f"label_precision_recall_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.png"
     save_path = os.path.join(save_dir, plot_filename)
     plt.savefig(save_path)
     # plt.close()
@@ -625,21 +537,15 @@ def get_false_negatives(model: dl.Model, dataset: dl.Dataset) -> pd.DataFrame:
     # list false negatives #
     ########################
     model_fns = dict()
-    annotation_to_item_map = {
-        ann_id: item_id for ann_id, item_id in zip(scores_df.first_id, scores_df.itemId)
-    }
+    annotation_to_item_map = {ann_id: item_id for ann_id, item_id in zip(scores_df.first_id, scores_df.itemId)}
     fn_annotation_ids = scores_df[scores_df.second_id.isna()].first_id
     print(f"model: {model.name} with {len(fn_annotation_ids)} false negative")
-    fn_items_ids = np.unique(
-        [annotation_to_item_map[ann_id] for ann_id in fn_annotation_ids]
-    )
+    fn_items_ids = np.unique([annotation_to_item_map[ann_id] for ann_id in fn_annotation_ids])
     for i_id in fn_items_ids:
         if i_id not in model_fns:
             i_id: dl.Item
             url = dl.client_api._get_resource_url(
-                "projects/{}/datasets/{}/items/{}".format(
-                    dataset.project.id, dataset.id, i_id
-                )
+                "projects/{}/datasets/{}/items/{}".format(dataset.project.id, dataset.id, i_id)
             )
             model_fns[i_id] = {"itemId": i_id, "url": url}
         model_fns[i_id].update({model.name: True})
@@ -676,14 +582,10 @@ def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
             "precision": precision.to_list(),
             "confidence": confidence.to_list(),
         }
-    filepath = os.path.join(
-        os.getcwd(), "../.dataloop", f"{model.id}-interpolated.json"
-    )
+    filepath = os.path.join(os.getcwd(), "../.dataloop", f"{model.id}-interpolated.json")
     with open(filepath, "w") as f:
         json.dump(figures, f)
-    item = dataset.items.upload(
-        local_path=filepath, remote_path=f"/.modelscores", overwrite=True
-    )
+    item = dataset.items.upload(local_path=filepath, remote_path=f"/.modelscores", overwrite=True)
 
     return True
 
@@ -715,9 +617,7 @@ def _every_point_curve(recall: list, precision: list, confidence: list):
     # use the recall intervals to calculate the average precision / area under the curve
     avg_precis = 0
     for i in recall_intervals:
-        avg_precis = avg_precis + np.sum(
-            (recall_points[i] - recall_points[i - 1]) * precision_points[i]
-        )
+        avg_precis = avg_precis + np.sum((recall_points[i] - recall_points[i - 1]) * precision_points[i])
 
     return [
         avg_precis,
@@ -727,9 +627,7 @@ def _every_point_curve(recall: list, precision: list, confidence: list):
     ]
 
 
-def _n_point_interpolated_curve(
-    recall: list, precision: list, confidence: list, n_points=201
-):
+def _n_point_interpolated_curve(recall: list, precision: list, confidence: list, n_points=201):
     """
     Calculate precision-recall curve from a list of precision & recall values, using n-points interpolation
 
@@ -765,15 +663,9 @@ def _n_point_interpolated_curve(
     avg_precis = sum(rho_interpol) / n_points
 
     # make points plot-ready
-    recall_points = np.concatenate(
-        [[recall_valid[0]], recall_valid, [recall_valid[-1]]]
-    )  # 1 to 0
-    precision_points = np.concatenate(
-        [[rho_interpol[0]], rho_interpol, [rho_interpol[-1]]]
-    )  # 0 to 1
-    confidence_points = np.concatenate(
-        [[conf_valid[0]], conf_valid, [conf_valid[-1]]]
-    )  # conf min to max
+    recall_points = np.concatenate([[recall_valid[0]], recall_valid, [recall_valid[-1]]])  # 1 to 0
+    precision_points = np.concatenate([[rho_interpol[0]], rho_interpol, [rho_interpol[-1]]])  # 0 to 1
+    confidence_points = np.concatenate([[conf_valid[0]], conf_valid, [conf_valid[-1]]])  # conf min to max
 
     cc = []
     for i in range(1, len(recall_points)):
@@ -831,12 +723,7 @@ def get_image_scores(
     )
 
     for score in pairwise_scores:
-        updated_score = add_score_context(
-            score=score,
-            entity_id=score.entity_id,
-            model_id=model.id,
-            item_id=item.id,
-        )
+        updated_score = add_score_context(score=score, entity_id=score.entity_id, model_id=model.id, item_id=item.id)
         all_scores.append(updated_score)
 
     # accumulate label confusion
@@ -874,20 +761,14 @@ def get_image_scores(
             annotation_overalls.append(score)
             all_scores.pop(i_score)
 
-    unique_annotation_ids = np.unique(
-        [score.entity_id for score in annotation_overalls]
-    )
+    unique_annotation_ids = np.unique([score.entity_id for score in annotation_overalls])
     for annotation_id in unique_annotation_ids:
-        overalls = [
-            score for score in annotation_overalls if score.entity_id == annotation_id
-        ]
+        overalls = [score for score in annotation_overalls if score.entity_id == annotation_id]
         # this is a matching score between annotations
         # to make it a probability we will add the current self match as 1
         # for instance, if we had [A,A,B], and the current is A, the overall probability is 2/3
         overalls_values = [s.value for s in overalls]
-        overalls_values.append(
-            1
-        )  # the match to the current annotation, this will it the probability
+        overalls_values.append(1)  # the match to the current annotation, this will it the probability
         user_id = overalls[0].user_id
         assignment_id = overalls[0].assignment_id
         # overalls_values.append(1)  # Add s
@@ -907,11 +788,7 @@ def get_image_scores(
 
 
 def get_video_scores(
-    annotations_by_frame: dict,
-    assignments_by_annotator: dict,
-    item: dl.Item,
-    model: dl.Model,
-    score_types: list = None,
+    annotations_by_frame: dict, assignments_by_annotator: dict, item: dl.Item, model: dl.Model, score_types: list = None
 ):
     """
     Create scores for a video item by comparing ground truth annotations with model predictions
@@ -936,9 +813,7 @@ def get_video_scores(
 
         frame_scores = list()
 
-        logger.info(
-            f"Comparing GT annotations with model predictions for frame {frame}"
-        )
+        logger.info(f"Comparing GT annotations with model predictions for frame {frame}")
 
         # Calculate pairwise scores between GT and model annotations
         pairwise_scores = calculate_annotation_score(
@@ -953,10 +828,7 @@ def get_video_scores(
 
         for score in pairwise_scores:
             updated_score = add_score_context(
-                score=score,
-                entity_id=score.entity_id,
-                model_id=model.id,
-                item_id=item.id,
+                score=score, entity_id=score.entity_id, model_id=model.id, item_id=item.id
             )
             frame_scores.append(updated_score)
             ann_ids.extend([ann.id for ann in gt_annotations])
@@ -1043,9 +915,7 @@ def get_video_scores(
                 type=ScoreType.ANNOTATION_IOU,
                 value=mean_or_default(
                     arr=[
-                        score.value
-                        for score in annotation_frame_scores
-                        if score.type == ScoreType.ANNOTATION_IOU.value
+                        score.value for score in annotation_frame_scores if score.type == ScoreType.ANNOTATION_IOU.value
                     ],
                     default=1,
                 ),

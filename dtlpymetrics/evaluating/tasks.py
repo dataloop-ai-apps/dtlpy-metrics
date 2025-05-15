@@ -3,13 +3,12 @@ import dtlpy as dl
 
 from ..dtlpy_scores import ScoreType
 from ..scoring import calc_task_item_score
+from ..utils import get_scores_by_annotator, cleanup_annots_by_score
 
 logger = logging.getLogger("scoring-and-metrics")
 
 
-def get_consensus_agreement(
-    item: dl.Item, task: dl.Task, agreement_config: dict
-) -> bool:
+def get_consensus_agreement(item: dl.Item, task: dl.Task, agreement_config: dict) -> bool:
     """
     Determine whether annotators agree on annotations for a given item.
     :param item: dl.Item
@@ -31,7 +30,7 @@ def get_consensus_agreement(
     # get scores and convert to dl.Score
     all_scores = calc_task_item_score(task=task, item=item, upload=False)
     agreement = check_annotator_agreement(scores=all_scores, threshold=agree_threshold)
-    
+
     # determine node output action
     if agreement is True:
         logger.info(f'Consensus passed for item {item.id}')
@@ -49,25 +48,21 @@ def get_consensus_agreement(
                     break
             logger.info(f"Best annotator assignment ID: {best_annotator}")
 
-            annots_to_keep = [score.entity_id for score in all_scores if
-                                (score.context.get('assignmentId') == best_annotator) and (
-                                        score.type == ScoreType.ANNOTATION_OVERALL)]
+            annots_to_keep = [
+                score.entity_id
+                for score in all_scores
+                if (score.context.get('assignmentId') == best_annotator)
+                and (score.type == ScoreType.ANNOTATION_OVERALL)
+            ]
             logger.info(f"Annotations to keep: {annots_to_keep}")
-            cleanup_annots_by_score(item=item,
-                                    scores=all_scores,
-                                    annots_to_keep=annots_to_keep,
-                                    logger=logger)
+            cleanup_annots_by_score(item=item, scores=all_scores, annots_to_keep=annots_to_keep, logger=logger)
     else:
         logger.info(f'Consensus failed for item {item.id}')
         if fail_keep_all is False:
-                logger.info("Deleting all annotations.")
-                cleanup_annots_by_score(item=item,
-                                        scores=all_scores,
-                                        annots_to_keep=None,
-                                        logger=logger)
+            logger.info("Deleting all annotations.")
+            cleanup_annots_by_score(item=item, scores=all_scores, annots_to_keep=None, logger=logger)
 
     return agreement
-
 
 
 def check_annotator_agreement(scores, threshold: float = 1.0):
@@ -81,13 +76,9 @@ def check_annotator_agreement(scores, threshold: float = 1.0):
     :return: True if agreement is above threshold
     """
     if threshold < 0 or threshold > 1:
-        raise ValueError(
-            "Threshold must be between 0 and 1. Please set a valid threshold."
-        )
+        raise ValueError("Threshold must be between 0 and 1. Please set a valid threshold.")
     # calculate agreement based on the average agreement across all annotators
-    user_scores = [
-        score.value for score in scores if score.type == ScoreType.USER_CONFUSION
-    ]
+    user_scores = [score.value for score in scores if score.type == ScoreType.USER_CONFUSION]
     agreement = True if sum(user_scores) / len(user_scores) >= threshold else False
     return agreement
 
@@ -103,9 +94,7 @@ def check_unanimous_agreement(scores, threshold=1):
     :return: True if all annotator pairs agree above threshold
     """
     if threshold < 0 or threshold > 1:
-        raise ValueError(
-            "Threshold must be between 0 and 1. Please set a valid threshold."
-        )
+        raise ValueError("Threshold must be between 0 and 1. Please set a valid threshold.")
     # calculate unanimity based on whether each pair agrees
     agreement = True
     for score in scores:

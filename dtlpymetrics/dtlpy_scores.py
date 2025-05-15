@@ -34,9 +34,7 @@ class Score(entities.DlEntity):
     dataset_id: str = entities.DlProperty(location=["context", "datasetId"], _type=str)
     task_id: str = entities.DlProperty(location=["context", "taskId"], _type=str)
     user_id: str = entities.DlProperty(location=["context", "userId"], _type=str)
-    assignment_id: str = entities.DlProperty(
-        location=["context", "assignmentId"], _type=str
-    )
+    assignment_id: str = entities.DlProperty(location=["context", "assignmentId"], _type=str)
     item_id: str = entities.DlProperty(location=["context", "itemId"], _type=str)
     model_id: str = entities.DlProperty(location=["context", "modelId"], _type=str)
     relative: str = entities.DlProperty(location=["context", "relative"], _type=str)
@@ -61,12 +59,7 @@ class Score(entities.DlEntity):
 class Scores:
     URL = "/scores"
 
-    def __init__(
-        self,
-        client_api: dl.ApiClient,
-        project: entities.Project = None,
-        project_id: str = None,
-    ):
+    def __init__(self, client_api: dl.ApiClient, project: entities.Project = None, project_id: str = None):
         self._project = project
         self._project_id = project_id
         self._client_api = client_api
@@ -75,16 +68,12 @@ class Scores:
     def project(self) -> entities.Project:
         if self._project is None and self._project_id is not None:
             # get from id
-            self._project = repositories.Projects(client_api=self._client_api).get(
-                project_id=self._project_id
-            )
+            self._project = repositories.Projects(client_api=self._client_api).get(project_id=self._project_id)
         if self._project is None:
             # try get checkout
             project = self._client_api.state_io.get("project")
             if project is not None:
-                self._project = entities.Project.from_json(
-                    _json=project, client_api=self._client_api
-                )
+                self._project = entities.Project.from_json(_json=project, client_api=self._client_api)
         if self._project is None:
             raise exceptions.PlatformException(
                 error="2001",
@@ -99,9 +88,7 @@ class Scores:
     ###########
     # get scores for a task
     def get(self, task_id: str) -> Score:
-        success, response = self._client_api.gen_request(
-            req_type="GET", path="{}/{}".format(self.URL, task_id)
-        )
+        success, response = self._client_api.gen_request(req_type="GET", path="{}/{}".format(self.URL, task_id))
 
         # exception handling
         if not success:
@@ -114,9 +101,7 @@ class Scores:
         if not isinstance(scores, list):
             raise ValueError(f"score input must be a list of dl.Score")
         payload = {"scores": [score.to_json() for score in scores]}
-        success, response = self._client_api.gen_request(
-            req_type="post", json_req=payload, path=self.URL
-        )
+        success, response = self._client_api.gen_request(req_type="post", json_req=payload, path=self.URL)
 
         # exception handling
         if not success:
@@ -205,12 +190,7 @@ def tests():
     task = dl.tasks.get(task_id="63bffffa8cac97275a31fd17")
     annotation = dl.annotations.get(annotation_id="6499302b6563931044046cbc")
 
-    score = Score(
-        type=ScoreType.ANNOTATION_IOU,
-        value=0.9,
-        entity_id=annotation.id,
-        task_id=task.id,
-    )
+    score = Score(type=ScoreType.ANNOTATION_IOU, value=0.9, entity_id=annotation.id, task_id=task.id)
     print(score.to_json())
 
     scores = Scores(client_api=dl.client_api, project=project)

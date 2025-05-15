@@ -1,15 +1,10 @@
+from typing import List
 import logging
 import dtlpy as dl
 import numpy as np
 
-from typing import List
 from ..dtlpy_scores import Score, ScoreType, Scores
-from ..utils import (
-    mean_or_default,
-    add_score_context,
-    check_if_video,
-    calculate_annotation_score,
-)
+from ..utils import mean_or_default, add_score_context, check_if_video, calculate_annotation_score
 
 logger = logging.getLogger("scoring-and-metrics")
 
@@ -24,17 +19,10 @@ def calc_task_score(task: dl.Task, score_types=None, upload=False) -> dict:
     :return: dict of scores with item id as key and list of Scores as value
     """
     # determine task type
-    if task.metadata["system"].get("consensusTaskType") not in [
-        "qualification",
-        "honeypot",
-        "consensus",
-    ]:
-        raise ValueError(f"Task type is not suitable for scoring")
+    if task.metadata["system"].get("consensusTaskType") not in ["qualification", "honeypot", "consensus"]:
+        raise ValueError("Task type is not suitable for scoring")
 
-    if task.metadata["system"].get("consensusTaskType") in [
-        "honeypot",
-        "qualification",
-    ]:
+    if task.metadata["system"].get("consensusTaskType") in ["honeypot", "qualification"]:
         # qualification and honeypot scoring is completed on cloned items for each assignee
         filters = dl.Filters()
         filters.add(field="hidden", values=True)  # return only the clones
@@ -56,26 +44,19 @@ def calc_task_score(task: dl.Task, score_types=None, upload=False) -> dict:
             # for testing tasks, check if the item is complete via metadata
             elif ref.get("metadata", None) is None:
                 continue
-            elif ref.get("metadata").get("status", None) in [
-                "completed",
-                "consensus_done",
-            ]:
+            elif ref.get("metadata").get("status", None) in ["completed", "consensus_done"]:
                 current_task_done = True
                 break
             else:
                 logger.info(f"Item {item.id} is not complete, skipping scoring")
                 continue
         if current_task_done is True:
-            items_scores[item.id] = calc_task_item_score(
-                item=item, task=task, score_types=score_types, upload=upload
-            )
+            items_scores[item.id] = calc_task_item_score(item=item, task=task, score_types=score_types, upload=upload)
 
     return items_scores
 
 
-def calc_task_item_score(
-    item: dl.Item, task: dl.Task, score_types=None, upload=True
-) -> List[Score]:
+def calc_task_item_score(item: dl.Item, task: dl.Task, score_types=None, upload=True) -> List[Score]:
     """
     Create scores for items in a task. This is the main function for creating score entities
 
@@ -90,13 +71,10 @@ def calc_task_item_score(
     logger.info(f"Starting scoring for item: {item.id} and task: {task.id}")
     if task.metadata["system"].get("consensusTaskType") == "consensus":
         task_type = "consensus"
-    elif task.metadata["system"].get("consensusTaskType") in [
-        "qualification",
-        "honeypot",
-    ]:
+    elif task.metadata["system"].get("consensusTaskType") in ["qualification", "honeypot"]:
         task_type = "testing"
     else:
-        raise ValueError(f"Task type is not suitable for scoring.")
+        raise ValueError("Task type is not suitable for scoring.")
 
     ###################################
     # collect assignments for sorting #
@@ -123,19 +101,13 @@ def calc_task_item_score(
         # sort annotations and calculate scores #
         #########################################
         annotations = item.annotations.list()
-        annotators_list = [
-            assignment.annotator for assignment in assignments_by_id.values()
-        ]
+        annotators_list = [assignment.annotator for assignment in assignments_by_id.values()]
         logger.info(f"Starting scoring for assignments: {annotators_list}")
 
         is_video = check_if_video(item=item)
         if is_video is True:  # video items
             annotations_by_frame = _split_video_to_frames(
-                annotations=annotations,
-                item=item,
-                task=task,
-                task_type=task_type,
-                assignments_by_id=assignments_by_id,
+                annotations=annotations, item=item, task=task, task_type=task_type, assignments_by_id=assignments_by_id
             )
             all_scores = get_video_scores(
                 annotations_by_frame=annotations_by_frame,
@@ -147,11 +119,7 @@ def calc_task_item_score(
             )
         else:  # image items
             annots_by_assignment = _sort_annotations(
-                task=task,
-                item=item,
-                task_type=task_type,
-                annotations=annotations,
-                assignments_by_id=assignments_by_id,
+                task=task, item=item, task_type=task_type, annotations=annotations, assignments_by_id=assignments_by_id
             )
             all_scores = get_image_scores(
                 annots_by_assignment=annots_by_assignment,
@@ -163,11 +131,7 @@ def calc_task_item_score(
             )
 
         # overall item score is an average of all overall annotation scores
-        item_overall = [
-            score.value
-            for score in all_scores
-            if score.type == ScoreType.ANNOTATION_OVERALL.value
-        ]
+        item_overall = [score.value for score in all_scores if score.type == ScoreType.ANNOTATION_OVERALL.value]
 
         item_score = Score(
             type=ScoreType.ITEM_OVERALL,
@@ -183,9 +147,7 @@ def calc_task_item_score(
         # upload scores to platform #
         #############################
         if upload is True:
-            logger.info(
-                f"Deleting all scores with context item ID: {item.id} and task ID: {task.id}"
-            )
+            logger.info(f"Deleting all scores with context item ID: {item.id} and task ID: {task.id}")
             dl_scores = Scores(client_api=dl.client_api)
             dl_scores.delete(context={"itemId": item.id, "taskId": task.id})
             dl_scores = dl_scores.create(all_scores)
@@ -237,16 +199,10 @@ def _sort_assignments(task_type: str, item: dl.Item, assignments: list) -> list:
 
 
 def _sort_annotations(
-    task: dl.Task,
-    item: dl.Item,
-    task_type: str,
-    annotations: List[dl.Annotation],
-    assignments_by_id: dict,
+    task: dl.Task, item: dl.Item, task_type: str, annotations: List[dl.Annotation], assignments_by_id: dict
 ) -> dict:
     # group by some field (e.g. 'creator' or 'assignment id'), here we use assignment id
-    annots_by_assignment = {
-        assignment.annotator: [] for assignment in assignments_by_id.values()
-    }
+    annots_by_assignment = {assignment.annotator: [] for assignment in assignments_by_id.values()}
     for annotation in annotations:
         # default is "ref"
         # TODO handle models
@@ -268,11 +224,7 @@ def _sort_annotations(
 
 
 def _split_video_to_frames(
-    annotations: dl.AnnotationCollection,
-    item: dl.Item,
-    task: dl.Task,
-    task_type: str,
-    assignments_by_id: dict,
+    annotations: dl.AnnotationCollection, item: dl.Item, task: dl.Task, task_type: str, assignments_by_id: dict
 ) -> dict:
     """
     Hidden function to split video annotations frame by frame and sort by assignment
@@ -297,21 +249,15 @@ def _split_video_to_frames(
 
     # within each frame, sort all annotation slices to their corresponding assignment/annotator
     for frame, annotation_slices in all_annotation_slices.items():
-        frame_annots_by_assignment = {
-            assignment.annotator: [] for assignment in assignments_by_id.values()
-        }
+        frame_annots_by_assignment = {assignment.annotator: [] for assignment in assignments_by_id.values()}
         for annotation_slice in annotation_slices:
             # TODO compare annotations between models
             # default is "ref", if no assignment ID is found
-            assignment_id = annotation_slice.metadata["system"].get(
-                "assignmentId", "ref"
-            )
+            assignment_id = annotation_slice.metadata["system"].get("assignmentId", "ref")
             task_id = annotation_slice.metadata["system"].get("taskId", None)
             if task_id == task.id:
                 assignment_annotator = assignments_by_id[assignment_id].annotator
-                frame_annots_by_assignment[assignment_annotator].append(
-                    annotation_slice
-                )
+                frame_annots_by_assignment[assignment_annotator].append(annotation_slice)
             else:
                 # TODO comparing annotations from another task
                 continue
@@ -343,7 +289,7 @@ def get_image_scores(
 
     :param annots_by_assignment: dict of annotations grouped by assignment
     :param assignments_by_annotator: dict of assignments groups by annotator
-    :param item: dl.Item    
+    :param item: dl.Item
     :param task: dl.Task
     :param task_type: str, 'testing' or 'consensus'
     :param score_types: list of score types to be calculated (optional)
@@ -353,8 +299,6 @@ def get_image_scores(
     ####################
     # calculate scores #
     ####################
-    labels = task.recipe_id.ontologies.list()[0].labels_flat_dict.keys()
-
     # compare between each assignment and create Score entities
     all_scores = list()
 
@@ -370,9 +314,7 @@ def get_image_scores(
             # skip ref in inner loop
             if assignment_annotator_j == "ref":
                 continue
-            logger.info(
-                f"Comparing assignee: {assignment_annotator_i!r} with assignee: {assignment_annotator_j!r}"
-            )
+            logger.info(f"Comparing assignee: {assignment_annotator_i!r} with assignee: {assignment_annotator_j!r}")
             annot_collection_1 = annots_by_assignment[assignment_annotator_i]
             annot_collection_2 = annots_by_assignment[assignment_annotator_j]
             # score types that can be returned: ANNOTATION_IOU, ANNOTATION_LABEL, ANNOTATION_ATTRIBUTE
@@ -390,22 +332,18 @@ def get_image_scores(
                     updated_score = add_score_context(
                         score=score,
                         user_id=assignment_annotator_j,
-                        task_id=task_id,
+                        task_id=task.id,
                         entity_id=assignment_annotator_j,
                         relative=assignment_annotator_i,
-                        assignment_id=assignments_by_annotator[
-                            assignment_annotator_j
-                        ].id,
+                        assignment_id=assignments_by_annotator[assignment_annotator_j].id,
                         item_id=item.id,
                     )
                 else:
                     updated_score = add_score_context(
                         score=score,
                         user_id=assignment_annotator_j,
-                        task_id=task_id,
-                        assignment_id=assignments_by_annotator[
-                            assignment_annotator_j
-                        ].id,
+                        task_id=task.id,
+                        assignment_id=assignments_by_annotator[assignment_annotator_j].id,
                         item_id=item.id,
                     )
                 all_scores.append(updated_score)
@@ -430,7 +368,7 @@ def get_image_scores(
                     value=count,
                     entity_id=entity_id,  # assignee label
                     relative=relative,
-                    task_id=task_id,
+                    task_id=task.id,
                     item_id=item.id,
                 )
             )
@@ -442,19 +380,13 @@ def get_image_scores(
             annotation_overalls.append(score)
             all_scores.pop(i_score)
 
-    unique_annotation_ids = np.unique(
-        [score.entity_id for score in annotation_overalls]
-    )
+    unique_annotation_ids = np.unique([score.entity_id for score in annotation_overalls])
     for annotation_id in unique_annotation_ids:
-        overalls = [
-            score for score in annotation_overalls if score.entity_id == annotation_id
-        ]
+        overalls = [score for score in annotation_overalls if score.entity_id == annotation_id]
         # this is a matching score between annotations to make it a probability we will add the current self match as 1
         # for instance, if we had [A,A,B], and the current is A, the overall probability is 2/3
         overalls_values = [s.value for s in overalls]
-        overalls_values.append(
-            1
-        )  # the match to the current annotation, this will it the probability
+        overalls_values.append(1)  # the match to the current annotation, this will it the probability
         user_id = overalls[0].user_id
         assignment_id = overalls[0].assignment_id
         # add joint overall (single one for each annotation
@@ -464,7 +396,7 @@ def get_image_scores(
                 value=mean_or_default(arr=overalls_values, default=0),
                 entity_id=annotation_id,
                 user_id=user_id,
-                task_id=task_id,
+                task_id=task.id,
                 assignment_id=assignment_id,
                 item_id=item.id,
             )
@@ -479,7 +411,6 @@ def get_video_scores(
     task: dl.Task = None,
     score_types: list = None,
     task_type: str = None,
-    recipe_id: str = None,
 ):
     """
     Create scores for a video item
@@ -513,9 +444,7 @@ def get_video_scores(
                 # skip ref in inner loop
                 if assignment_annotator_j == "ref":
                     continue
-                logger.info(
-                    f"Comparing assignee: {assignment_annotator_i!r} with assignee: {assignment_annotator_j!r}"
-                )
+                logger.info(f"Comparing assignee: {assignment_annotator_i!r} with assignee: {assignment_annotator_j!r}")
                 annot_collection_1 = annots_by_assignment[assignment_annotator_i]
                 annot_collection_2 = annots_by_assignment[assignment_annotator_j]
                 ann_ids.extend([ann.id for ann in annot_collection_1])
@@ -535,22 +464,18 @@ def get_video_scores(
                         updated_score = add_score_context(
                             score=score,
                             user_id=assignment_annotator_j,
-                            task_id=task_id,
+                            task_id=task.id,
                             entity_id=assignment_annotator_j,
                             relative=assignment_annotator_i,
-                            assignment_id=assignments_by_annotator[
-                                assignment_annotator_j
-                            ].id,
+                            assignment_id=assignments_by_annotator[assignment_annotator_j].id,
                             item_id=item.id,
                         )
                     else:
                         updated_score = add_score_context(
                             score=score,
                             user_id=assignment_annotator_j,
-                            task_id=task_id,
-                            assignment_id=assignments_by_annotator[
-                                assignment_annotator_j
-                            ].id,
+                            task_id=task.id,
+                            assignment_id=assignments_by_annotator[assignment_annotator_j].id,
                             item_id=item.id,
                         )
                     frame_scores.append(updated_score)
@@ -605,7 +530,7 @@ def get_video_scores(
                     default=1,
                 ),
                 entity_id=annotation_id,
-                task_id=task_id,
+                task_id=task.id,
                 item_id=item.id,
                 dataset_id=item.dataset.id,
             )
@@ -622,7 +547,7 @@ def get_video_scores(
                     default=1,
                 ),
                 entity_id=annotation_id,
-                task_id=task_id,
+                task_id=task.id,
                 item_id=item.id,
                 dataset_id=item.dataset.id,
             )
@@ -632,14 +557,12 @@ def get_video_scores(
                 type=ScoreType.ANNOTATION_IOU,
                 value=mean_or_default(
                     arr=[
-                        score.value
-                        for score in annotation_frame_scores
-                        if score.type == ScoreType.ANNOTATION_IOU.value
+                        score.value for score in annotation_frame_scores if score.type == ScoreType.ANNOTATION_IOU.value
                     ],
                     default=1,
                 ),
                 entity_id=annotation_id,
-                task_id=task_id,
+                task_id=task.id,
                 item_id=item.id,
                 dataset_id=item.dataset.id,
             )
@@ -656,7 +579,7 @@ def get_video_scores(
                     default=1,
                 ),
                 entity_id=annotation_id,
-                task_id=task_id,
+                task_id=task.id,
                 item_id=item.id,
                 dataset_id=item.dataset.id,
             )
