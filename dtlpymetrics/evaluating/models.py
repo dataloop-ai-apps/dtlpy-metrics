@@ -311,21 +311,21 @@ def get_model_agreement(item: dl.Item, model: dl.Model, agreement_config: dict) 
     Determine whether model predictions agree with ground truth annotations for a given item.
     :param item: dl.Item
     :param model: dl.Model
-    :param agreement_config: dict that needs 2 keys: "agree_threshold" and "fail_keep_all"
+    :param agreement_config: dict that needs 2 keys: "agreement_threshold" and "fail_keep_all"
     :return: bool
     """
-    agree_threshold = agreement_config.get("agree_threshold", 0.5)
+    agreement_threshold = agreement_config.get("agreement_threshold", 0.5)
     keep_annots = agreement_config.get("keep_annots", True)
 
     logger.info(f"Running model agreement using model {model.name} with ID {model.id}")
     logger.info(
-        f"Configurations: agreement threshold = {agree_threshold}, "
+        f"Configurations: agreement threshold = {agreement_threshold}, "
         f"after checking agreement keep model annotations: {keep_annots}"
     )
 
     # get scores for model predictions and convert to dl.Score
     all_scores = calc_item_model_score(item=item, model=model, score_types=None, upload=False)
-    agreement = check_model_agreement(scores=all_scores, threshold=agree_threshold)
+    agreement = check_model_agreement(scores=all_scores, threshold=agreement_threshold)
 
     if keep_annots is False:
         cleanup_annots_by_score(item=item, scores=all_scores, annots_to_keep=None, logger=logger)

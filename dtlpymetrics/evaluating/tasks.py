@@ -16,20 +16,20 @@ def get_consensus_agreement(item: dl.Item, task: dl.Task, agreement_config: dict
     :param agreement_config: dict that needs 3 keys: "agreement_threshold", "keep_only_best", and "fail_keep_all"
     :return: bool
     """
-    agree_threshold = agreement_config.get("agree_threshold", 0.5)
+    agreement_threshold = agreement_config.get("agreement_threshold", 0.5)
     keep_only_best = agreement_config.get("keep_only_best", False)
     fail_keep_all = agreement_config.get("fail_keep_all", True)
 
     logger.info(f"Running consensus agreement using task {task.name} with ID {task.id}")
     logger.info(
-        f"Configurations: agreement threshold = {agree_threshold}, "
+        f"Configurations: agreement threshold = {agreement_threshold}, "
         f"upon agreement pass, keep only best annotations: {keep_only_best}, "
         f"upon agreement fail keep all annotations: {fail_keep_all}"
     )
 
     # get scores and convert to dl.Score
     all_scores = calc_task_item_score(task=task, item=item, upload=False)
-    agreement = check_annotator_agreement(scores=all_scores, threshold=agree_threshold)
+    agreement = check_annotator_agreement(scores=all_scores, threshold=agreement_threshold)
 
     # determine node output action
     if agreement is True:

@@ -1,3 +1,5 @@
+from typing import Union, List
+
 import uuid
 import logging
 import dtlpy as dl
@@ -5,7 +7,6 @@ import numpy as np
 import pandas as pd
 
 from dtlpy import entities
-from typing import Union, List
 
 from dtlpymetrics.dtlpy_scores import Score, ScoreType
 

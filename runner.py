@@ -90,7 +90,7 @@ class Scorer(dl.BaseServiceRunner):
                 pipeline=pipeline, start_node_id=current_node_id, previous_nodes=previous_nodes
             )
             if task_node_id is None:
-                raise ValueError(f"Could not find task from pipeline, and task not provided.")
+                raise ValueError("Could not find task from pipeline, and task not provided.")
             filters = dl.Filters(resource=dl.FiltersResource.TASK)
             filters.add(field="metadata.system.nodeId", values=task_node_id)
             filters.add(field="metadata.system.pipelineId", values=pipeline_id)
@@ -148,7 +148,7 @@ class Scorer(dl.BaseServiceRunner):
 
     @staticmethod
     def create_model_item_score(
-        item: dl.Item, model: dl.Model, context: dl.Context = None, score_types=None
+        item: dl.Item, model: dl.Model, context: dl.Context, score_types=None
     ) -> dl.Item:
         """
         Calculate scores for a model's predictions on an item compared to ground truth annotations.
@@ -165,11 +165,12 @@ class Scorer(dl.BaseServiceRunner):
         if model is None:
             raise ValueError("No model provided, please provide a model.")
 
-        _ = calc_item_model_score(item=item, model=model, score_types=score_types, upload=True)
+        # TODO get scoretypes from context config once UX is available
+        scores = calc_item_model_score(item=item, model=model, score_types=score_types, upload=True)
         return item
 
     @staticmethod
-    def model_agreement(item: dl.Item, context: dl.Context, progress: dl.Progress, model: dl.Model = None) -> dl.Item:
+    def model_agreement(item: dl.Item, model: dl.Model, context: dl.Context, progress: dl.Progress) -> dl.Item:
         """
         Calculate agreement between model predictions and ground truth annotations.
         :param item: dl.Item to evaluate
@@ -183,10 +184,7 @@ class Scorer(dl.BaseServiceRunner):
         if context is None:
             raise ValueError("Must provide pipeline context.")
         if model is None:
-            if context.model is not None:
-                model = context.model
-            else:
-                raise ValueError("Must provide either model or context with model.")
+            raise ValueError("Must provide either model or context with model.")
 
         agreement_config = dict()
         node = context.node
