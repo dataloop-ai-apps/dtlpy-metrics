@@ -101,7 +101,7 @@
               "name": "score_label",
               "title": "Label score",
               "props": {
-                "subtitle": "Score the model label prediction",
+                "subtitle": "Include scores for the annotation labels",
                 "type": "boolean",
                 "default": true
               },
@@ -111,7 +111,7 @@
               "name": "score_iou",
               "title": "IoU score",
               "props": {
-                "subtitle": "Score the model IoU prediction",
+                "subtitle": "Include scores for annotation IoU",
                 "type": "boolean",
                 "default": true
               },
@@ -121,7 +121,7 @@
               "name": "score_attributes",
               "title": "Attributes score",
               "props": {
-                "subtitle": "Score the model attributes prediction",
+                "subtitle": "Include scores for annotation attributes",
                 "type": "boolean",
                 "default": true
               },
@@ -220,12 +220,16 @@
             "displayName": "Consensus Agreement"
           },
           {
-            "name": "create_item_model_score",
+            "name": "create_model_item_score",
             "description": "Calculate the score for each item based on model predictions",
             "input": [
               {
                 "type": "Item",
                 "name": "item"
+              },
+              {
+                "type": "Model",
+                "name": "model"
               }
             ],
             "output": [
@@ -244,6 +248,10 @@
               {
                 "type": "Item",
                 "name": "item"
+              },
+              {
+                "type": "Model",
+                "name": "model"
               }
             ],
             "output": [
