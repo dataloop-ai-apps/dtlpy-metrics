@@ -9,16 +9,18 @@ import dtlpy as dl
 import numpy as np
 import pandas as pd
 
+from typing import List
 from concurrent.futures import ThreadPoolExecutor
 from matplotlib import pyplot as plt
 
 from ..utils import (
+    add_score_context,
     all_compare_types,
     measure_annotations,
     mean_or_default,
     check_if_video,
+    calculate_annotation_score,
 )
-from typing import List
 from ..dtlpy_scores import Score, ScoreType, Scores
 
 logger = logging.getLogger("scoring-and-metrics")
@@ -170,6 +172,7 @@ def create_model_score(
     calc_and_upload_interpolation(model=model, dataset=dataset)
     return model
 
+
 def calc_item_model_score(
     item: dl.Item, model: dl.Model, score_types=None, upload=True
 ) -> List[Score]:
@@ -217,22 +220,26 @@ def calc_item_model_score(
 
         all_scores = get_video_scores(
             annotations_by_frame=annotations_by_frame,
-            assignments_by_annotator={"model": None},  # Dummy assignment for model
-            task=None,  # No task for model scoring
+            assignments_by_annotator={
+                "gt": gt_annotations,
+                "model": model_annotations,
+            },  # Dummy assignment for model
             item=item,
+            model=model,
             score_types=score_types,
-            task_type="testing",
-        )  # Treat as testing task
+        )
     else:  # image items
         annots_by_assignment = {"gt": gt_annotations, "model": model_annotations}
         all_scores = get_image_scores(
             annots_by_assignment=annots_by_assignment,
-            assignments_by_annotator={"model": None},  # Dummy assignment for model
-            task=None,  # No task for model scoring
+            assignments_by_annotator={
+                "gt": gt_annotations,
+                "model": model_annotations,
+            },  # Dummy assignment for model
             item=item,
+            model=model,
             score_types=score_types,
-            task_type="testing",
-        )  # Treat as testing task
+        )
 
     # overall item score is an average of all overall annotation scores
     item_overall = [
@@ -245,7 +252,6 @@ def calc_item_model_score(
         type=ScoreType.ITEM_OVERALL,
         value=mean_or_default(arr=item_overall, default=1),
         entity_id=item.id,
-        task_id=None,  # No task for model scoring
         item_id=item.id,
         dataset_id=item.dataset.id,
     )
@@ -264,6 +270,7 @@ def calc_item_model_score(
         logger.info(f"Uploaded {len(dl_scores)} scores to platform.")
 
     return all_scores
+
 
 def _split_video_to_frames(
     annotations: dl.AnnotationCollection, item: dl.Item, model: dl.Model
@@ -308,6 +315,7 @@ def _split_video_to_frames(
         annotations_by_frame[frame] = {"gt": frame_gt, "model": frame_model}
 
     return annotations_by_frame
+
 
 def calc_precision_recall(
     dataset_id: str,
@@ -781,3 +789,286 @@ def _n_point_interpolated_curve(
     confidence_plot = [i[2] for i in cc]
 
     return [avg_precis, precision_plot, recall_plot, confidence_plot]
+
+
+def get_image_scores(
+    annots_by_assignment: dict,
+    assignments_by_annotator: dict,
+    item: dl.Item,
+    model: dl.Model,
+    score_types: list = None,
+    match_threshold: float = 0.01,
+) -> list:
+    """
+    Calculate scores for an image item by comparing ground truth annotations with model predictions
+
+    :param annots_by_assignment: dict of annotations grouped by type (gt/model)
+    :param item: dl.Item
+    :param score_types: list of score types to be calculated (optional)
+    :return all_scores: list of all annotation and item scores
+    """
+    ####################
+    # calculate scores #
+    ####################
+    # compare between GT and model annotations and create Score entities
+    all_scores = list()
+
+    # Get GT and model annotations
+    gt_annotations = annots_by_assignment.get("gt", [])
+    model_annotations = annots_by_assignment.get("model", [])
+
+    logger.info(f"Comparing GT annotations with model predictions")
+
+    # Calculate pairwise scores between GT and model annotations
+    pairwise_scores = calculate_annotation_score(
+        annot_collection_1=gt_annotations,
+        annot_collection_2=model_annotations,
+        ignore_labels=False,
+        ignore_attributes=True,
+        ignore_geometry=True,
+        match_threshold=match_threshold,
+        score_types=score_types,
+    )
+
+    for score in pairwise_scores:
+        updated_score = add_score_context(
+            score=score,
+            entity_id=score.entity_id,
+            model_id=model.id,
+            item_id=item.id,
+        )
+        all_scores.append(updated_score)
+
+    # accumulate label confusion
+    confusion_scores = list()
+    for i_score, score in reversed(list(enumerate(all_scores))):
+        if score.type == ScoreType.LABEL_CONFUSION:
+            confusion_scores.append(score)
+            all_scores.pop(i_score)
+
+    confusion_dict = dict()
+    for score in confusion_scores:
+        if score.entity_id not in confusion_dict:
+            confusion_dict[score.entity_id] = dict()
+        if score.relative not in confusion_dict[score.entity_id]:
+            confusion_dict[score.entity_id][score.relative] = 0
+        confusion_dict[score.entity_id][score.relative] += 1
+
+    for entity_id, v in confusion_dict.items():
+        for relative, count in v.items():
+            all_scores.append(
+                Score(
+                    type=ScoreType.LABEL_CONFUSION,
+                    value=count,
+                    entity_id=entity_id,  # TODO check
+                    relative=relative,
+                    model_id=model.id,
+                    item_id=item.id,
+                )
+            )
+
+    # Calculate average overall score for each annotation id
+    annotation_overalls = list()
+    for i_score, score in reversed(list(enumerate(all_scores))):
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            annotation_overalls.append(score)
+            all_scores.pop(i_score)
+
+    unique_annotation_ids = np.unique(
+        [score.entity_id for score in annotation_overalls]
+    )
+    for annotation_id in unique_annotation_ids:
+        overalls = [
+            score for score in annotation_overalls if score.entity_id == annotation_id
+        ]
+        # this is a matching score between annotations
+        # to make it a probability we will add the current self match as 1
+        # for instance, if we had [A,A,B], and the current is A, the overall probability is 2/3
+        overalls_values = [s.value for s in overalls]
+        overalls_values.append(
+            1
+        )  # the match to the current annotation, this will it the probability
+        user_id = overalls[0].user_id
+        assignment_id = overalls[0].assignment_id
+        # overalls_values.append(1)  # Add s
+
+        # add joint overall (single one for each annotation
+        all_scores.append(
+            Score(
+                type=ScoreType.ANNOTATION_OVERALL,
+                value=mean_or_default(arr=overalls_values, default=0),
+                entity_id=annotation_id,
+                model_id=model.id,
+                item_id=item.id,
+            )
+        )
+
+    return all_scores
+
+
+def get_video_scores(
+    annotations_by_frame: dict,
+    assignments_by_annotator: dict,
+    item: dl.Item,
+    model: dl.Model,
+    score_types: list = None,
+):
+    """
+    Create scores for a video item by comparing ground truth annotations with model predictions
+
+    :param annotations_by_frame: dict of annotations by frame, grouped by type (gt/model)
+    :param assignments_by_annotator: dict of assignments (not used for model scoring)
+    :param item: dl.Item
+    :param model: dl.Model
+    :param score_types: list of scores to calculate
+    :return all_scores: list of all annotation and item scores
+    """
+    ####################
+    # calculate scores #
+    ####################
+    all_scores_by_frame = dict()
+    ann_ids = list()
+
+    for frame, annots_by_type in annotations_by_frame.items():
+        # Get GT and model annotations for this frame
+        gt_annotations = annots_by_type.get("gt", [])
+        model_annotations = annots_by_type.get("model", [])
+
+        frame_scores = list()
+
+        logger.info(
+            f"Comparing GT annotations with model predictions for frame {frame}"
+        )
+
+        # Calculate pairwise scores between GT and model annotations
+        pairwise_scores = calculate_annotation_score(
+            annot_collection_1=gt_annotations,
+            annot_collection_2=model_annotations,
+            ignore_labels=False,
+            ignore_attributes=True,
+            ignore_geometry=True,
+            match_threshold=0.01,
+            score_types=score_types,
+        )
+
+        for score in pairwise_scores:
+            updated_score = add_score_context(
+                score=score,
+                entity_id=score.entity_id,
+                model_id=model.id,
+                item_id=item.id,
+            )
+            frame_scores.append(updated_score)
+            ann_ids.extend([ann.id for ann in gt_annotations])
+            ann_ids.extend([ann.id for ann in model_annotations])
+
+        all_scores_by_frame[frame] = frame_scores
+
+    # After each frame's score is calculated, calculate the mean score across all frames
+    all_scores = list()
+    unique_annotation_ids = np.unique(ann_ids)
+
+    # Handle confusion scores
+    confusion_scores = list()
+    for frame, scores in all_scores_by_frame.items():
+        for score in scores:
+            if score.type == ScoreType.LABEL_CONFUSION:
+                confusion_scores.append(score)
+
+    confusion_dict = dict()
+    for score in confusion_scores:
+        if score.entity_id not in confusion_dict:
+            confusion_dict[score.entity_id] = dict()
+        if score.relative not in confusion_dict[score.entity_id]:
+            confusion_dict[score.entity_id][score.relative] = 0
+        confusion_dict[score.entity_id][score.relative] += 1
+
+    for entity_id, v in confusion_dict.items():
+        for relative, count in v.items():
+            all_scores.append(
+                Score(
+                    type=ScoreType.LABEL_CONFUSION,
+                    value=count,
+                    entity_id=entity_id,  # TODO check that it's a model label
+                    relative=relative,
+                    model_id=model.id,
+                    item_id=item.id,
+                )
+            )
+
+    # Calculate overall scores for each annotation across frames
+    for annotation_id in unique_annotation_ids:
+        annotation_frame_scores = [
+            frame_score
+            for frame_scores in all_scores_by_frame.values()
+            for frame_score in frame_scores
+            if frame_score.entity_id == annotation_id
+        ]
+
+        # Calculate mean scores across frames
+        all_scores.append(
+            Score(
+                type=ScoreType.ANNOTATION_OVERALL,
+                value=mean_or_default(
+                    arr=[
+                        score.value
+                        for score in annotation_frame_scores
+                        if score.type == ScoreType.ANNOTATION_OVERALL.value
+                    ],
+                    default=1,
+                ),
+                entity_id=annotation_id,
+                model_id=model.id,
+                item_id=item.id,
+            )
+        )
+        all_scores.append(
+            Score(
+                type=ScoreType.ANNOTATION_LABEL,
+                value=mean_or_default(
+                    arr=[
+                        score.value
+                        for score in annotation_frame_scores
+                        if score.type == ScoreType.ANNOTATION_LABEL.value
+                    ],
+                    default=1,
+                ),
+                entity_id=annotation_id,
+                model_id=model.id,
+                item_id=item.id,
+            )
+        )
+        all_scores.append(
+            Score(
+                type=ScoreType.ANNOTATION_IOU,
+                value=mean_or_default(
+                    arr=[
+                        score.value
+                        for score in annotation_frame_scores
+                        if score.type == ScoreType.ANNOTATION_IOU.value
+                    ],
+                    default=1,
+                ),
+                entity_id=annotation_id,
+                model_id=model.id,
+                item_id=item.id,
+            )
+        )
+        all_scores.append(
+            Score(
+                type=ScoreType.ANNOTATION_ATTRIBUTE,
+                value=mean_or_default(
+                    arr=[
+                        score.value
+                        for score in annotation_frame_scores
+                        if score.type == ScoreType.ANNOTATION_ATTRIBUTE.value
+                    ],
+                    default=1,
+                ),
+                entity_id=annotation_id,
+                model_id=model.id,
+                item_id=item.id,
+            )
+        )
+
+    return all_scores

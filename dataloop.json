@@ -110,7 +110,36 @@
         },
         "categories": ["data"],
         "configuration": {
-          "fields": []
+          "fields": [
+            {
+              "name": "agreement_threshold",
+              "title": "Agreement Threshold",
+              "props": {
+                "type": "number",
+                "default": 0.5,
+                "min": 0,
+                "max": 1,
+                "step": 0.1
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-slider"
+            },
+            {
+              "name": "model_keep_annots",
+              "title": "After model agreement, keep all annotations",
+              "props": {
+                "subtitle": "The default is to keep model annotations. Uncheck the box to delete all model annotations.",
+                "type": "boolean",
+                "default": true
+              },
+              "widget": "dl-checkbox"
+            }
+          ]
         },
         "scope": "node"
       }
@@ -161,7 +190,6 @@
           },
           {
             "name": "create_item_model_score",
-            "displayName": "Create Model Score",
             "description": "Calculate the score for each item based on model predictions",
             "input": [
               {
@@ -175,11 +203,11 @@
                 "name": "item"
               }
             ],
-            "displayIcon": "icon-dl-analytics"
+            "displayIcon": "icon-dl-analytics",
+            "displayName": "Create Model Score"
           },
           {
             "name": "model_agreement",
-            "displayName": "Model Agreement with GT",
             "description": "Calculate the agreement between a model and the ground truth.",
             "input": [
               {
@@ -194,7 +222,8 @@
                 "actions": ["model passed", "model failed"]
               }
             ],
-            "displayIcon": "icon-dl-analytics"
+            "displayIcon": "icon-dl-models",
+            "displayName": "Model Agreement with GT"
           }
         ]
       }

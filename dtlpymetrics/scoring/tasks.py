@@ -333,9 +333,9 @@ def _split_video_to_frames(
 def get_image_scores(
     annots_by_assignment: dict,
     assignments_by_annotator: dict,
-    task: dl.Task,
     item: dl.Item,
-    task_type: str,
+    task: dl.Task = None,
+    task_type: str = None,
     score_types: list = None,
 ) -> list:
     """
@@ -343,8 +343,8 @@ def get_image_scores(
 
     :param annots_by_assignment: dict of annotations grouped by assignment
     :param assignments_by_annotator: dict of assignments groups by annotator
+    :param item: dl.Item    
     :param task: dl.Task
-    :param item: dl.Item
     :param task_type: str, 'testing' or 'consensus'
     :param score_types: list of score types to be calculated (optional)
     :return all_scores: list of all annotation and item scores
@@ -353,7 +353,7 @@ def get_image_scores(
     ####################
     # calculate scores #
     ####################
-    labels = dl.recipes.get(task.recipe_id).ontologies.list()[0].labels_flat_dict.keys()
+    labels = task.recipe_id.ontologies.list()[0].labels_flat_dict.keys()
 
     # compare between each assignment and create Score entities
     all_scores = list()
@@ -390,7 +390,7 @@ def get_image_scores(
                     updated_score = add_score_context(
                         score=score,
                         user_id=assignment_annotator_j,
-                        task_id=task.id,
+                        task_id=task_id,
                         entity_id=assignment_annotator_j,
                         relative=assignment_annotator_i,
                         assignment_id=assignments_by_annotator[
@@ -402,7 +402,7 @@ def get_image_scores(
                     updated_score = add_score_context(
                         score=score,
                         user_id=assignment_annotator_j,
-                        task_id=task.id,
+                        task_id=task_id,
                         assignment_id=assignments_by_annotator[
                             assignment_annotator_j
                         ].id,
@@ -430,7 +430,7 @@ def get_image_scores(
                     value=count,
                     entity_id=entity_id,  # assignee label
                     relative=relative,
-                    task_id=task.id,
+                    task_id=task_id,
                     item_id=item.id,
                 )
             )
@@ -464,7 +464,7 @@ def get_image_scores(
                 value=mean_or_default(arr=overalls_values, default=0),
                 entity_id=annotation_id,
                 user_id=user_id,
-                task_id=task.id,
+                task_id=task_id,
                 assignment_id=assignment_id,
                 item_id=item.id,
             )
@@ -475,10 +475,11 @@ def get_image_scores(
 def get_video_scores(
     annotations_by_frame: dict,
     assignments_by_annotator: dict,
-    task: dl.Task,
     item: dl.Item,
-    score_types: list,
-    task_type: str = "testing",
+    task: dl.Task = None,
+    score_types: list = None,
+    task_type: str = None,
+    recipe_id: str = None,
 ):
     """
     Create scores for a video item
@@ -534,7 +535,7 @@ def get_video_scores(
                         updated_score = add_score_context(
                             score=score,
                             user_id=assignment_annotator_j,
-                            task_id=task.id,
+                            task_id=task_id,
                             entity_id=assignment_annotator_j,
                             relative=assignment_annotator_i,
                             assignment_id=assignments_by_annotator[
@@ -546,7 +547,7 @@ def get_video_scores(
                         updated_score = add_score_context(
                             score=score,
                             user_id=assignment_annotator_j,
-                            task_id=task.id,
+                            task_id=task_id,
                             assignment_id=assignments_by_annotator[
                                 assignment_annotator_j
                             ].id,
@@ -604,7 +605,7 @@ def get_video_scores(
                     default=1,
                 ),
                 entity_id=annotation_id,
-                task_id=task.id,
+                task_id=task_id,
                 item_id=item.id,
                 dataset_id=item.dataset.id,
             )
@@ -621,7 +622,7 @@ def get_video_scores(
                     default=1,
                 ),
                 entity_id=annotation_id,
-                task_id=task.id,
+                task_id=task_id,
                 item_id=item.id,
                 dataset_id=item.dataset.id,
             )
@@ -638,7 +639,7 @@ def get_video_scores(
                     default=1,
                 ),
                 entity_id=annotation_id,
-                task_id=task.id,
+                task_id=task_id,
                 item_id=item.id,
                 dataset_id=item.dataset.id,
             )
@@ -655,7 +656,7 @@ def get_video_scores(
                     default=1,
                 ),
                 entity_id=annotation_id,
-                task_id=task.id,
+                task_id=task_id,
                 item_id=item.id,
                 dataset_id=item.dataset.id,
             )
