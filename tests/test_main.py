@@ -5,8 +5,7 @@ import json
 import os
 
 import dtlpy as dl
-from dtlpymetrics.dtlpy_scores import ScoreType
-from dtlpymetrics import calc_task_score
+from dtlpymetrics import ScoreType, calc_task_score, get_model_agreement
 
 logger = logging.getLogger()
 

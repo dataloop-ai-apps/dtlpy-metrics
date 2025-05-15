@@ -196,7 +196,7 @@ def calc_item_model_score(item: dl.Item, model: dl.Model, score_types=None, uplo
 
         all_scores = get_video_scores(
             annotations_by_frame=annotations_by_frame,
-            assignments_by_annotator={"gt": gt_annotations, "model": model_annotations},  # Dummy assignment for model
+            grouped_annotations={"gt": gt_annotations, "model": model_annotations},
             item=item,
             model=model,
             score_types=score_types,
@@ -684,17 +684,12 @@ def _n_point_interpolated_curve(recall: list, precision: list, confidence: list,
 
 
 def get_image_scores(
-    annots_by_assignment: dict,
-    assignments_by_annotator: dict,
-    item: dl.Item,
-    model: dl.Model,
-    score_types: list = None,
-    match_threshold: float = 0.01,
+    grouped_annotations: dict, item: dl.Item, model: dl.Model, score_types: list = None, match_threshold: float = 0.01
 ) -> list:
     """
     Calculate scores for an image item by comparing ground truth annotations with model predictions
 
-    :param annots_by_assignment: dict of annotations grouped by type (gt/model)
+    :param grouped_annotations: dict of annotations grouped by type (gt/model)
     :param item: dl.Item
     :param score_types: list of score types to be calculated (optional)
     :return all_scores: list of all annotation and item scores
@@ -706,10 +701,10 @@ def get_image_scores(
     all_scores = list()
 
     # Get GT and model annotations
-    gt_annotations = annots_by_assignment.get("gt", [])
-    model_annotations = annots_by_assignment.get("model", [])
+    gt_annotations = grouped_annotations.get("gt", [])
+    model_annotations = grouped_annotations.get("model", [])
 
-    logger.info(f"Comparing GT annotations with model predictions")
+    logger.info("Comparing GT annotations with model predictions")
 
     # Calculate pairwise scores between GT and model annotations
     pairwise_scores = calculate_annotation_score(
@@ -788,13 +783,13 @@ def get_image_scores(
 
 
 def get_video_scores(
-    annotations_by_frame: dict, assignments_by_annotator: dict, item: dl.Item, model: dl.Model, score_types: list = None
+    annotations_by_frame: dict, grouped_annotations: dict, item: dl.Item, model: dl.Model, score_types: list = None
 ):
     """
     Create scores for a video item by comparing ground truth annotations with model predictions
 
     :param annotations_by_frame: dict of annotations by frame, grouped by type (gt/model)
-    :param assignments_by_annotator: dict of assignments (not used for model scoring)
+    :param grouped_annotations: dict of annotations grouped by type (gt/model)
     :param item: dl.Item
     :param model: dl.Model
     :param score_types: list of scores to calculate
@@ -808,8 +803,8 @@ def get_video_scores(
 
     for frame, annots_by_type in annotations_by_frame.items():
         # Get GT and model annotations for this frame
-        gt_annotations = annots_by_type.get("gt", [])
-        model_annotations = annots_by_type.get("model", [])
+        gt_annotations = grouped_annotations.get("gt", [])
+        model_annotations = grouped_annotations.get("model", [])
 
         frame_scores = list()
 
