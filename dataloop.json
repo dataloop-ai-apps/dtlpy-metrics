@@ -92,7 +92,7 @@
         "description": "Calculate the score for each item based on model predictions",
         "invoke": {
           "type": "function",
-          "namespace": "dlm_module.create_item_model_score"
+          "namespace": "dlm_module.create_model_item_score"
         },
         "categories": ["data"],
         "configuration": {
