@@ -258,9 +258,13 @@
               {
                 "type": "Item",
                 "name": "item"
+              },
+              {
+                "type": "Model",
+                "name": "model"
               }
             ],
-            "displayIcon": "icon-dl-analytics",
+            "displayIcon": "icon-dl-models",
             "displayName": "Create Model Score"
           },
           {

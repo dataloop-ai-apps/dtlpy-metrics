@@ -179,7 +179,7 @@ class Scorer(dl.BaseServiceRunner):
         # TODO get scoretypes from context config once UX is available
         scores = calc_item_model_score(item=item, model=model, score_types=score_types, upload=True)
 
-        return item
+        return item, model
 
     @staticmethod
     def model_agreement(item: dl.Item, model: dl.Model, context: dl.Context, progress: dl.Progress) -> dl.Item:
