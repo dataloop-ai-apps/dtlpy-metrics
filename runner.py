@@ -164,17 +164,17 @@ class Scorer(dl.BaseServiceRunner):
         if model is None:
             raise ValueError("No model provided, please provide a model.")
 
-        score_types = [member.name for member in ScoreType]
+        score_types = [member for member in ScoreType]
         score_label = context.node.metadata.get("customNodeConfig", dict()).get("score_label", True)
         if score_label is False:
-            score_types.remove("ANNOTATION_LABEL")
+            score_types.remove(ScoreType.ANNOTATION_LABEL)
             # score_types.remove("LABEL_CONFUSION")
         score_iou = context.node.metadata.get("customNodeConfig", dict()).get("score_iou", True)
         if score_iou is False:
-            score_types.remove("ANNOTATION_IOU")
+            score_types.remove(ScoreType.ANNOTATION_IOU)
         score_attributes = context.node.metadata.get("customNodeConfig", dict()).get("score_attributes", True)
         if score_attributes is False:
-            score_types.remove("ANNOTATION_ATTRIBUTE")
+            score_types.remove(ScoreType.ANNOTATION_ATTRIBUTE)
 
         # TODO get scoretypes from context config once UX is available
         scores = calc_item_model_score(item=item, model=model, score_types=score_types, upload=True)

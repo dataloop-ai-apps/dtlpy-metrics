@@ -324,6 +324,7 @@ def get_model_agreement(item: dl.Item, model: dl.Model, agreement_config: dict) 
     )
 
     # get scores for model predictions and convert to dl.Score
+    # TODO implement get once its working
     all_scores = calc_item_model_score(item=item, model=model, score_types=None, upload=False)
     agreement = check_model_agreement(scores=all_scores, threshold=agreement_threshold)
 

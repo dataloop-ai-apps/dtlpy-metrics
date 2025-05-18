@@ -99,7 +99,7 @@ class Scores:
 
     def create(self, scores):
         if not isinstance(scores, list):
-            raise ValueError(f"score input must be a list of dl.Score")
+            raise ValueError("Score input must be a list of dl.Score objects")
         payload = {"scores": [score.to_json() for score in scores]}
         success, response = self._client_api.gen_request(req_type="post", json_req=payload, path=self.URL)
 
