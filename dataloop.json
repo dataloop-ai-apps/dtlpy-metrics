@@ -126,6 +126,28 @@
                 "default": true
               },
               "widget": "dl-checkbox"
+            },
+            {
+              "name": "model",
+              "title": "Model",
+              "props": {
+                "type": "string",
+                "required": false,
+                "options": {
+                  "resolve": {
+                    "repository": "models",
+                    "action": "query",
+                    "params": [
+                      {
+                        "filter": {
+                          "scope": "project"
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "widget": "dl-select"
             }
           ]
         },
