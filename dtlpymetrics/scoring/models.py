@@ -713,7 +713,7 @@ def get_image_scores(
         ignore_geometry=True,
         match_threshold=match_threshold,
         score_types=score_types,
-        )
+    )
 
     for score in pairwise_scores:
         updated_score = add_score_context(score=score, entity_id=score.entity_id, model_id=model.id, item_id=item.id)

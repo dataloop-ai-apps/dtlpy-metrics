@@ -342,7 +342,7 @@ def check_model_agreement(scores, threshold: float = 1.0) -> bool:
     """
     Check agreement between model predictions and ground truth annotations
 
-    Scores are averaged across all predictions and compared to the threshold. 
+    Scores are averaged across all predictions and compared to the threshold.
     If the average score is above the threshold, the function returns True.
     :param scores: list of Scores
     :param threshold: float, 0-1 (optional)
