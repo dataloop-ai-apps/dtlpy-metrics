@@ -475,7 +475,7 @@ def calc_and_upload_interpolation(model: dl.Model, dataset: dl.Dataset):
     with open(filepath, 'w') as f:
         json.dump(figures, f)
     item = dataset.items.upload(local_path=filepath,
-                                remote_path=f'/.modelscores',
+                                remote_path='/.modelscores',
                                 overwrite=True)
 
     return True
