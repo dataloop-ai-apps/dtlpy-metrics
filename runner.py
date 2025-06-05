@@ -11,7 +11,7 @@ from dtlpymetrics.dtlpy_scores import ScoreType
 
 logger = logging.getLogger('scoring-and-metrics')
 
-def convert_score_types(node_scores: List[str]) -> List[ScoreType]: 
+def convert_score_types(node_scores: List[str]) -> List[ScoreType]:
     """
     Map score types to ScoreType enum.
     """
