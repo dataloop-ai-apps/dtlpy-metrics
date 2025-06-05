@@ -11,7 +11,11 @@ from dtlpymetrics.dtlpy_scores import ScoreType
 
 logger = logging.getLogger('scoring-and-metrics')
 
+<<<<<<< HEAD
 def convert_score_types(node_scores: List[str]) -> List[ScoreType]:
+=======
+def convert_score_types(node_scores: List[str]) -> List[ScoreType]: # TODO once there's multi option dropdown checkboxes
+>>>>>>> b04a8c36755776c2bb7b5bc3b2a8c0306ca71b20
     """
     Map score types to ScoreType enum.
     """
