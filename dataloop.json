@@ -36,6 +36,7 @@
               "props": {
                 "multiselect": true,
                 "type": "string",
+                "enum": ["annotation_iou", "annotation_label", "annotation_attribute"],
                 "default": ["annotation_iou", "annotation_label", "annotation_attribute"],
                 "required": true,
                 "placeholder": "Score types to calculate",
