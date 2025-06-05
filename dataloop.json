@@ -34,14 +34,16 @@
               "name": "score_types",
               "title": "Score Types",
               "props": {
+                "multiselect": true,
                 "type": "string",
+                "default": ["annotation_iou", "annotation_label", "annotation_attribute"],
                 "required": true,
                 "placeholder": "Score types to calculate",
-                "multiselect": true,
                 "options": [
                   {
                     "value": "annotation_iou",
                     "label": "Annotation IoU"
+                    
                   },
                   {
                     "value": "annotation_label",
