@@ -17,14 +17,17 @@ def check_if_video(item: dl.Item):
     return is_video
 
 
-def add_score_context(score: Score,
-                      relative=None,
-                      user_id=None,
-                      entity_id=None,
-                      assignment_id=None,
-                      task_id=None,
-                      item_id=None,
-                      dataset_id=None):
+def add_score_context(
+    score: Score,
+    relative=None,
+    user_id=None,
+    entity_id=None,
+    assignment_id=None,
+    task_id=None,
+    item_id=None,
+    model_id=None,
+    dataset_id=None,
+):
     """
     Add context to a score
     :param score: dl.Score
@@ -34,6 +37,7 @@ def add_score_context(score: Score,
     :param assignment_id: assignment id for the annotator's work to be scored (optional)
     :param task_id: task id for the annotator's work to be scored (optional)
     :param item_id: item id for the annotator's work to be scored (optional)
+    :param model_id: model id for the annotator's work to be scored (optional)
     :param dataset_id: dataset id for the annotator's work to be scored (optional)
     :return: dl.Score
     """
@@ -49,6 +53,8 @@ def add_score_context(score: Score,
         score.task_id = task_id
     if item_id is not None:
         score.item_id = item_id
+    if model_id is not None:
+        score.model_id = model_id
     if dataset_id is not None:
         score.dataset_id = dataset_id
     return score

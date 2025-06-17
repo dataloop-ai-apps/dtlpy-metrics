@@ -7,12 +7,8 @@
   "attributes": {
     "Provider": "Dataloop",
     "Category": "Application",
-    "Media Type": [
-      "Image"
-    ],
-    "Application Type": [
-      "Pipeline Node"
-    ],
+    "Media Type": ["Image"],
+    "Application Type": ["Pipeline Node"],
     "License": "Apache 2.0"
   },
   "codebase": {
@@ -31,9 +27,7 @@
           "type": "function",
           "namespace": "dlm_module.create_task_item_score"
         },
-        "categories": [
-          "data"
-        ],
+        "categories": ["data"],
         "configuration": {
           "fields": []
         },
@@ -47,9 +41,7 @@
           "type": "function",
           "namespace": "dlm_module.consensus_agreement"
         },
-        "categories": [
-          "data"
-        ],
+        "categories": ["data"],
         "configuration": {
           "fields": [
             {
@@ -93,6 +85,94 @@
           ]
         },
         "scope": "node"
+      },
+      {
+        "name": "create_model_item_score",
+        "displayName": "Create Model Score",
+        "description": "Calculate the score for each item based on model predictions",
+        "invoke": {
+          "type": "function",
+          "namespace": "dlm_module.create_model_item_score"
+        },
+        "categories": ["data"],
+        "configuration": {
+          "fields": [
+            {
+              "name": "score_label",
+              "title": "Label score",
+              "props": {
+                "subtitle": "Include scores for the annotation labels",
+                "type": "boolean",
+                "default": true
+              },
+              "widget": "dl-checkbox"
+            },
+            {
+              "name": "score_iou",
+              "title": "IoU score",
+              "props": {
+                "subtitle": "Include scores for annotation IoU",
+                "type": "boolean",
+                "default": true
+              },
+              "widget": "dl-checkbox"
+            },
+            {
+              "name": "score_attributes",
+              "title": "Attributes score",
+              "props": {
+                "subtitle": "Include scores for annotation attributes",
+                "type": "boolean",
+                "default": true
+              },
+              "widget": "dl-checkbox"
+            }
+          ]
+        },
+        "scope": "node"
+      },
+      {
+        "name": "model_agreement",
+        "displayName": "Model Agreement with GT",
+        "description": "Calculate the agreement between a model and the ground truth.",
+        "invoke": {
+          "type": "function",
+          "namespace": "dlm_module.model_agreement"
+        },
+        "categories": ["data"],
+        "configuration": {
+          "fields": [
+            {
+              "name": "agreement_threshold",
+              "title": "Agreement Threshold",
+              "props": {
+                "type": "number",
+                "default": 0.5,
+                "min": 0,
+                "max": 1,
+                "step": 0.1
+              },
+              "rules": [
+                {
+                  "type": "required",
+                  "effect": "error"
+                }
+              ],
+              "widget": "dl-slider"
+            },
+            {
+              "name": "model_keep_annots",
+              "title": "After agreement evaluation, keep model annotations",
+              "props": {
+                "subtitle": "The default is to keep model annotations. Uncheck the box to delete all model annotations.",
+                "type": "boolean",
+                "default": true
+              },
+              "widget": "dl-checkbox"
+            }
+          ]
+        },
+        "scope": "node"
       }
     ],
     "modules": [
@@ -119,7 +199,7 @@
             ],
             "displayIcon": "icon-dl-analytics",
             "displayName": "Create Consensus Score"
-            },
+          },
           {
             "name": "consensus_agreement",
             "description": "Process consensus task items based on annotator agreement threshold.",
@@ -133,14 +213,60 @@
               {
                 "type": "Item",
                 "name": "item",
-                "actions": [
-                  "consensus passed",
-                  "consensus failed"
-                ]
+                "actions": ["consensus passed", "consensus failed"]
               }
             ],
             "displayIcon": "icon-dl-members",
             "displayName": "Consensus Agreement"
+          },
+          {
+            "name": "create_model_item_score",
+            "description": "Calculate the score for each item based on model predictions",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Model",
+                "name": "model"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Model",
+                "name": "model"
+              }
+            ],
+            "displayIcon": "icon-dl-models",
+            "displayName": "Create Model Score"
+          },
+          {
+            "name": "model_agreement",
+            "description": "Calculate the agreement between a model and the ground truth.",
+            "input": [
+              {
+                "type": "Item",
+                "name": "item"
+              },
+              {
+                "type": "Model",
+                "name": "model"
+              }
+            ],
+            "output": [
+              {
+                "type": "Item",
+                "name": "item",
+                "actions": ["model passed", "model failed"]
+              }
+            ],
+            "displayIcon": "icon-dl-models",
+            "displayName": "Model Agreement with GT"
           }
         ]
       }
