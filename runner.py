@@ -4,7 +4,7 @@ import pandas as pd
 
 from dtlpymetrics import ScoreType
 from dtlpymetrics.scoring import calc_task_item_score, calc_precision_recall, calc_item_model_score
-from dtlpymetrics.evaluating import get_consensus_agreement, get_model_agreement
+from dtlpymetrics.evaluating import get_consensus_agreement, get_model_agreement, dynamic_consensus_agreement
 
 logger = logging.getLogger("scoring-and-metrics")
 
@@ -212,5 +212,36 @@ class Scorer(dl.BaseServiceRunner):
         else:
             progress.update(action="model failed")
             logger.info(f"Model agreement failed for item {item.id}")
+
+        return item
+
+    @staticmethod
+    def get_dynamic_consensus_agreement(item: dl.Item, context: dl.Context, progress: dl.Progress, task: dl.Task = None) -> dl.Item:
+        """
+        Calculate dynamic consensus agreement for a quality task item.
+        This is a wrapper function for dynamic_consensus_agreement for use in pipelines.
+        :param item: dl.Item for which to calculate dynamic consensus agreement
+        :param context: dl.Context for the item
+        :param task: dl.Task for the item (optional)
+        :param progress: dl.Progress for the item
+        :return: dl.Item
+        """
+        if item is None:
+            raise ValueError("No item provided, please provide an item.")
+        if context is None:
+            raise ValueError("Must provide pipeline context.")
+        if task is None and context.task is not None:
+            task = context.task
+        if task is None:
+            raise ValueError("Must provide either task or context with task.")
+
+        agreement = dynamic_consensus_agreement(item=item, task=task, min_agreers=min_agreers, iou_threshold=iou_threshold, agreement_threshold=agreement_threshold)
+
+        if agreement is True:
+            progress.update(action="dynamic consensus passed")
+            logger.info(f"Dynamic consensus passed for item {item.id}")
+        else:
+            progress.update(action="dynamic consensus failed")
+            logger.info(f"Dynamic consensus failed for item {item.id}")
 
         return item
