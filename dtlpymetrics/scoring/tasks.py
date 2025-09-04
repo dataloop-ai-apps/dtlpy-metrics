@@ -5,6 +5,7 @@ import numpy as np
 
 from ..dtlpy_scores import Score, ScoreType, Scores
 from ..utils import mean_or_default, add_score_context, check_if_video, calculate_annotation_score
+# Import kappa functions locally to avoid circular imports
 
 logger = logging.getLogger("scoring-and-metrics")
 
@@ -142,6 +143,10 @@ def calc_task_item_score(item: dl.Item, task: dl.Task, score_types=None, upload=
             dataset_id=item.dataset.id,
         )
         all_scores.append(item_score)
+
+        # calculate kappa scores from annotations grouped by item
+        kappa_scores = calc_item_kappa_scores(all_scores, item.id, task.id, item.dataset.id)
+        all_scores.extend(kappa_scores)
 
         #############################
         # upload scores to platform #
@@ -586,3 +591,244 @@ def get_video_scores(
         )
 
     return all_scores
+
+
+def calc_item_kappa_scores(all_scores: List[Score], item_id: str, task_id: str, dataset_id: str) -> List[Score]:
+    """
+    Calculate Cohen's and Fleiss' kappa scores for an item from existing annotation scores.
+    
+    For exactly 2 annotators: Calculate Cohen's kappa
+    For 3+ annotators: Calculate Fleiss' kappa (and optionally pairwise Cohen's kappa)
+    
+    :param all_scores: List of existing scores from calc_task_item_score
+    :param item_id: Item ID
+    :param task_id: Task ID  
+    :param dataset_id: Dataset ID
+    :return: List of kappa Score objects
+    """
+    kappa_scores = []
+    
+    try:
+        # Get unique annotators from scores
+        unique_annotators = set()
+        for score in all_scores:
+            if score.type == ScoreType.ANNOTATION_OVERALL:
+                annotator_id = score.context.get('assignmentId') or score.user_id
+                if annotator_id:
+                    unique_annotators.add(annotator_id)
+        
+        unique_annotators = list(unique_annotators)
+        num_annotators = len(unique_annotators)
+        
+        if num_annotators < 2:
+            logger.info(f"Insufficient annotators ({num_annotators}) for kappa calculation on item {item_id}")
+            return kappa_scores
+            
+        # For exactly 2 annotators: Use Cohen's kappa
+        elif num_annotators == 2:
+            try:
+                annotator1, annotator2 = unique_annotators
+                kappa_value = _calculate_cohens_kappa(all_scores, annotator1, annotator2)
+                
+                cohen_score = Score(
+                    type=ScoreType.USER_CONFUSION,  # Reuse existing type for kappa between users
+                    value=kappa_value,
+                    entity_id=f"{item_id}_cohens_kappa",
+                    task_id=task_id,
+                    item_id=item_id,
+                    dataset_id=dataset_id,
+                    context={
+                        'metric': 'cohens_kappa',
+                        'annotator1': annotator1,
+                        'annotator2': annotator2,
+                        'itemId': item_id,
+                        'taskId': task_id
+                    }
+                )
+                kappa_scores.append(cohen_score)
+                logger.info(f"Calculated Cohen's kappa ({kappa_value:.3f}) for 2 annotators on item {item_id}")
+                
+            except (ValueError, ZeroDivisionError) as e:
+                logger.warning(f"Could not calculate Cohen's kappa for item {item_id}: {e}")
+        
+        # For 3+ annotators: Use Fleiss' kappa
+        else:  # num_annotators >= 3
+            try:
+                fleiss_value = _calculate_fleiss_kappa(all_scores)
+                
+                fleiss_score = Score(
+                    type=ScoreType.ITEM_OVERALL,  # Item-level agreement metric
+                    value=fleiss_value,
+                    entity_id=f"{item_id}_fleiss_kappa",
+                    task_id=task_id,
+                    item_id=item_id,
+                    dataset_id=dataset_id,
+                    context={
+                        'metric': 'fleiss_kappa',
+                        'num_annotators': num_annotators,
+                        'annotators': unique_annotators,
+                        'itemId': item_id,
+                        'taskId': task_id
+                    }
+                )
+                kappa_scores.append(fleiss_score)
+                logger.info(f"Calculated Fleiss' kappa ({fleiss_value:.3f}) for {num_annotators} annotators on item {item_id}")
+                
+            except (ValueError, ZeroDivisionError) as e:
+                logger.warning(f"Could not calculate Fleiss' kappa for item {item_id}: {e}")
+        
+    except Exception as e:
+        logger.error(f"Error calculating kappa scores for item {item_id}: {e}")
+    
+    return kappa_scores
+
+
+def _calculate_cohens_kappa(scores, annotator1_id: str, annotator2_id: str) -> float:
+    """
+    Calculate Cohen's kappa for agreement between two specific annotators.
+    Simplified version of the function from evaluating.tasks to avoid circular imports.
+    """
+    from collections import defaultdict
+    
+    # Extract annotation scores for each annotator
+    annotator1_scores = {}
+    annotator2_scores = {}
+
+    for score in scores:
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            # Use assignment ID if available, otherwise use user ID
+            annotator_id = score.context.get('assignmentId') or score.user_id
+            annotation_id = score.entity_id
+
+            if annotator_id == annotator1_id:
+                annotator1_scores[annotation_id] = score.value
+            elif annotator_id == annotator2_id:
+                annotator2_scores[annotation_id] = score.value
+
+    # Find common annotations rated by both annotators
+    common_annotations = set(annotator1_scores.keys()) & set(annotator2_scores.keys())
+
+    if len(common_annotations) == 0:
+        raise ValueError("No common annotations found between the two annotators")
+
+    # Convert scores to binary categories (agree/disagree) based on threshold
+    threshold = 0.5
+
+    # Create agreement matrix
+    agreements = []
+    
+    for annotation_id in common_annotations:
+        score1 = annotator1_scores[annotation_id] >= threshold
+        score2 = annotator2_scores[annotation_id] >= threshold
+
+        if score1 == score2:
+            agreements.append(1)
+        else:
+            agreements.append(0)
+
+    # Calculate observed agreement
+    po = sum(agreements) / len(agreements)
+
+    # Calculate expected agreement by chance
+    annotator1_passes = sum(1 for aid in common_annotations if annotator1_scores[aid] >= threshold)
+    annotator2_passes = sum(1 for aid in common_annotations if annotator2_scores[aid] >= threshold)
+
+    p1_pass = annotator1_passes / len(common_annotations)
+    p2_pass = annotator2_passes / len(common_annotations)
+
+    p1_fail = 1 - p1_pass
+    p2_fail = 1 - p2_pass
+
+    # Expected agreement by chance
+    pe = (p1_pass * p2_pass) + (p1_fail * p2_fail)
+
+    # Cohen's kappa
+    if pe == 1.0:
+        return 1.0  # Perfect agreement case
+
+    kappa = (po - pe) / (1 - pe)
+    return kappa
+
+
+def _calculate_fleiss_kappa(scores) -> float:
+    """
+    Calculate Fleiss' kappa for agreement among multiple annotators.
+    Simplified version of the function from evaluating.tasks to avoid circular imports.
+    """
+    from collections import defaultdict
+    
+    # Group scores by annotation and annotator
+    annotation_ratings = defaultdict(list)
+    annotators = set()
+
+    # Use 0.5 as threshold for binary classification (agree/disagree)
+    threshold = 0.5
+
+    for score in scores:
+        if score.type == ScoreType.ANNOTATION_OVERALL:
+            # Use assignment ID if available, otherwise use user ID
+            annotator_id = score.context.get('assignmentId') or score.user_id
+            annotation_id = score.entity_id
+
+            # Convert score to binary rating
+            rating = 1 if score.value >= threshold else 0
+
+            annotation_ratings[annotation_id].append((annotator_id, rating))
+            annotators.add(annotator_id)
+
+    if len(annotators) < 2:
+        raise ValueError("Fleiss' kappa requires at least 2 annotators")
+
+    # Filter annotations that have ratings from multiple annotators
+    valid_annotations = {
+        ann_id: ratings
+        for ann_id, ratings in annotation_ratings.items()
+        if len(set(r[0] for r in ratings)) >= 2  # At least 2 different annotators
+    }
+
+    if len(valid_annotations) == 0:
+        raise ValueError("No annotations found with ratings from multiple annotators")
+
+    # Create rating matrix: annotations x categories (agree/disagree)
+    n_annotations = len(valid_annotations)
+    n_categories = 2  # Binary: agree (1) or disagree (0)
+    n_raters = len(annotators)
+
+    # Count matrix: each cell [i,j] contains count of raters who assigned category j to annotation i
+    rating_matrix = np.zeros((n_annotations, n_categories))
+
+    for i, (annotation_id, ratings) in enumerate(valid_annotations.items()):
+        # Count ratings for each category
+        category_counts = [0, 0]  # [disagree_count, agree_count]
+
+        for annotator_id, rating in ratings:
+            category_counts[rating] += 1
+
+        rating_matrix[i] = category_counts
+
+    # Calculate proportion of all assignments to each category
+    p_j = np.sum(rating_matrix, axis=0) / (n_annotations * n_raters)
+
+    # Calculate P_i (extent of agreement for annotation i)
+    P_i = np.zeros(n_annotations)
+    for i in range(n_annotations):
+        r_ij = rating_matrix[i]
+        # Number of raters who actually rated this annotation
+        n_i = np.sum(r_ij)
+        if n_i > 1:
+            P_i[i] = (np.sum(r_ij * (r_ij - 1))) / (n_i * (n_i - 1))
+        else:
+            P_i[i] = 0  # Cannot calculate agreement with only one rater
+
+    # Mean of P_i values
+    P_bar = np.mean(P_i)
+
+    # Expected agreement by chance
+    P_e = np.sum(p_j**2)
+
+    # Fleiss' kappa
+    if P_e == 1.0:
+        return 1.0  # Perfect agreement case
+
+    kappa = (P_bar - P_e) / (1 - P_e)
+    return max(0.0, kappa)  # Ensure non-negative result
