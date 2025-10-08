@@ -1,4 +1,4 @@
-FROM dataloopai/dtlpy-agent:cpu.py3.10.opencv
+FROM hub.dataloop.ai/dtlpy-runner-images/cpu:python3.11_opencv
 USER root
 
 RUN /usr/local/bin/python -m pip install \
@@ -8,6 +8,6 @@ RUN /usr/local/bin/python -m pip install \
 USER 1000
 ENV HOME=/tmp
 
-# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.20.0 -f Dockerfile .
-# docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.20.0
-# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.20.0 bash
+# docker build -t gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.23.0 -f Dockerfile .
+# docker push gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.23.0
+# docker run -it gcr.io/viewo-g/piper/agent/runner/apps/dtlpy-metrics:0.23.0 bash
