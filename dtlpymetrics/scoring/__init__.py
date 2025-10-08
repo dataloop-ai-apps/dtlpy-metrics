@@ -7,6 +7,7 @@ from .models import (
 from .tasks import (
     calc_task_score,
     calc_task_item_score,
+    calc_item_kappa_scores,
     get_image_scores,
     get_video_scores,
 )

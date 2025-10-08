@@ -7,6 +7,7 @@ from .scoring import (
     calc_and_upload_interpolation,
     calc_task_score,
     calc_task_item_score,
+    calc_item_kappa_scores,
     calc_item_model_score
 )
 from .evaluating import (
