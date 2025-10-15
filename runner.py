@@ -178,7 +178,7 @@ class Scorer(dl.BaseServiceRunner):
         score_iou = context.node.metadata.get("customNodeConfig", dict()).get("score_iou", True)
         score_attributes = context.node.metadata.get("customNodeConfig", dict()).get("score_attributes", True)
         score_types = Scorer.get_score_types(score_label, score_iou, score_attributes)
-        logger.info("Score types: " + str(score_types))
+        logger.info("Score types: %s", score_types)
         scores = calc_item_model_score(item=item, model=model, score_types=score_types, upload=False)
 
         return item, model
