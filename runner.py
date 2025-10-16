@@ -13,6 +13,7 @@ class Scorer(dl.BaseServiceRunner):
     """
     Scorer class for scoring and metrics.
     Functions for calculating scores and metrics and tools for evaluating with them.
+    Should only be used in pipelines. For use in other contexts, use the functions directly from dtlpymetrics.
     """
 
     def __init__(self):
@@ -148,36 +149,37 @@ class Scorer(dl.BaseServiceRunner):
         return precision_recall_df
 
     @staticmethod
-    def create_model_item_score(item: dl.Item, model: dl.Model, context: dl.Context) -> dl.Item:
+    def get_score_types(score_label, score_iou, score_attributes):
+        scores_to_exclude = ["item_overall", "user_confusion", "label_confusion"]
+        if score_label is False:
+            scores_to_exclude.append("label_confusion")
+        if score_iou is False:
+            scores_to_exclude.append("annotation_iou")
+        if score_attributes is False:
+            scores_to_exclude.append("annotation_attribute")
+        return [member for member in ScoreType if member not in scores_to_exclude]
+
+    @staticmethod
+    def create_model_item_score(item: dl.Item, model: dl.Model, context: dl.Context) -> tuple[dl.Item, dl.Model]:
         """
         Calculate scores for a model's predictions on an item compared to ground truth annotations.
         This is a wrapper function for calc_item_model_score.
         :param item: dl.Item to score
         :param model: dl.Model whose predictions to evaluate
         :param context: dl.Context (optional)
-        :param score_types: list of ScoreType (optional)
-        :param upload: bool flag to upload the scores to the platform (optional)
-        :return: dl.Item
+        :return: tuple[dl.Item, dl.Model]
         """
         if item is None:
             raise ValueError("No item provided, please provide an item.")
         if model is None:
             raise ValueError("No model provided, please provide a model.")
 
-        score_types = [member for member in ScoreType]
         score_label = context.node.metadata.get("customNodeConfig", dict()).get("score_label", True)
-        if score_label is False:
-            score_types.remove(ScoreType.ANNOTATION_LABEL)
-            # score_types.remove("LABEL_CONFUSION")
         score_iou = context.node.metadata.get("customNodeConfig", dict()).get("score_iou", True)
-        if score_iou is False:
-            score_types.remove(ScoreType.ANNOTATION_IOU)
         score_attributes = context.node.metadata.get("customNodeConfig", dict()).get("score_attributes", True)
-        if score_attributes is False:
-            score_types.remove(ScoreType.ANNOTATION_ATTRIBUTE)
-
-        # TODO get scoretypes from context config once UX is available
-        scores = calc_item_model_score(item=item, model=model, score_types=score_types, upload=True)
+        score_types = Scorer.get_score_types(score_label, score_iou, score_attributes)
+        logger.info("Score types: %s", score_types)
+        scores = calc_item_model_score(item=item, model=model, score_types=score_types, upload=False)
 
         return item, model
 
