@@ -68,9 +68,8 @@ The `label_confusion` score represents the count for a label annotated by a give
 
 #### 5) Item overall score
 
-The `item_overall` score is the mean value of all annotations associated with an item, averaging the mean overall annotation score.
+The `item_overall` score is the raw average of all annotations associated with an item, taking the the mean of all overall annotation scores.
 
-\
 Any calculated and uploaded scores will replace any previous scores for all items of a given task.
 
 _Note about videos_: Video scores will differ slightly from image scores. Video scores are calculated frame by frame, and then specific annotation scores will be the average of these scores across all relevant frames for that specific annotation. Confusion scores are not calculated due to the multi-frame nature of videos. Item overall scores remain an average of all annotations of the video item.
@@ -97,7 +96,7 @@ _Assignee annotations_:
 `item = dl.items.dl(item_id='64c0f2e1ec9103d52eaedbe2')`
 
 
-In this example item, the ground truth has 3 for each cat and dog class. The assignee however, labels 1 as cat and 5 as dog. This would result in the following item label confusion scores:
+In this example item, the ground truth has 3 for each cat and dog class. The assignee however, labels 1 as cat and 5 as dog. This means 1 cat was correctly identified, 3 dogs were corrected identified, and 2 cats were mistaken for dogs. This would result in the following item label confusion scores:
 
 ```python
 {
