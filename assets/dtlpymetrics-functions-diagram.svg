@@ -1,0 +1,139 @@
+<svg viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+     refX="0" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+    </marker>
+    <style>
+      .title { font: bold 16px Arial; text-anchor: middle; fill: #333; }
+      .module-title { font: bold 14px Arial; text-anchor: middle; fill: #fff; }
+      .function { font: 12px Arial; text-anchor: middle; fill: #333; }
+      .helper { font: 10px Arial; text-anchor: middle; fill: #666; }
+      .module-box { fill: #4a90e2; stroke: #357abd; stroke-width: 2; }
+      .function-box { fill: #f0f8ff; stroke: #4a90e2; stroke-width: 1; rx: 5; }
+      .util-box { fill: #e8f5e8; stroke: #4caf50; stroke-width: 1; rx: 5; }
+      .core-box { fill: #fff3e0; stroke: #ff9800; stroke-width: 1; rx: 5; }
+      .arrow { stroke: #666; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+      .data-flow { stroke: #e91e63; stroke-width: 2; fill: none; marker-end: url(#arrowhead); stroke-dasharray: 5,5; }
+    </style>
+  </defs>
+  
+  <!-- Main Title -->
+  <text x="600" y="30" class="title">dtlpymetrics Module Function Flow</text>
+  
+  <!-- Core Data Types (Top Center) -->
+  <rect x="480" y="50" width="240" height="80" class="core-box"/>
+  <text x="600" y="70" class="module-title">Core Data Types</text>
+  <text x="520" y="90" class="function">ScoreType</text>
+  <text x="600" y="90" class="function">Scores</text>
+  <text x="680" y="90" class="function">Score</text>
+  <text x="600" y="110" class="helper">dtlpy_scores.py</text>
+  
+  <!-- Scoring Module (Left Side) -->
+  <rect x="50" y="180" width="200" height="140" class="module-box"/>
+  <text x="150" y="200" class="module-title">Scoring Module</text>
+  
+  <!-- Scoring Functions -->
+  <rect x="60" y="220" width="180" height="25" class="function-box"/>
+  <text x="150" y="235" class="function">create_model_score</text>
+  
+  <rect x="60" y="250" width="180" height="25" class="function-box"/>
+  <text x="150" y="265" class="function">calc_precision_recall</text>
+  
+  <rect x="60" y="280" width="180" height="25" class="function-box"/>
+  <text x="150" y="295" class="function">calc_task_score</text>
+  
+  <!-- Evaluating Module (Right Side) -->
+  <rect x="950" y="180" width="200" height="200" class="module-box"/>
+  <text x="1050" y="200" class="module-title">Evaluating Module</text>
+  
+  <!-- Evaluating Functions -->
+  <rect x="960" y="220" width="180" height="25" class="function-box"/>
+  <text x="1050" y="235" class="function">confusion_matrix</text>
+  
+  <rect x="960" y="250" width="180" height="25" class="function-box"/>
+  <text x="1050" y="265" class="function">get_model_scores_df</text>
+  
+  <rect x="960" y="280" width="180" height="25" class="function-box"/>
+  <text x="1050" y="295" class="function">plot_precision_recall</text>
+  
+  <rect x="960" y="310" width="180" height="25" class="function-box"/>
+  <text x="1050" y="325" class="function">get_consensus_agreement</text>
+  
+  <rect x="960" y="340" width="180" height="25" class="function-box"/>
+  <text x="1050" y="355" class="function">check_annotator_agreement</text>
+  
+  <!-- Utils Module (Bottom Center) -->
+  <rect x="450" y="450" width="300" height="120" class="util-box"/>
+  <text x="600" y="470" class="module-title">Utils Module</text>
+  
+  <rect x="460" y="490" width="130" height="25" class="util-box"/>
+  <text x="525" y="505" class="function">matching.py</text>
+  
+  <rect x="610" y="490" width="130" height="25" class="util-box"/>
+  <text x="675" y="505" class="function">dl_helpers.py</text>
+  
+  <rect x="535" y="520" width="130" height="25" class="util-box"/>
+  <text x="600" y="535" class="function">plotting.py</text>
+  
+  <!-- Core Matching Functions (Bottom Left) -->
+  <rect x="50" y="600" width="300" height="120" class="util-box"/>
+  <text x="200" y="620" class="module-title">Core Matching Functions</text>
+  
+  <rect x="60" y="640" width="140" height="25" class="util-box"/>
+  <text x="130" y="655" class="function">calculate_annotation_score</text>
+  
+  <rect x="210" y="640" width="130" height="25" class="util-box"/>
+  <text x="275" y="655" class="function">measure_annotations</text>
+  
+  <rect x="135" y="670" width="130" height="25" class="util-box"/>
+  <text x="200" y="685" class="function">all_compare_types</text>
+  
+  <!-- Helper Functions (Bottom Right) -->
+  <rect x="850" y="600" width="300" height="120" class="util-box"/>
+  <text x="1000" y="620" class="module-title">Helper Functions</text>
+  
+  <rect x="860" y="640" width="130" height="25" class="util-box"/>
+  <text x="925" y="655" class="function">check_if_video</text>
+  
+  <rect x="1000" y="640" width="140" height="25" class="util-box"/>
+  <text x="1070" y="655" class="function">add_score_context</text>
+  
+  <rect x="930" y="670" width="140" height="25" class="util-box"/>
+  <text x="1000" y="685" class="function">cleanup_annots_by_score</text>
+  
+  <!-- Data Flow Arrows -->
+  <!-- Core Types to Scoring -->
+  <line x1="550" y1="130" x2="200" y2="170" class="data-flow"/>
+  
+  <!-- Core Types to Evaluating -->
+  <line x1="650" y1="130" x2="1000" y2="170" class="data-flow"/>
+  
+  <!-- Scoring to Utils -->
+  <line x1="150" y1="320" x2="500" y2="440" class="arrow"/>
+  
+  <!-- Evaluating to Utils -->
+  <line x1="1050" y1="380" x2="700" y2="440" class="arrow"/>
+  
+  <!-- Utils to Core Functions -->
+  <line x1="550" y1="570" x2="250" y2="590" class="arrow"/>
+  <line x1="650" y1="570" x2="950" y2="590" class="arrow"/>
+  
+  <!-- Flow Labels -->
+  <text x="375" y="155" class="helper">uses</text>
+  <text x="825" y="155" class="helper">uses</text>
+  <text x="325" y="385" class="helper">depends on</text>
+  <text x="875" y="415" class="helper">depends on</text>
+  <text x="400" y="585" class="helper">implements</text>
+  <text x="800" y="585" class="helper">implements</text>
+  
+  <!-- Legend -->
+  <rect x="50" y="50" width="200" height="100" fill="none" stroke="#ccc" stroke-width="1"/>
+  <text x="150" y="70" class="module-title" fill="#333">Legend</text>
+  <rect x="60" y="80" width="15" height="10" class="module-box"/>
+  <text x="85" y="90" class="helper">Main Modules</text>
+  <rect x="60" y="100" width="15" height="10" class="function-box"/>
+  <text x="85" y="110" class="helper">Functions</text>
+  <rect x="60" y="120" width="15" height="10" class="util-box"/>
+  <text x="85" y="130" class="helper">Utilities</text>
+</svg>

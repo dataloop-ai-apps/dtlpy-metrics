@@ -20,6 +20,9 @@ from .evaluating import (
     get_model_agreement,
     check_annotator_agreement,
     check_unanimous_agreement,
+    dynamic_consensus_agreement,
+    cohens_kappa,
+    fleiss_kappa,
 )
 
 from .utils import (
