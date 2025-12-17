@@ -757,11 +757,7 @@ def get_image_scores(
     unique_annotation_ids = np.unique([score.entity_id for score in annotation_overalls])
     for annotation_id in unique_annotation_ids:
         overalls = [score for score in annotation_overalls if score.entity_id == annotation_id]
-        # this is a matching score between annotations
-        # to make it a probability we will add the current self match as 1
-        # for instance, if we had [A,A,B], and the current is A, the overall probability is 2/3
         overalls_values = [s.value for s in overalls]
-        overalls_values.append(1)  # the match to the current annotation, this will it the probability
 
         # add joint overall (single one for each annotation
         all_scores.append(
