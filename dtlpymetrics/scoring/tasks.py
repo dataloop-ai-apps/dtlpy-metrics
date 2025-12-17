@@ -381,15 +381,18 @@ def get_image_scores(
             all_scores.pop(i_score)
 
     unique_annotation_ids = np.unique([score.entity_id for score in annotation_overalls])
+    # self-match disabled: inflates scores; not appropriate for testing (GT comparison) or consensus (use kappa instead)
+    include_self_match = False
     for annotation_id in unique_annotation_ids:
         overalls = [score for score in annotation_overalls if score.entity_id == annotation_id]
-        # this is a matching score between annotations to make it a probability we will add the current self match as 1
-        # for instance, if we had [A,A,B], and the current is A, the overall probability is 2/3
         overalls_values = [s.value for s in overalls]
-        overalls_values.append(1)  # the match to the current annotation, this will it the probability
+        if include_self_match and task_type == "consensus":
+            # this is a matching score between annotations to make it a probability we will add the current self match as 1
+            # for instance, if we had [A,A,B], and the current is A, the overall probability is 2/3
+            overalls_values.append(1)  # the match to the current annotation, this will it the probability
         user_id = overalls[0].user_id
         assignment_id = overalls[0].assignment_id
-        # add joint overall (single one for each annotation
+        # add joint overall (single one for each annotation)
         all_scores.append(
             Score(
                 type=ScoreType.ANNOTATION_OVERALL,
