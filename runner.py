@@ -105,7 +105,7 @@ class Scorer(dl.BaseServiceRunner):
 
         agreement_config = dict()
         node = context.node
-        agreement_config["agree_threshold"] = node.metadata.get("customNodeConfig", dict()).get("threshold", 0.5)
+        agreement_config["agreement_threshold"] = node.metadata.get("customNodeConfig", dict()).get("threshold", 0.5)
         agreement_config["keep_only_best"] = node.metadata.get("customNodeConfig", dict()).get(
             "consensus_pass_keep_best", False
         )
@@ -202,7 +202,7 @@ class Scorer(dl.BaseServiceRunner):
 
         agreement_config = dict()
         node = context.node
-        agreement_config["agree_threshold"] = node.metadata.get("customNodeConfig", dict()).get("threshold", 0.5)
+        agreement_config["agreement_threshold"] = node.metadata.get("customNodeConfig", dict()).get("threshold", 0.5)
         agreement_config["keep_annots"] = node.metadata.get("customNodeConfig", dict()).get("model_keep_annots", False)
 
         agreement = get_model_agreement(item=item, model=model, agreement_config=agreement_config)
