@@ -144,12 +144,12 @@ class TestRunner(unittest.TestCase):
         model = dl.models.get(model_id='67076a13859b460370cfd24a')
         item_agree = dl.items.get(item_id='67076a10fb04409b488e570c')
         agreement = get_model_agreement(
-            item=item_agree, model=model, agreement_config={'agree_threshold': 0.5, 'fail_keep_all': True}
+            item=item_agree, model=model, agreement_config={'agreement_threshold': 0.5, 'fail_keep_all': True}
         )
         self.assertTrue(agreement)
         item_disagree = dl.items.get(item_id='67076a10fb044082498e5709')
         disagreement = get_model_agreement(
-            item=item_disagree, model=model, agreement_config={'agree_threshold': 0.5, 'fail_keep_all': False}
+            item=item_disagree, model=model, agreement_config={'agreement_threshold': 0.5, 'fail_keep_all': False}
         )
         self.assertFalse(disagreement)
 
