@@ -37,25 +37,24 @@ def get_consensus_agreement(item: dl.Item, task: dl.Task, agreement_config: dict
         if keep_only_best is True:
             logger.info("Keeping the annotation with the highest score.")
             scores_by_annotator = get_scores_by_annotator(scores=all_scores)
-            annot_scores = {key: sum(val) / len(val) for key, val, in scores_by_annotator.items()}
-            # Get the annotator with the highest score
-            max_score = max(annot_scores.values())
-            best_annotator = None
-            # Find the first key with the maximum value
-            for key, value in annot_scores.items():
-                if value == max_score:
-                    best_annotator = key
-                    break
-            logger.info(f"Best annotator assignment ID: {best_annotator}")
+            if scores_by_annotator:
+                annot_scores = {key: sum(val) / len(val) for key, val in scores_by_annotator.items()}
+                best_annotator = max(annot_scores, key=annot_scores.get)
+                logger.info(f"Best annotator assignment ID: {best_annotator}")
 
-            annots_to_keep = [
-                score.entity_id
-                for score in all_scores
-                if (score.context.get('assignmentId') == best_annotator)
-                and (score.type == ScoreType.ANNOTATION_OVERALL)
-            ]
-            logger.info(f"Annotations to keep: {annots_to_keep}")
-            cleanup_annots_by_score(item=item, scores=all_scores, annots_to_keep=annots_to_keep, logger=logger)
+                annots_to_keep = [
+                    score.entity_id
+                    for score in all_scores
+                    if (score.context.get('assignmentId') == best_annotator)
+                    and (score.type == ScoreType.ANNOTATION_OVERALL)
+                ]
+                logger.info(f"Annotations to keep: {annots_to_keep}")
+                cleanup_annots_by_score(item=item, scores=all_scores, annots_to_keep=annots_to_keep, logger=logger)
+            else:
+                logger.info(
+                    "No annotator-level scores available for keep_only_best flow. "
+                    "Skipping annotation cleanup."
+                )
     else:
         logger.info(f'Consensus failed for item {item.id}')
         if fail_keep_all is False:
@@ -79,7 +78,9 @@ def check_annotator_agreement(scores, threshold: float = 1.0):
         raise ValueError("Threshold must be between 0 and 1. Please set a valid threshold.")
     # calculate agreement based on the average agreement across all annotators
     user_scores = [score.value for score in scores if score.type == ScoreType.USER_CONFUSION]
-    agreement = True if sum(user_scores) / len(user_scores) >= threshold else False
+    agreement = True
+    if len(user_scores) > 0:
+        agreement = True if sum(user_scores) / len(user_scores) >= threshold else False
     return agreement
 
 
